@@ -2,13 +2,14 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings } from "lucide-react";
+import { Building2, Home, Users, DollarSign, MapPin, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import apartmentInterior from "@/assets/apartment-interior.jpg";
 import skylineApartment from "@/assets/skyline-apartment.jpg";
 import yellowHouse from "@/assets/yellow-house.jpg";
 import whiteHouse from "@/assets/white-house.jpg";
 import greenHouse from "@/assets/green-house.jpg";
+import RoomDetailsModal from "@/components/property/RoomDetailsModal";
 
 interface Property {
   id: string;
@@ -22,6 +23,8 @@ interface Property {
 
 const ManagerDashboard = () => {
   const { toast } = useToast();
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [properties, setProperties] = useState<Property[]>([
     {
       id: "1",
@@ -112,18 +115,19 @@ const ManagerDashboard = () => {
   };
 
   const handleManageProperty = (propertyId: string) => {
-    toast({
-      title: "Property Management",
-      description: `Managing property ${propertyId}. Property details panel would open here.`,
-    });
+    const property = properties.find(p => p.id === propertyId);
+    if (property) {
+      setSelectedProperty(property);
+      setIsRoomModalOpen(true);
+    }
   };
 
   const handleViewTenants = (propertyId: string) => {
     const property = properties.find(p => p.id === propertyId);
-    toast({
-      title: "View Tenants",
-      description: `Viewing ${property?.occupiedRooms} tenants in ${property?.name}.`,
-    });
+    if (property) {
+      setSelectedProperty(property);
+      setIsRoomModalOpen(true);
+    }
   };
 
   return (
@@ -134,20 +138,6 @@ const ManagerDashboard = () => {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Manager Dashboard</h1>
             <p className="text-muted-foreground">Manage properties and assist tenants</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button onClick={handleGenerateReport} variant="outline">
-              <FileText className="mr-2 h-4 w-4" />
-              Generate Report
-            </Button>
-            <Button onClick={handleInviteManager} variant="outline">
-              <Mail className="mr-2 h-4 w-4" />
-              Invite Manager
-            </Button>
-            <Button onClick={handleAddProperty} className="bg-gradient-hero hover:shadow-glow">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Property
-            </Button>
           </div>
         </div>
 
@@ -271,15 +261,7 @@ const ManagerDashboard = () => {
                         }}
                       />
                     </div>
-
-                    {/* Payment Information for each property */}
-                    <div className="pt-2 border-t">
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        <div><span className="font-medium">Paybill:</span> 222333</div>
-                        <div><span className="font-medium">M-Pesa:</span> 0743565674</div>
-                      </div>
-                    </div>
-                    
+                     
                     <div className="flex gap-2 pt-2">
                       <Button 
                         size="sm" 

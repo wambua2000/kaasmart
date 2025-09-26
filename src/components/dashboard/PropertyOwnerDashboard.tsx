@@ -9,6 +9,8 @@ import skylineApartment from "@/assets/skyline-apartment.jpg";
 import yellowHouse from "@/assets/yellow-house.jpg";
 import whiteHouse from "@/assets/white-house.jpg";
 import greenHouse from "@/assets/green-house.jpg";
+import RoomDetailsModal from "@/components/property/RoomDetailsModal";
+import AddPropertyModal from "@/components/property/AddPropertyModal";
 
 interface Property {
   id: string;
@@ -22,6 +24,9 @@ interface Property {
 
 const PropertyOwnerDashboard = () => {
   const { toast } = useToast();
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
+  const [isAddPropertyModalOpen, setIsAddPropertyModalOpen] = useState(false);
   const [properties, setProperties] = useState<Property[]>([
     {
       id: "1",
@@ -68,20 +73,11 @@ const PropertyOwnerDashboard = () => {
   const occupancyRate = ((occupiedRooms / totalRooms) * 100).toFixed(1);
 
   const handleAddProperty = () => {
-    const newProperty: Property = {
-      id: (properties.length + 1).toString(),
-      name: "New Property",
-      location: "Location TBD",
-      rentPerRoom: 0,
-      totalRooms: 0,
-      occupiedRooms: 0,
-      image: apartmentInterior,
-    };
+    setIsAddPropertyModalOpen(true);
+  };
+
+  const handleAddPropertySubmit = (newProperty: Property) => {
     setProperties([...properties, newProperty]);
-    toast({
-      title: "Property Added",
-      description: "New property has been added successfully.",
-    });
   };
 
   const handleInviteManager = () => {
@@ -104,7 +100,21 @@ const PropertyOwnerDashboard = () => {
       "Monthly Revenue": `KSh ${(prop.occupiedRooms * prop.rentPerRoom).toLocaleString()}`,
     }));
     
-    console.log("Property Report:", reportData);
+    // Convert to CSV and download
+    const csvHeaders = Object.keys(reportData[0]).join(",");
+    const csvRows = reportData.map(row => Object.values(row).join(","));
+    const csvContent = [csvHeaders, ...csvRows].join("\n");
+    
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `property-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
     toast({
       title: "Report Generated",
       description: "Property report has been generated and downloaded.",
@@ -112,18 +122,19 @@ const PropertyOwnerDashboard = () => {
   };
 
   const handleManageProperty = (propertyId: string) => {
-    toast({
-      title: "Property Management",
-      description: `Managing property ${propertyId}. Property details panel would open here.`,
-    });
+    const property = properties.find(p => p.id === propertyId);
+    if (property) {
+      setSelectedProperty(property);
+      setIsRoomModalOpen(true);
+    }
   };
 
   const handleViewTenants = (propertyId: string) => {
     const property = properties.find(p => p.id === propertyId);
-    toast({
-      title: "View Tenants",
-      description: `Viewing ${property?.occupiedRooms} tenants in ${property?.name}.`,
-    });
+    if (property) {
+      setSelectedProperty(property);
+      setIsRoomModalOpen(true);
+    }
   };
 
   return (
@@ -270,17 +281,9 @@ const PropertyOwnerDashboard = () => {
                           width: `${(property.occupiedRooms / property.totalRooms) * 100}%`,
                         }}
                       />
-                    </div>
-
-                    {/* Payment Information for each property */}
-                    <div className="pt-2 border-t">
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        <div><span className="font-medium">Paybill:</span> 222333</div>
-                        <div><span className="font-medium">M-Pesa:</span> 0743565674</div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2 pt-2">
+                     </div>
+                     
+                     <div className="flex gap-2 pt-2">
                       <Button 
                         size="sm" 
                         className="flex-1 bg-gradient-hero hover:shadow-glow"
@@ -305,6 +308,21 @@ const PropertyOwnerDashboard = () => {
             ))}
           </div>
         </div>
+
+        <RoomDetailsModal
+          property={selectedProperty}
+          isOpen={isRoomModalOpen}
+          onClose={() => {
+            setIsRoomModalOpen(false);
+            setSelectedProperty(null);
+          }}
+        />
+
+        <AddPropertyModal
+          isOpen={isAddPropertyModalOpen}
+          onClose={() => setIsAddPropertyModalOpen(false)}
+          onAddProperty={handleAddPropertySubmit}
+        />
 
       </div>
     </div>
