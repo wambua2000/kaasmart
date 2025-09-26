@@ -215,6 +215,18 @@ export type Database = {
           temporary_password: string
         }[]
       }
+      get_invitation_status: {
+        Args: { user_email: string }
+        Returns: {
+          created_at: string
+          expires_at: string
+          id: string
+          is_used: boolean
+          property_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          room_id: string
+        }[]
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
