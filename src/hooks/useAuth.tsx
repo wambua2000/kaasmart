@@ -93,13 +93,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signUp = async (email: string, password: string, role: UserRole = 'tenant', fullName?: string) => {
-    // For invitation-based signup, the role and profile will be handled by the database trigger
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/`,
         data: {
+          role,
           full_name: fullName || email,
         }
       }
