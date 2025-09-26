@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, User, Lock, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import kaasmartLogo from "@/assets/kaasmart-logo.png";
 
 export type UserRole = "owner" | "manager" | "tenant";
 
@@ -59,8 +60,13 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
       {/* Login Form */}
       <Card className="w-full max-w-md mx-auto bg-white/95 backdrop-blur-sm border-border/20 shadow-2xl">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 p-3 rounded-full bg-gradient-hero w-fit">
-              <Building2 className="h-8 w-8 text-white" />
+            {/* Logo */}
+            <div className="mb-4">
+              <img 
+                src={kaasmartLogo} 
+                alt="KaaSmart Logo" 
+                className="h-16 w-auto mx-auto"
+              />
             </div>
             <CardTitle className="text-2xl font-bold bg-gradient-hero bg-clip-text text-transparent">
               KaaSmart Manager
