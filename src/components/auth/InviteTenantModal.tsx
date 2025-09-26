@@ -80,11 +80,12 @@ const InviteTenantModal = ({ isOpen, onClose, propertyId, roomId, roomNumber }: 
   };
 
   const copyCredentials = () => {
-    const credentials = `Email: ${email}\nPassword: ${generatedPassword}\nRoom: ${roomNumber}`;
+    const systemLink = window.location.origin;
+    const credentials = `System Link: ${systemLink}\nEmail: ${email}\nPassword: ${generatedPassword}\nRoom: ${roomNumber}`;
     navigator.clipboard.writeText(credentials);
     toast({
       title: "Copied",
-      description: "Login credentials copied to clipboard",
+      description: "Login credentials and link copied to clipboard",
     });
   };
 
@@ -148,6 +149,7 @@ const InviteTenantModal = ({ isOpen, onClose, propertyId, roomId, roomNumber }: 
               <div className="bg-muted p-4 rounded-lg space-y-2">
                 <h3 className="font-semibold">Tenant Login Credentials</h3>
                 <div className="space-y-1">
+                  <p><span className="font-medium">System Link:</span> {window.location.origin}</p>
                   <p><span className="font-medium">Name:</span> {fullName}</p>
                   <p><span className="font-medium">Email:</span> {email}</p>
                   <p><span className="font-medium">Password:</span> {generatedPassword}</p>

@@ -74,11 +74,12 @@ const InviteManagerModal = ({ isOpen, onClose }: InviteManagerModalProps) => {
   };
 
   const copyCredentials = () => {
-    const credentials = `Email: ${email}\nPassword: ${generatedPassword}`;
+    const systemLink = window.location.origin;
+    const credentials = `System Link: ${systemLink}\nEmail: ${email}\nPassword: ${generatedPassword}`;
     navigator.clipboard.writeText(credentials);
     toast({
       title: "Copied",
-      description: "Login credentials copied to clipboard",
+      description: "Login credentials and link copied to clipboard",
     });
   };
 
@@ -131,6 +132,7 @@ const InviteManagerModal = ({ isOpen, onClose }: InviteManagerModalProps) => {
               <div className="bg-muted p-4 rounded-lg space-y-2">
                 <h3 className="font-semibold">Manager Login Credentials</h3>
                 <div className="space-y-1">
+                  <p><span className="font-medium">System Link:</span> {window.location.origin}</p>
                   <p><span className="font-medium">Email:</span> {email}</p>
                   <p><span className="font-medium">Password:</span> {generatedPassword}</p>
                 </div>
