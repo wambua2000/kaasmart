@@ -46,12 +46,19 @@ const InviteTenantModal = ({ isOpen, onClose, propertyId, roomId, roomNumber }: 
     const password = generatePassword();
 
     try {
-      // Create invitation record
+      // Hash the password before storing
+      const { data: hashedPassword, error: hashError } = await supabase
+        .rpc('hash_password', { password });
+
+      if (hashError) throw hashError;
+
+      // Create invitation record with hashed password and temporary password for display
       const { error: inviteError } = await supabase
         .from('invitations')
         .insert([{
           email,
-          password,
+          password_hash: hashedPassword,
+          temporary_password: password, // Store temporarily for sharing
           role: 'tenant',
           invited_by: (await supabase.auth.getUser()).data.user?.id,
           property_id: propertyId,
