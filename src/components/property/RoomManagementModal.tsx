@@ -13,6 +13,7 @@ import {
   Upload, MessageSquare, UserPlus, Edit, Save, 
   Bed, Table, Home
 } from "lucide-react";
+import InviteTenantModal from "@/components/auth/InviteTenantModal";
 
 interface Tenant {
   id: string;
@@ -57,6 +58,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [showAddTenant, setShowAddTenant] = useState(false);
+  const [isInviteTenantModalOpen, setIsInviteTenantModalOpen] = useState(false);
   const [globalEmergencyContact, setGlobalEmergencyContact] = useState("+254 701 234 567");
   const [editingEmergencyContact, setEditingEmergencyContact] = useState(false);
   const [tempEmergencyContact, setTempEmergencyContact] = useState(globalEmergencyContact);
@@ -168,18 +170,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
   };
 
   const handleAddTenant = () => {
-    setShowAddTenant(true);
-    setEditingTenant({
-      id: "",
-      name: "",
-      email: "",
-      phone: "",
-      dateOfEntry: new Date().toISOString().split('T')[0],
-      rentAmount: property.rentPerRoom,
-      rentStatus: "not-paid",
-      accessories: [],
-      emergencyContact: globalEmergencyContact,
-    });
+    setIsInviteTenantModalOpen(true);
   };
 
   const handleSaveEmergencyContact = () => {
@@ -612,6 +603,17 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
             )}
           </div>
         </div>
+
+        {/* Invite Tenant Modal */}
+        {selectedRoom && (
+          <InviteTenantModal
+            isOpen={isInviteTenantModalOpen}
+            onClose={() => setIsInviteTenantModalOpen(false)}
+            propertyId={property.id}
+            roomId={selectedRoom.id}
+            roomNumber={selectedRoom.number}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

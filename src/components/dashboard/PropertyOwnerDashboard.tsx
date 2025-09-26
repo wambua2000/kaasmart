@@ -17,6 +17,7 @@ import RoomDetailsModal from "@/components/property/RoomDetailsModal";
 import AddPropertyModal from "@/components/property/AddPropertyModal";
 import RoomManagementModal from "@/components/property/RoomManagementModal";
 import ReportModal from "@/components/property/ReportModal";
+import InviteManagerModal from "@/components/auth/InviteManagerModal";
 
 interface Property {
   id: string;
@@ -35,6 +36,7 @@ const PropertyOwnerDashboard = () => {
   const [isAddPropertyModalOpen, setIsAddPropertyModalOpen] = useState(false);
   const [isRoomManagementOpen, setIsRoomManagementOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isInviteManagerModalOpen, setIsInviteManagerModalOpen] = useState(false);
   const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
   const [messageText, setMessageText] = useState("");
   const [selectedRecipient, setSelectedRecipient] = useState("all");
@@ -106,10 +108,7 @@ const PropertyOwnerDashboard = () => {
   };
 
   const handleInviteManager = () => {
-    toast({
-      title: "Manager Invited",
-      description: "Invitation email sent to manager successfully.",
-    });
+    setIsInviteManagerModalOpen(true);
   };
 
   const handleGenerateReport = () => {
@@ -415,6 +414,11 @@ const PropertyOwnerDashboard = () => {
           properties={properties}
           isOpen={isReportModalOpen}
           onClose={() => setIsReportModalOpen(false)}
+        />
+
+        <InviteManagerModal
+          isOpen={isInviteManagerModalOpen}
+          onClose={() => setIsInviteManagerModalOpen(false)}
         />
 
         </div>
