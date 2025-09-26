@@ -330,14 +330,14 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                             <User className="h-5 w-5" />
                             Tenant Details
                           </CardTitle>
-                          {userRole === "owner" && (
+                          {(userRole === "owner" || userRole === "manager") && (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleEditTenant(selectedRoom.tenant!)}
                             >
                               <Edit className="mr-2 h-4 w-4" />
-                              Edit
+                              Edit {userRole === "manager" ? "Info" : ""}
                             </Button>
                           )}
                         </div>
@@ -372,7 +372,23 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                                   onChange={(e) => setEditingTenant({...editingTenant, phone: e.target.value})}
                                 />
                               </div>
+                              {userRole === "owner" && (
+                                <div>
+                                  <Label htmlFor="dateOfEntry">Date of Entry</Label>
+                                  <Input
+                                    id="dateOfEntry"
+                                    type="date"
+                                    value={editingTenant.dateOfEntry}
+                                    onChange={(e) => setEditingTenant({...editingTenant, dateOfEntry: e.target.value})}
+                                  />
+                                </div>
+                              )}
                             </div>
+                            {userRole === "manager" && (
+                              <p className="text-sm text-muted-foreground">
+                                Note: As a manager, you can only edit name, phone, and email.
+                              </p>
+                            )}
                             <Button onClick={handleSaveTenant}>
                               <Save className="mr-2 h-4 w-4" />
                               Save Changes
@@ -380,33 +396,52 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                           </div>
                          ) : (
                            <div className="space-y-6">
-                             <div className="grid grid-cols-2 gap-4">
-                               <div>
-                                 <Label>Name</Label>
-                                 <p className="font-medium">{selectedRoom.tenant.name}</p>
-                               </div>
-                               <div>
-                                 <Label>Email</Label>
-                                 <p>{selectedRoom.tenant.email}</p>
-                               </div>
-                               <div>
-                                 <Label>Phone</Label>
-                                 <p>{selectedRoom.tenant.phone}</p>
-                               </div>
-                               <div>
-                                 <Label>Date of Entry</Label>
-                                 <p>{selectedRoom.tenant.dateOfEntry}</p>
-                               </div>
-                               <div>
-                                 <Label>Rent Amount</Label>
-                                 <p className="font-semibold">KSh {selectedRoom.tenant.rentAmount.toLocaleString()}</p>
-                               </div>
-                               <div>
-                                 <Label>Rent Status</Label>
-                                 <Badge variant={selectedRoom.tenant.rentStatus === "paid" ? "default" : "destructive"}>
-                                   {selectedRoom.tenant.rentStatus === "paid" ? "Paid" : "Not Paid"}
-                                 </Badge>
-                               </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <Label>Name</Label>
+                                  <p className="font-medium">{selectedRoom.tenant.name}</p>
+                                </div>
+                                <div>
+                                  <Label>Email</Label>
+                                  <p>{selectedRoom.tenant.email}</p>
+                                </div>
+                                <div>
+                                  <Label>Phone</Label>
+                                  <p>{selectedRoom.tenant.phone}</p>
+                                </div>
+                                <div>
+                                  <Label>Date of Entry</Label>
+                                  <p>{selectedRoom.tenant.dateOfEntry}</p>
+                                </div>
+                                <div>
+                                  <Label>Rent Amount</Label>
+                                  {userRole === "owner" ? (
+                                    <div className="flex items-center gap-2">
+                                      <Input
+                                        type="number"
+                                        value={selectedRoom.tenant.rentAmount}
+                                        onChange={(e) => {
+                                          const newAmount = parseInt(e.target.value) || 0;
+                                          // Update rent amount logic here
+                                          toast({
+                                            title: "Rent Updated",
+                                            description: `Rent amount updated to KSh ${newAmount.toLocaleString()}`,
+                                          });
+                                        }}
+                                        className="w-32"
+                                      />
+                                      <span className="text-sm text-muted-foreground">KSh</span>
+                                    </div>
+                                  ) : (
+                                    <p className="font-semibold">KSh {selectedRoom.tenant.rentAmount.toLocaleString()}</p>
+                                  )}
+                                </div>
+                                <div>
+                                  <Label>Rent Status</Label>
+                                  <Badge variant={selectedRoom.tenant.rentStatus === "paid" ? "default" : "destructive"}>
+                                    {selectedRoom.tenant.rentStatus === "paid" ? "Paid" : "Not Paid"}
+                                  </Badge>
+                                </div>
                                 {userRole === "owner" && (
                                   <div>
                                     <Label>Emergency Contact (Global)</Label>

@@ -28,6 +28,7 @@ import RoomDetailsModal from "@/components/property/RoomDetailsModal";
 import AddPropertyModal from "@/components/property/AddPropertyModal";
 import RoomManagementModal from "@/components/property/RoomManagementModal";
 import ReportModal from "@/components/property/ReportModal";
+import DocumentReport from "@/components/property/DocumentReport";
 
 interface Property {
   id: string;
@@ -46,6 +47,7 @@ const PropertyOwnerDashboard = () => {
   const [isAddPropertyModalOpen, setIsAddPropertyModalOpen] = useState(false);
   const [isRoomManagementOpen, setIsRoomManagementOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isDocumentReportOpen, setIsDocumentReportOpen] = useState(false);
   const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
   const [messageText, setMessageText] = useState("");
   const [selectedRecipient, setSelectedRecipient] = useState("all");
@@ -126,7 +128,7 @@ const PropertyOwnerDashboard = () => {
   };
 
   const handleGenerateReport = () => {
-    setIsReportModalOpen(true);
+    setIsDocumentReportOpen(true);
   };
 
   const handleDeleteProperty = (propertyId: string) => {
@@ -437,6 +439,12 @@ const PropertyOwnerDashboard = () => {
           properties={properties}
           isOpen={isReportModalOpen}
           onClose={() => setIsReportModalOpen(false)}
+        />
+
+        <DocumentReport
+          properties={properties}
+          isOpen={isDocumentReportOpen}
+          onClose={() => setIsDocumentReportOpen(false)}
         />
 
         <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
