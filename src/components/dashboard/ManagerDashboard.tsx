@@ -127,17 +127,20 @@ const ManagerDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-earth p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Blue Header Bar */}
-        <div className="w-full h-2 bg-blue-600 rounded-lg mb-6"></div>
+    <div className="min-h-screen">
+      {/* Blue Header Bar covering full width */}
+      <div className="w-full h-16 bg-blue-600 flex items-center px-6">
+        <h1 className="text-white text-2xl font-bold">KaaSmart Property Management</h1>
+      </div>
+      <div className="bg-gradient-earth p-6">
+        <div className="max-w-7xl mx-auto">
         
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Manager Dashboard</h1>
-            <p className="text-muted-foreground">Manage properties and assist tenants</p>
-          </div>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Manager Dashboard</h1>
+              <p className="text-muted-foreground">Manage properties and assist tenants</p>
+            </div>
           <div className="flex items-center gap-3">
             <Sheet>
               <SheetTrigger asChild>
@@ -328,6 +331,8 @@ const ManagerDashboard = () => {
           userRole="manager"
         />
 
+
+        </div>
       </div>
     </div>
   );

@@ -57,6 +57,9 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [showAddTenant, setShowAddTenant] = useState(false);
+  const [globalEmergencyContact, setGlobalEmergencyContact] = useState("+254 701 234 567");
+  const [editingEmergencyContact, setEditingEmergencyContact] = useState(false);
+  const [tempEmergencyContact, setTempEmergencyContact] = useState(globalEmergencyContact);
 
   if (!property) return null;
 
@@ -102,7 +105,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
           rentAmount: property.rentPerRoom,
           rentStatus: Math.random() > 0.7 ? "not-paid" : "paid",
           accessories: ["Bed", "Table", "Chair"].filter(() => Math.random() > 0.3),
-          emergencyContact: `+254 7${Math.floor(10000000 + Math.random() * 90000000)}`,
+          emergencyContact: globalEmergencyContact,
           notes: Math.random() > 0.5 ? "Good tenant, pays on time" : undefined,
         };
       }
@@ -175,7 +178,24 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
       rentAmount: property.rentPerRoom,
       rentStatus: "not-paid",
       accessories: [],
-      emergencyContact: "",
+      emergencyContact: globalEmergencyContact,
+    });
+  };
+
+  const handleSaveEmergencyContact = () => {
+    if (userRole !== "owner") {
+      toast({
+        title: "Access Denied",
+        description: "Only property owners can edit emergency contact.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setGlobalEmergencyContact(tempEmergencyContact);
+    setEditingEmergencyContact(false);
+    toast({
+      title: "Emergency Contact Updated",
+      description: "Global emergency contact has been updated for all rooms.",
     });
   };
 
@@ -188,6 +208,46 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
             {property.name} - Room Management
           </DialogTitle>
         </DialogHeader>
+
+        {/* Global Emergency Contact Section - Only for Property Owner */}
+        {userRole === "owner" && (
+          <div className="border-b pb-4 mb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium">Global Emergency Contact</h3>
+                <p className="text-sm text-muted-foreground">This emergency contact applies to all rooms</p>
+              </div>
+              {editingEmergencyContact ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={tempEmergencyContact}
+                    onChange={(e) => setTempEmergencyContact(e.target.value)}
+                    placeholder="Emergency contact number"
+                    className="w-48"
+                  />
+                  <Button size="sm" onClick={handleSaveEmergencyContact}>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => {
+                    setEditingEmergencyContact(false);
+                    setTempEmergencyContact(globalEmergencyContact);
+                  }}>
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{globalEmergencyContact}</span>
+                  <Button size="sm" variant="outline" onClick={() => setEditingEmergencyContact(true)}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-6 h-[75vh]">
           {/* Rooms List */}
@@ -252,7 +312,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                       <p className="text-muted-foreground mb-4">
                         Rent: KSh {selectedRoom.rentAmount.toLocaleString()}/month
                       </p>
-                      {userRole === "owner" && (
+                      {(userRole === "owner" || userRole === "manager") && (
                         <Button onClick={handleAddTenant}>
                           <UserPlus className="mr-2 h-4 w-4" />
                           Add Tenant
@@ -312,16 +372,6 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                                   onChange={(e) => setEditingTenant({...editingTenant, phone: e.target.value})}
                                 />
                               </div>
-                              {userRole === "owner" && (
-                                <div>
-                                  <Label htmlFor="emergency">Emergency Contact</Label>
-                                  <Input
-                                    id="emergency"
-                                    value={editingTenant.emergencyContact}
-                                    onChange={(e) => setEditingTenant({...editingTenant, emergencyContact: e.target.value})}
-                                  />
-                                </div>
-                              )}
                             </div>
                             <Button onClick={handleSaveTenant}>
                               <Save className="mr-2 h-4 w-4" />
@@ -357,12 +407,12 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                                    {selectedRoom.tenant.rentStatus === "paid" ? "Paid" : "Not Paid"}
                                  </Badge>
                                </div>
-                               {userRole === "owner" && (
-                                 <div>
-                                   <Label>Emergency Contact</Label>
-                                   <p>{selectedRoom.tenant.emergencyContact}</p>
-                                 </div>
-                               )}
+                                {userRole === "owner" && (
+                                  <div>
+                                    <Label>Emergency Contact (Global)</Label>
+                                    <p>{globalEmergencyContact}</p>
+                                  </div>
+                                )}
                                <div>
                                  <Label>Accessories</Label>
                                  <div className="flex gap-1 mt-1">
