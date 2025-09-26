@@ -12,7 +12,6 @@ import whiteHouse from "@/assets/white-house.jpg";
 import greenHouse from "@/assets/green-house.jpg";
 import RoomDetailsModal from "@/components/property/RoomDetailsModal";
 import RoomManagementModal from "@/components/property/RoomManagementModal";
-import MessageViewer from "@/components/property/MessageViewer";
 
 interface Property {
   id: string;
