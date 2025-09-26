@@ -14,201 +14,16 @@ export type Database = {
   }
   public: {
     Tables: {
-      invitations: {
-        Row: {
-          created_at: string | null
-          email: string
-          expires_at: string | null
-          id: string
-          invited_by: string | null
-          is_used: boolean | null
-          password: string
-          property_id: string | null
-          role: Database["public"]["Enums"]["app_role"]
-          room_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          email: string
-          expires_at?: string | null
-          id?: string
-          invited_by?: string | null
-          is_used?: boolean | null
-          password: string
-          property_id?: string | null
-          role: Database["public"]["Enums"]["app_role"]
-          room_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          email?: string
-          expires_at?: string | null
-          id?: string
-          invited_by?: string | null
-          is_used?: boolean | null
-          password?: string
-          property_id?: string | null
-          role?: Database["public"]["Enums"]["app_role"]
-          room_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "invitations_invited_by_fkey"
-            columns: ["invited_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "invitations_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "invitations_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "rooms"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      profiles: {
-        Row: {
-          created_at: string | null
-          email: string
-          full_name: string | null
-          id: string
-          phone: string | null
-          role: Database["public"]["Enums"]["app_role"]
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          email: string
-          full_name?: string | null
-          id: string
-          phone?: string | null
-          role: Database["public"]["Enums"]["app_role"]
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          email?: string
-          full_name?: string | null
-          id?: string
-          phone?: string | null
-          role?: Database["public"]["Enums"]["app_role"]
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      properties: {
-        Row: {
-          created_at: string | null
-          id: string
-          image_url: string | null
-          location: string
-          name: string
-          owner_id: string | null
-          rent_per_room: number
-          total_rooms: number
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          image_url?: string | null
-          location: string
-          name: string
-          owner_id?: string | null
-          rent_per_room: number
-          total_rooms: number
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          image_url?: string | null
-          location?: string
-          name?: string
-          owner_id?: string | null
-          rent_per_room?: number
-          total_rooms?: number
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "properties_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      rooms: {
-        Row: {
-          created_at: string | null
-          id: string
-          is_occupied: boolean | null
-          property_id: string | null
-          rent_amount: number
-          room_number: string
-          tenant_id: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          is_occupied?: boolean | null
-          property_id?: string | null
-          rent_amount: number
-          room_number: string
-          tenant_id?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          is_occupied?: boolean | null
-          property_id?: string | null
-          rent_amount?: number
-          room_number?: string
-          tenant_id?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "rooms_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rooms_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      get_user_role: {
-        Args: { user_id: string }
-        Returns: Database["public"]["Enums"]["app_role"]
-      }
+      [_ in never]: never
     }
     Enums: {
-      app_role: "owner" | "manager" | "tenant"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -335,8 +150,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      app_role: ["owner", "manager", "tenant"],
-    },
+    Enums: {},
   },
 } as const

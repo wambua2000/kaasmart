@@ -1,7 +1,12 @@
-import LoginForm from "@/components/auth/LoginForm";
+import LoginForm, { UserRole } from "@/components/auth/LoginForm";
 import africanApartmentComplex from "@/assets/african-apartment-complex.jpg";
+import kaasmartLogo from "@/assets/kaasmart-logo.png";
 
-const Login = () => {
+interface LoginProps {
+  onLogin: (email: string, role: UserRole) => void;
+}
+
+const Login = ({ onLogin }: LoginProps) => {
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Background Image */}
@@ -14,7 +19,7 @@ const Login = () => {
       
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen">
-        <LoginForm />
+        <LoginForm onLogin={onLogin} />
       </div>
     </div>
   );

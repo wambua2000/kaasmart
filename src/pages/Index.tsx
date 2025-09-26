@@ -1,27 +1,25 @@
+import { useState } from "react";
 import Login from "./Login";
 import PropertyOwnerDashboard from "@/components/dashboard/PropertyOwnerDashboard";
 import ManagerDashboard from "@/components/dashboard/ManagerDashboard";
 import TenantDashboard from "@/components/dashboard/TenantDashboard";
-import { useAuth } from "@/hooks/useAuth";
+import { UserRole } from "@/components/auth/LoginForm";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 
 const Index = () => {
-  const { user, signOut, loading } = useAuth();
+  const [user, setUser] = useState<{ email: string; role: UserRole } | null>(null);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleLogin = (email: string, role: UserRole) => {
+    setUser({ email, role });
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+  };
 
   if (!user) {
-    return <Login />;
+    return <Login onLogin={handleLogin} />;
   }
 
   return (
@@ -29,7 +27,7 @@ const Index = () => {
       {/* Logout Button */}
       <div className="absolute top-4 right-4 z-50">
         <Button
-          onClick={signOut}
+          onClick={handleLogout}
           variant="outline"
           size="sm"
           className="bg-card/80 backdrop-blur-sm border-border/50"
