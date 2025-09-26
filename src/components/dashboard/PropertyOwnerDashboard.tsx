@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import apartmentInterior from "@/assets/apartment-interior.jpg";
 import skylineApartment from "@/assets/skyline-apartment.jpg";
 import yellowHouse from "@/assets/yellow-house.jpg";
@@ -17,6 +18,7 @@ import RoomDetailsModal from "@/components/property/RoomDetailsModal";
 import AddPropertyModal from "@/components/property/AddPropertyModal";
 import RoomManagementModal from "@/components/property/RoomManagementModal";
 import ReportModal from "@/components/property/ReportModal";
+import InviteManagerModal from "@/components/auth/InviteManagerModal";
 
 interface Property {
   id: string;
@@ -35,6 +37,7 @@ const PropertyOwnerDashboard = () => {
   const [isAddPropertyModalOpen, setIsAddPropertyModalOpen] = useState(false);
   const [isRoomManagementOpen, setIsRoomManagementOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isInviteManagerModalOpen, setIsInviteManagerModalOpen] = useState(false);
   const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
   const [messageText, setMessageText] = useState("");
   const [selectedRecipient, setSelectedRecipient] = useState("all");
@@ -106,10 +109,7 @@ const PropertyOwnerDashboard = () => {
   };
 
   const handleInviteManager = () => {
-    toast({
-      title: "Manager Invited",
-      description: "Invitation email sent to manager successfully.",
-    });
+    setIsInviteManagerModalOpen(true);
   };
 
   const handleGenerateReport = () => {
@@ -371,13 +371,33 @@ const PropertyOwnerDashboard = () => {
                         <Eye className="mr-2 h-4 w-4" />
                         View Rooms
                       </Button>
-                      <Button 
-                        size="sm" 
-                        variant="destructive"
-                        onClick={() => handleDeleteProperty(property.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            size="sm" 
+                            variant="destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Property</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{property.name}"? This action cannot be undone and will remove all associated rooms and tenant data.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleDeleteProperty(property.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete Property
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                      </div>
                   </div>
                 </CardContent>
@@ -415,6 +435,11 @@ const PropertyOwnerDashboard = () => {
           properties={properties}
           isOpen={isReportModalOpen}
           onClose={() => setIsReportModalOpen(false)}
+        />
+
+        <InviteManagerModal
+          isOpen={isInviteManagerModalOpen}
+          onClose={() => setIsInviteManagerModalOpen(false)}
         />
 
         </div>
