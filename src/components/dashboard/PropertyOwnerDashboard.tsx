@@ -4,6 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings, ExternalLink, Wrench, MessageSquare, Eye, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle, 
+  AlertDialogTrigger 
+} from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -38,6 +49,8 @@ const PropertyOwnerDashboard = () => {
   const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
   const [messageText, setMessageText] = useState("");
   const [selectedRecipient, setSelectedRecipient] = useState("all");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
   const [properties, setProperties] = useState<Property[]>([
     {
       id: "1",
@@ -117,11 +130,20 @@ const PropertyOwnerDashboard = () => {
   };
 
   const handleDeleteProperty = (propertyId: string) => {
-    setProperties(properties.filter(p => p.id !== propertyId));
-    toast({
-      title: "Property Deleted",
-      description: "Property has been removed successfully.",
-    });
+    setPropertyToDelete(propertyId);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteProperty = () => {
+    if (propertyToDelete) {
+      setProperties(properties.filter(p => p.id !== propertyToDelete));
+      toast({
+        title: "Property Deleted",
+        description: "Property has been removed successfully.",
+      });
+    }
+    setDeleteConfirmOpen(false);
+    setPropertyToDelete(null);
   };
 
   const handleViewRooms = (propertyId: string) => {
@@ -362,7 +384,7 @@ const PropertyOwnerDashboard = () => {
                       />
                      </div>
                      
-                     <div className="flex gap-2 pt-2">
+                      <div className="flex gap-2 pt-2">
                       <Button 
                         size="sm" 
                         className="flex-1 bg-gradient-hero hover:shadow-glow"
@@ -416,6 +438,23 @@ const PropertyOwnerDashboard = () => {
           isOpen={isReportModalOpen}
           onClose={() => setIsReportModalOpen(false)}
         />
+
+        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Property</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this property? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteProperty} className="bg-destructive hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         </div>
       </div>
