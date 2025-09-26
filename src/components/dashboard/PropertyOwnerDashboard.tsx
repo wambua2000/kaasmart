@@ -4,12 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings, ExternalLink, Wrench, MessageSquare, Eye, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
-import { InviteManagerModal } from "@/components/invitation/InviteManagerModal";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import apartmentInterior from "@/assets/apartment-interior.jpg";
 import skylineApartment from "@/assets/skyline-apartment.jpg";
 import yellowHouse from "@/assets/yellow-house.jpg";
@@ -19,6 +18,7 @@ import RoomDetailsModal from "@/components/property/RoomDetailsModal";
 import AddPropertyModal from "@/components/property/AddPropertyModal";
 import RoomManagementModal from "@/components/property/RoomManagementModal";
 import ReportModal from "@/components/property/ReportModal";
+import InviteManagerModal from "@/components/auth/InviteManagerModal";
 
 interface Property {
   id: string;
@@ -37,11 +37,10 @@ const PropertyOwnerDashboard = () => {
   const [isAddPropertyModalOpen, setIsAddPropertyModalOpen] = useState(false);
   const [isRoomManagementOpen, setIsRoomManagementOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isInviteManagerModalOpen, setIsInviteManagerModalOpen] = useState(false);
   const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
   const [messageText, setMessageText] = useState("");
   const [selectedRecipient, setSelectedRecipient] = useState("all");
-  const [deleteConfirmation, setDeleteConfirmation] = useState<{isOpen: boolean, propertyId: string | null}>({isOpen: false, propertyId: null});
-  const [isInviteManagerModalOpen, setIsInviteManagerModalOpen] = useState(false);
   const [properties, setProperties] = useState<Property[]>([
     {
       id: "1",
@@ -118,17 +117,11 @@ const PropertyOwnerDashboard = () => {
   };
 
   const handleDeleteProperty = (propertyId: string) => {
-    setDeleteConfirmation({isOpen: true, propertyId});
-  };
-
-  const confirmDeleteProperty = () => {
-    if (deleteConfirmation.propertyId) {
-      setProperties(properties.filter(p => p.id !== deleteConfirmation.propertyId));
-      toast({
-        title: "Property Deleted",
-        description: "Property has been removed successfully.",
-      });
-    }
+    setProperties(properties.filter(p => p.id !== propertyId));
+    toast({
+      title: "Property Deleted",
+      description: "Property has been removed successfully.",
+    });
   };
 
   const handleViewRooms = (propertyId: string) => {
@@ -378,13 +371,33 @@ const PropertyOwnerDashboard = () => {
                         <Eye className="mr-2 h-4 w-4" />
                         View Rooms
                       </Button>
-                      <Button 
-                        size="sm" 
-                        variant="destructive"
-                        onClick={() => handleDeleteProperty(property.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            size="sm" 
+                            variant="destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Property</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{property.name}"? This action cannot be undone and will remove all associated rooms and tenant data.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleDeleteProperty(property.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete Property
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                      </div>
                   </div>
                 </CardContent>
@@ -424,20 +437,9 @@ const PropertyOwnerDashboard = () => {
           onClose={() => setIsReportModalOpen(false)}
         />
 
-        <ConfirmationDialog
-          isOpen={deleteConfirmation.isOpen}
-          onClose={() => setDeleteConfirmation({isOpen: false, propertyId: null})}
-          onConfirm={confirmDeleteProperty}
-          title="Delete Property"
-          description="Are you sure you want to delete this property? This action cannot be undone."
-          confirmText="Delete"
-          variant="destructive"
-        />
-
         <InviteManagerModal
           isOpen={isInviteManagerModalOpen}
           onClose={() => setIsInviteManagerModalOpen(false)}
-          properties={properties}
         />
 
         </div>
