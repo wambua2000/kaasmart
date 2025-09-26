@@ -150,6 +150,20 @@ Generated on: ${new Date().toLocaleDateString()}
                     </div>
                     <Badge variant="default">Live</Badge>
                   </div>
+                  <div className="mt-3 pt-2 border-t">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownloadPDF(currentReport);
+                      }}
+                    >
+                      <Download className="mr-2 h-3 w-3" />
+                      Download
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -171,6 +185,20 @@ Generated on: ${new Date().toLocaleDateString()}
                         </p>
                       </div>
                       <Badge variant="secondary">{report.occupancyRate}%</Badge>
+                    </div>
+                    <div className="mt-3 pt-2 border-t">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadPDF(report);
+                        }}
+                      >
+                        <Download className="mr-2 h-3 w-3" />
+                        Download
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
