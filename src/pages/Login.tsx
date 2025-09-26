@@ -17,17 +17,16 @@ const Login = ({ onLogin }: LoginProps) => {
         <div className="absolute inset-0 bg-black/40" />
       </div>
       
-      {/* Logo */}
-      <div className="absolute top-8 left-8 z-20">
-        <img 
-          src={kaasmartLogo} 
-          alt="KaaSmart Logo" 
-          className="h-16 w-auto"
-        />
-      </div>
-      
       {/* Content */}
-      <div className="relative z-10">
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen">
+        {/* Logo at top of login form */}
+        <div className="mb-8">
+          <img 
+            src={kaasmartLogo} 
+            alt="KaaSmart Logo" 
+            className="h-20 w-auto mx-auto"
+          />
+        </div>
         <LoginForm onLogin={onLogin} />
       </div>
     </div>

@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Home, Users, DollarSign, MapPin, Eye } from "lucide-react";
+import { Building2, Home, Users, DollarSign, MapPin, Eye, Wrench } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import apartmentInterior from "@/assets/apartment-interior.jpg";
 import skylineApartment from "@/assets/skyline-apartment.jpg";
@@ -27,6 +28,7 @@ const ManagerDashboard = () => {
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [isRoomManagementOpen, setIsRoomManagementOpen] = useState(false);
+  const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
   const [properties, setProperties] = useState<Property[]>([
     {
       id: "1",
@@ -127,13 +129,46 @@ const ManagerDashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-earth p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Blue Header Bar */}
+        <div className="w-full h-2 bg-blue-600 rounded-lg mb-6"></div>
+        
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Manager Dashboard</h1>
             <p className="text-muted-foreground">Manage properties and assist tenants</p>
           </div>
-          {/* Manager has no header buttons - only property owner has access */}
+          <div className="flex items-center gap-3">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline">
+                  <Wrench className="mr-2 h-4 w-4" />
+                  Maintenance
+                </Button>
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Maintenance Messages</SheetTitle>
+                </SheetHeader>
+                <div className="mt-6 space-y-4">
+                  {maintenanceMessages.length > 0 ? (
+                    maintenanceMessages.map((msg) => (
+                      <div key={msg.id} className="border rounded-lg p-4 space-y-2">
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                          <span>{msg.property} - {msg.room}</span>
+                          <span>{msg.timestamp}</span>
+                        </div>
+                        <p className="font-medium">{msg.tenant}</p>
+                        <p className="text-sm">{msg.message}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground text-center">No maintenance requests</p>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
 
         {/* Stats Cards */}

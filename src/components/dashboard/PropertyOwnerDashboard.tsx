@@ -16,6 +16,7 @@ import greenHouse from "@/assets/green-house.jpg";
 import RoomDetailsModal from "@/components/property/RoomDetailsModal";
 import AddPropertyModal from "@/components/property/AddPropertyModal";
 import RoomManagementModal from "@/components/property/RoomManagementModal";
+import ReportModal from "@/components/property/ReportModal";
 
 interface Property {
   id: string;
@@ -33,6 +34,7 @@ const PropertyOwnerDashboard = () => {
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [isAddPropertyModalOpen, setIsAddPropertyModalOpen] = useState(false);
   const [isRoomManagementOpen, setIsRoomManagementOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
   const [messageText, setMessageText] = useState("");
   const [selectedRecipient, setSelectedRecipient] = useState("all");
@@ -111,37 +113,7 @@ const PropertyOwnerDashboard = () => {
   };
 
   const handleGenerateReport = () => {
-    // Generate CSV report
-    const reportData = properties.map(prop => ({
-      Property: prop.name,
-      Location: prop.location,
-      "Total Rooms": prop.totalRooms,
-      "Occupied Rooms": prop.occupiedRooms,
-      "Vacant Rooms": prop.totalRooms - prop.occupiedRooms,
-      "Occupancy Rate": `${((prop.occupiedRooms / prop.totalRooms) * 100).toFixed(1)}%`,
-      "Rent Per Room": `KSh ${prop.rentPerRoom.toLocaleString()}`,
-      "Monthly Revenue": `KSh ${(prop.occupiedRooms * prop.rentPerRoom).toLocaleString()}`,
-    }));
-    
-    // Convert to CSV and download
-    const csvHeaders = Object.keys(reportData[0]).join(",");
-    const csvRows = reportData.map(row => Object.values(row).join(","));
-    const csvContent = [csvHeaders, ...csvRows].join("\n");
-    
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `property-report-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-    
-    toast({
-      title: "Report Generated",
-      description: "Property report has been generated and downloaded.",
-    });
+    setIsReportModalOpen(true);
   };
 
   const handleViewRooms = (propertyId: string) => {
@@ -155,6 +127,9 @@ const PropertyOwnerDashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-earth p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Blue Header Bar */}
+        <div className="w-full h-2 bg-blue-600 rounded-lg mb-6"></div>
+        
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -416,6 +391,12 @@ const PropertyOwnerDashboard = () => {
           isOpen={isAddPropertyModalOpen}
           onClose={() => setIsAddPropertyModalOpen(false)}
           onAddProperty={handleAddPropertySubmit}
+        />
+
+        <ReportModal
+          properties={properties}
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
         />
 
       </div>

@@ -69,11 +69,24 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
       "Michael Kiplagat", "Faith Nyambura", "Joseph Muturi", "Alice Wanjiru", "Daniel Kimani"
     ];
 
+    // Generate room prefix based on property name
+    const getRoomPrefix = (propertyName: string): string => {
+      const nameMap: Record<string, string> = {
+        "White House": "white",
+        "Yellow House": "yellow", 
+        "Green House": "green",
+        "Skyline Apartment": "skyline"
+      };
+      return nameMap[propertyName] || "room";
+    };
+
+    const roomPrefix = getRoomPrefix(property.name);
+
     for (let i = 1; i <= totalRooms; i++) {
       const isOccupied = i <= occupiedRooms;
       const room: Room = {
         id: `${property.id}-${i}`,
-        number: `R${i.toString().padStart(3, '0')}`,
+        number: `${roomPrefix}${i.toString().padStart(3, '0')}`,
         status: isOccupied ? "occupied" : "vacant",
         rentAmount: property.rentPerRoom,
       };
@@ -190,15 +203,27 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                   onClick={() => handleRoomSelect(room)}
                 >
                   <CardContent className="p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{room.number}</span>
-                      <Badge variant={room.status === "occupied" ? "default" : "secondary"}>
-                        {room.status}
-                      </Badge>
-                    </div>
-                    {room.tenant && (
-                      <p className="text-sm text-muted-foreground mt-1">{room.tenant.name}</p>
-                    )}
+                     <div className="flex items-center justify-between">
+                       <span className="font-medium">{room.number}</span>
+                       <Badge variant={room.status === "occupied" ? "default" : "secondary"}>
+                         {room.status}
+                       </Badge>
+                     </div>
+                     {room.tenant && (
+                       <div className="mt-2 space-y-1">
+                         <p className="text-sm text-muted-foreground">{room.tenant.name}</p>
+                         <div className="flex items-center justify-between">
+                           <span className="text-xs text-muted-foreground">Rent:</span>
+                           <span className="text-xs font-medium">KSh {room.tenant.rentAmount.toLocaleString()}</span>
+                         </div>
+                         <div className="flex items-center justify-between">
+                           <span className="text-xs text-muted-foreground">Status:</span>
+                           <Badge variant={room.tenant.rentStatus === "paid" ? "default" : "destructive"} className="text-xs">
+                             {room.tenant.rentStatus === "paid" ? "Paid" : "Due"}
+                           </Badge>
+                         </div>
+                       </div>
+                     )}
                   </CardContent>
                 </Card>
               ))}
@@ -303,50 +328,88 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                               Save Changes
                             </Button>
                           </div>
-                        ) : (
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <Label>Name</Label>
-                              <p className="font-medium">{selectedRoom.tenant.name}</p>
-                            </div>
-                            <div>
-                              <Label>Email</Label>
-                              <p>{selectedRoom.tenant.email}</p>
-                            </div>
-                            <div>
-                              <Label>Phone</Label>
-                              <p>{selectedRoom.tenant.phone}</p>
-                            </div>
-                            <div>
-                              <Label>Date of Entry</Label>
-                              <p>{selectedRoom.tenant.dateOfEntry}</p>
-                            </div>
-                            <div>
-                              <Label>Rent Amount</Label>
-                              <p className="font-semibold">KSh {selectedRoom.tenant.rentAmount.toLocaleString()}</p>
-                            </div>
-                            <div>
-                              <Label>Rent Status</Label>
-                              <Badge variant={selectedRoom.tenant.rentStatus === "paid" ? "default" : "destructive"}>
-                                {selectedRoom.tenant.rentStatus === "paid" ? "Paid" : "Not Paid"}
-                              </Badge>
-                            </div>
-                            {userRole === "owner" && (
-                              <div>
-                                <Label>Emergency Contact</Label>
-                                <p>{selectedRoom.tenant.emergencyContact}</p>
-                              </div>
-                            )}
-                            <div>
-                              <Label>Accessories</Label>
-                              <div className="flex gap-1 mt-1">
-                                {selectedRoom.tenant.accessories.map((item, index) => (
-                                  <Badge key={index} variant="outline">{item}</Badge>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                         ) : (
+                           <div className="space-y-6">
+                             <div className="grid grid-cols-2 gap-4">
+                               <div>
+                                 <Label>Name</Label>
+                                 <p className="font-medium">{selectedRoom.tenant.name}</p>
+                               </div>
+                               <div>
+                                 <Label>Email</Label>
+                                 <p>{selectedRoom.tenant.email}</p>
+                               </div>
+                               <div>
+                                 <Label>Phone</Label>
+                                 <p>{selectedRoom.tenant.phone}</p>
+                               </div>
+                               <div>
+                                 <Label>Date of Entry</Label>
+                                 <p>{selectedRoom.tenant.dateOfEntry}</p>
+                               </div>
+                               <div>
+                                 <Label>Rent Amount</Label>
+                                 <p className="font-semibold">KSh {selectedRoom.tenant.rentAmount.toLocaleString()}</p>
+                               </div>
+                               <div>
+                                 <Label>Rent Status</Label>
+                                 <Badge variant={selectedRoom.tenant.rentStatus === "paid" ? "default" : "destructive"}>
+                                   {selectedRoom.tenant.rentStatus === "paid" ? "Paid" : "Not Paid"}
+                                 </Badge>
+                               </div>
+                               {userRole === "owner" && (
+                                 <div>
+                                   <Label>Emergency Contact</Label>
+                                   <p>{selectedRoom.tenant.emergencyContact}</p>
+                                 </div>
+                               )}
+                               <div>
+                                 <Label>Accessories</Label>
+                                 <div className="flex gap-1 mt-1">
+                                   {selectedRoom.tenant.accessories.map((item, index) => (
+                                     <Badge key={index} variant="outline">{item}</Badge>
+                                   ))}
+                                 </div>
+                               </div>
+                             </div>
+
+                             {/* Payment Details Section */}
+                             <div className="bg-muted rounded-lg p-4 space-y-3">
+                               <h4 className="font-medium">Payment Details</h4>
+                               <div className="grid grid-cols-2 gap-4 text-sm">
+                                 <div className="flex justify-between">
+                                   <span>Monthly Rent:</span>
+                                   <span className="font-medium">KSh {selectedRoom.tenant.rentAmount.toLocaleString()}</span>
+                                 </div>
+                                 <div className="flex justify-between">
+                                   <span>Security Deposit:</span>
+                                   <span className="font-medium">KSh {(selectedRoom.tenant.rentAmount * 2).toLocaleString()}</span>
+                                 </div>
+                                 <div className="flex justify-between">
+                                   <span>Next Due Date:</span>
+                                   <span className="font-medium">
+                                     {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                                   </span>
+                                 </div>
+                                 <div className="flex justify-between">
+                                   <span>Late Fee (if applicable):</span>
+                                   <span className="font-medium">KSh 1,000</span>
+                                 </div>
+                               </div>
+                               
+                               {selectedRoom.tenant.rentStatus === "not-paid" && (
+                                 <div className="mt-3 p-2 bg-destructive/10 rounded border border-destructive/20">
+                                   <p className="text-destructive text-sm font-medium">
+                                     ⚠️ Rent Due: KSh {selectedRoom.tenant.rentAmount.toLocaleString()}
+                                   </p>
+                                   <p className="text-destructive text-xs mt-1">
+                                     Please contact tenant for payment or mark as paid once payment is received.
+                                   </p>
+                                 </div>
+                               )}
+                             </div>
+                           </div>
+                         )}
                       </CardContent>
                     </Card>
 
@@ -420,7 +483,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                 ) : null}
 
                 {/* Add Tenant Form */}
-                {showAddTenant && userRole === "owner" && (
+                {showAddTenant && (userRole === "owner" || userRole === "manager") && (
                   <Card>
                     <CardHeader>
                       <CardTitle>Add New Tenant</CardTitle>
