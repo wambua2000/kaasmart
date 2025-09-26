@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings, ExternalLink, Wrench, MessageSquare, Eye } from "lucide-react";
+import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings, ExternalLink, Wrench, MessageSquare, Eye, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
@@ -114,6 +114,14 @@ const PropertyOwnerDashboard = () => {
 
   const handleGenerateReport = () => {
     setIsReportModalOpen(true);
+  };
+
+  const handleDeleteProperty = (propertyId: string) => {
+    setProperties(properties.filter(p => p.id !== propertyId));
+    toast({
+      title: "Property Deleted",
+      description: "Property has been removed successfully.",
+    });
   };
 
   const handleViewRooms = (propertyId: string) => {
@@ -363,7 +371,14 @@ const PropertyOwnerDashboard = () => {
                         <Eye className="mr-2 h-4 w-4" />
                         View Rooms
                       </Button>
-                    </div>
+                      <Button 
+                        size="sm" 
+                        variant="destructive"
+                        onClick={() => handleDeleteProperty(property.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                     </div>
                   </div>
                 </CardContent>
               </Card>

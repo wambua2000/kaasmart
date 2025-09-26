@@ -312,7 +312,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                       <p className="text-muted-foreground mb-4">
                         Rent: KSh {selectedRoom.rentAmount.toLocaleString()}/month
                       </p>
-                      {(userRole === "owner" || userRole === "manager") && (
+                      {userRole === "owner" && (
                         <Button onClick={handleAddTenant}>
                           <UserPlus className="mr-2 h-4 w-4" />
                           Add Tenant
@@ -330,7 +330,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                             <User className="h-5 w-5" />
                             Tenant Details
                           </CardTitle>
-                          {(userRole === "owner" || userRole === "manager") && (
+                          {userRole === "owner" && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -463,40 +463,42 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                       </CardContent>
                     </Card>
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-3">
-                      {selectedRoom.tenant.rentStatus === "not-paid" && (
+                    {/* Action Buttons - Owner Only */}
+                    {userRole === "owner" && (
+                      <div className="flex gap-3">
+                        {selectedRoom.tenant.rentStatus === "not-paid" && (
+                          <Button 
+                            onClick={() => handleMarkRentPaid(selectedRoom.id)}
+                            className="bg-primary"
+                          >
+                            <CreditCard className="mr-2 h-4 w-4" />
+                            Mark Rent as Paid
+                          </Button>
+                        )}
+                        
                         <Button 
-                          onClick={() => handleMarkRentPaid(selectedRoom.id)}
-                          className="bg-primary"
+                          variant="outline"
+                          onClick={() => document.getElementById("lease-upload")?.click()}
                         >
-                          <CreditCard className="mr-2 h-4 w-4" />
-                          Mark Rent as Paid
+                          <Upload className="mr-2 h-4 w-4" />
+                          Upload Lease
                         </Button>
-                      )}
-                      
-                      <Button 
-                        variant="outline"
-                        onClick={() => document.getElementById("lease-upload")?.click()}
-                      >
-                        <Upload className="mr-2 h-4 w-4" />
-                        Upload Lease
-                      </Button>
-                      <input
-                        id="lease-upload"
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        className="hidden"
-                        onChange={(e) => {
-                          if (e.target.files?.[0]) {
-                            toast({
-                              title: "File Uploaded",
-                              description: "Lease agreement uploaded successfully.",
-                            });
-                          }
-                        }}
-                      />
-                    </div>
+                        <input
+                          id="lease-upload"
+                          type="file"
+                          accept=".pdf,.doc,.docx"
+                          className="hidden"
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) {
+                              toast({
+                                title: "File Uploaded",
+                                description: "Lease agreement uploaded successfully.",
+                              });
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
 
                     {/* Notes Section (Owner only) */}
                     {userRole === "owner" && (
@@ -514,26 +516,28 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                       </Card>
                     )}
 
-                    {/* Communication */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <MessageSquare className="h-5 w-5" />
-                          Send Message
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <Textarea placeholder="Type your message..." />
-                        <Button className="mt-3" onClick={() => handleSendMessage("message")}>
-                          Send Message
-                        </Button>
-                      </CardContent>
-                    </Card>
+                    {/* Communication - Owner Only */}
+                    {userRole === "owner" && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <MessageSquare className="h-5 w-5" />
+                            Send Message
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <Textarea placeholder="Type your message..." />
+                          <Button className="mt-3" onClick={() => handleSendMessage("message")}>
+                            Send Message
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
                   </>
                 ) : null}
 
-                {/* Add Tenant Form */}
-                {showAddTenant && (userRole === "owner" || userRole === "manager") && (
+                {/* Add Tenant Form - Owner Only */}
+                {showAddTenant && userRole === "owner" && (
                   <Card>
                     <CardHeader>
                       <CardTitle>Add New Tenant</CardTitle>
