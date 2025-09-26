@@ -22,10 +22,11 @@ export type Database = {
           id: string
           invited_by: string | null
           is_used: boolean | null
-          password: string
+          password_hash: string | null
           property_id: string | null
           role: Database["public"]["Enums"]["app_role"]
           room_id: string | null
+          temporary_password: string | null
         }
         Insert: {
           created_at?: string | null
@@ -34,10 +35,11 @@ export type Database = {
           id?: string
           invited_by?: string | null
           is_used?: boolean | null
-          password: string
+          password_hash?: string | null
           property_id?: string | null
           role: Database["public"]["Enums"]["app_role"]
           room_id?: string | null
+          temporary_password?: string | null
         }
         Update: {
           created_at?: string | null
@@ -46,10 +48,11 @@ export type Database = {
           id?: string
           invited_by?: string | null
           is_used?: boolean | null
-          password?: string
+          password_hash?: string | null
           property_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           room_id?: string | null
+          temporary_password?: string | null
         }
         Relationships: [
           {
@@ -202,9 +205,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_invitation_credentials: {
+        Args: { invitation_email: string }
+        Returns: {
+          email: string
+          property_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          room_id: string
+          temporary_password: string
+        }[]
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      hash_password: {
+        Args: { password: string }
+        Returns: string
+      }
+      verify_password: {
+        Args: { hash: string; password: string }
+        Returns: boolean
       }
     }
     Enums: {
