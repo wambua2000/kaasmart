@@ -2,8 +2,12 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings } from "lucide-react";
+import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings, ExternalLink, Wrench, MessageSquare, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import apartmentInterior from "@/assets/apartment-interior.jpg";
 import skylineApartment from "@/assets/skyline-apartment.jpg";
 import yellowHouse from "@/assets/yellow-house.jpg";
@@ -11,6 +15,7 @@ import whiteHouse from "@/assets/white-house.jpg";
 import greenHouse from "@/assets/green-house.jpg";
 import RoomDetailsModal from "@/components/property/RoomDetailsModal";
 import AddPropertyModal from "@/components/property/AddPropertyModal";
+import RoomManagementModal from "@/components/property/RoomManagementModal";
 
 interface Property {
   id: string;
@@ -27,6 +32,10 @@ const PropertyOwnerDashboard = () => {
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [isAddPropertyModalOpen, setIsAddPropertyModalOpen] = useState(false);
+  const [isRoomManagementOpen, setIsRoomManagementOpen] = useState(false);
+  const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
+  const [messageText, setMessageText] = useState("");
+  const [selectedRecipient, setSelectedRecipient] = useState("all");
   const [properties, setProperties] = useState<Property[]>([
     {
       id: "1",
@@ -80,6 +89,20 @@ const PropertyOwnerDashboard = () => {
     setProperties([...properties, newProperty]);
   };
 
+  const handleOpenSheet = () => {
+    window.open("https://docs.google.com/spreadsheets/d/1zi_wSIlvUlOoaJH9kcn1DjbzJnnHi8a1tOUps2z3BK4/edit?gid=0#gid=0", "_blank");
+  };
+
+  const handleSendMessage = () => {
+    if (!messageText.trim()) return;
+    
+    toast({
+      title: "Message Sent",
+      description: `Message sent to ${selectedRecipient === "all" ? "all tenants" : selectedRecipient}`,
+    });
+    setMessageText("");
+  };
+
   const handleInviteManager = () => {
     toast({
       title: "Manager Invited",
@@ -121,19 +144,11 @@ const PropertyOwnerDashboard = () => {
     });
   };
 
-  const handleManageProperty = (propertyId: string) => {
+  const handleViewRooms = (propertyId: string) => {
     const property = properties.find(p => p.id === propertyId);
     if (property) {
       setSelectedProperty(property);
-      setIsRoomModalOpen(true);
-    }
-  };
-
-  const handleViewTenants = (propertyId: string) => {
-    const property = properties.find(p => p.id === propertyId);
-    if (property) {
-      setSelectedProperty(property);
-      setIsRoomModalOpen(true);
+      setIsRoomManagementOpen(true);
     }
   };
 
@@ -146,7 +161,85 @@ const PropertyOwnerDashboard = () => {
             <h1 className="text-3xl font-bold text-foreground">Property Owner Dashboard</h1>
             <p className="text-muted-foreground">Manage your properties with ease</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button onClick={handleOpenSheet} variant="outline">
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Open Sheet
+            </Button>
+            
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline">
+                  <Wrench className="mr-2 h-4 w-4" />
+                  Maintenance
+                </Button>
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Maintenance Messages</SheetTitle>
+                </SheetHeader>
+                <div className="mt-6 space-y-4">
+                  {maintenanceMessages.length > 0 ? (
+                    maintenanceMessages.map((msg) => (
+                      <div key={msg.id} className="border rounded-lg p-4 space-y-2">
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                          <span>{msg.property} - {msg.room}</span>
+                          <span>{msg.timestamp}</span>
+                        </div>
+                        <p className="font-medium">{msg.tenant}</p>
+                        <p className="text-sm">{msg.message}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground text-center">No maintenance requests</p>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline">
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Message All
+                </Button>
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Send Message</SheetTitle>
+                </SheetHeader>
+                <div className="mt-6 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="recipient">Send to:</Label>
+                    <select 
+                      id="recipient"
+                      value={selectedRecipient}
+                      onChange={(e) => setSelectedRecipient(e.target.value)}
+                      className="w-full p-2 border rounded-md"
+                    >
+                      <option value="all">All Tenants</option>
+                      {properties.map(property => (
+                        <option key={property.id} value={property.name}>{property.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="message">Message:</Label>
+                    <Textarea
+                      id="message"
+                      value={messageText}
+                      onChange={(e) => setMessageText(e.target.value)}
+                      placeholder="Type your message here..."
+                      rows={4}
+                    />
+                  </div>
+                  <Button onClick={handleSendMessage} className="w-full">
+                    Send Message
+                  </Button>
+                </div>
+              </SheetContent>
+            </Sheet>
+
             <Button onClick={handleGenerateReport} variant="outline">
               <FileText className="mr-2 h-4 w-4" />
               Generate Report
@@ -287,19 +380,10 @@ const PropertyOwnerDashboard = () => {
                       <Button 
                         size="sm" 
                         className="flex-1 bg-gradient-hero hover:shadow-glow"
-                        onClick={() => handleManageProperty(property.id)}
+                        onClick={() => handleViewRooms(property.id)}
                       >
-                        <Settings className="mr-2 h-4 w-4" />
-                        Manage
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="flex-1"
-                        onClick={() => handleViewTenants(property.id)}
-                      >
-                        <Users className="mr-2 h-4 w-4" />
-                        Tenants
+                        <Eye className="mr-2 h-4 w-4" />
+                        View Rooms
                       </Button>
                     </div>
                   </div>
@@ -316,6 +400,16 @@ const PropertyOwnerDashboard = () => {
             setIsRoomModalOpen(false);
             setSelectedProperty(null);
           }}
+        />
+
+        <RoomManagementModal
+          property={selectedProperty}
+          isOpen={isRoomManagementOpen}
+          onClose={() => {
+            setIsRoomManagementOpen(false);
+            setSelectedProperty(null);
+          }}
+          userRole="owner"
         />
 
         <AddPropertyModal

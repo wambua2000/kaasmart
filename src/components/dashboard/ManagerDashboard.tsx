@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Home, Users, DollarSign, MapPin, Settings } from "lucide-react";
+import { Building2, Home, Users, DollarSign, MapPin, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import apartmentInterior from "@/assets/apartment-interior.jpg";
 import skylineApartment from "@/assets/skyline-apartment.jpg";
@@ -10,6 +10,7 @@ import yellowHouse from "@/assets/yellow-house.jpg";
 import whiteHouse from "@/assets/white-house.jpg";
 import greenHouse from "@/assets/green-house.jpg";
 import RoomDetailsModal from "@/components/property/RoomDetailsModal";
+import RoomManagementModal from "@/components/property/RoomManagementModal";
 
 interface Property {
   id: string;
@@ -25,6 +26,7 @@ const ManagerDashboard = () => {
   const { toast } = useToast();
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
+  const [isRoomManagementOpen, setIsRoomManagementOpen] = useState(false);
   const [properties, setProperties] = useState<Property[]>([
     {
       id: "1",
@@ -114,19 +116,11 @@ const ManagerDashboard = () => {
     });
   };
 
-  const handleManageProperty = (propertyId: string) => {
+  const handleViewRooms = (propertyId: string) => {
     const property = properties.find(p => p.id === propertyId);
     if (property) {
       setSelectedProperty(property);
-      setIsRoomModalOpen(true);
-    }
-  };
-
-  const handleViewTenants = (propertyId: string) => {
-    const property = properties.find(p => p.id === propertyId);
-    if (property) {
-      setSelectedProperty(property);
-      setIsRoomModalOpen(true);
+      setIsRoomManagementOpen(true);
     }
   };
 
@@ -139,6 +133,7 @@ const ManagerDashboard = () => {
             <h1 className="text-3xl font-bold text-foreground">Manager Dashboard</h1>
             <p className="text-muted-foreground">Manage properties and assist tenants</p>
           </div>
+          {/* Manager has no header buttons - only property owner has access */}
         </div>
 
         {/* Stats Cards */}
@@ -262,23 +257,14 @@ const ManagerDashboard = () => {
                       />
                     </div>
                      
-                    <div className="flex gap-2 pt-2">
+                     <div className="flex gap-2 pt-2">
                       <Button 
                         size="sm" 
                         className="flex-1 bg-gradient-hero hover:shadow-glow"
-                        onClick={() => handleManageProperty(property.id)}
+                        onClick={() => handleViewRooms(property.id)}
                       >
-                        <Settings className="mr-2 h-4 w-4" />
-                        Manage
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="flex-1"
-                        onClick={() => handleViewTenants(property.id)}
-                      >
-                        <Users className="mr-2 h-4 w-4" />
-                        Tenants
+                        <Eye className="mr-2 h-4 w-4" />
+                        View Rooms
                       </Button>
                     </div>
                   </div>
@@ -287,6 +273,26 @@ const ManagerDashboard = () => {
             ))}
           </div>
         </div>
+
+        <RoomDetailsModal
+          property={selectedProperty}
+          isOpen={isRoomModalOpen}
+          onClose={() => {
+            setIsRoomModalOpen(false);
+            setSelectedProperty(null);
+          }}
+        />
+
+        <RoomManagementModal
+          property={selectedProperty}
+          isOpen={isRoomManagementOpen}
+          onClose={() => {
+            setIsRoomManagementOpen(false);
+            setSelectedProperty(null);
+          }}
+          userRole="manager"
+        />
+
       </div>
     </div>
   );
