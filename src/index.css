@@ -8,47 +8,47 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Africanized KaaSmart Color Palette */
-    --background: 35 20% 98%;
-    --foreground: 25 15% 15%;
+    /* Blue and White KaaSmart Color Palette */
+    --background: 0 0% 100%;
+    --foreground: 222 84% 4.9%;
 
-    --card: 35 25% 96%;
-    --card-foreground: 25 15% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 84% 4.9%;
 
-    --popover: 35 25% 96%;
-    --popover-foreground: 25 15% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 84% 4.9%;
 
-    /* African sunset inspired primary colors */
-    --primary: 25 85% 55%;
-    --primary-foreground: 35 20% 98%;
-    --primary-glow: 35 90% 65%;
+    /* Blue primary colors */
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+    --primary-glow: 217 91% 60%;
 
-    /* Warm earth tones */
-    --secondary: 40 35% 90%;
-    --secondary-foreground: 25 25% 25%;
+    /* Light blue tones */
+    --secondary: 210 40% 95%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 40 25% 92%;
-    --muted-foreground: 25 15% 55%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 20 75% 60%;
-    --accent-foreground: 35 20% 98%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 75% 55%;
-    --destructive-foreground: 35 20% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 40 20% 88%;
-    --input: 40 20% 88%;
-    --ring: 25 85% 55%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
 
-    /* African-inspired gradients */
-    --gradient-sunset: linear-gradient(135deg, hsl(25, 85%, 55%), hsl(35, 90%, 65%), hsl(45, 80%, 70%));
-    --gradient-earth: linear-gradient(180deg, hsl(40, 35%, 90%), hsl(35, 25%, 96%));
-    --gradient-hero: linear-gradient(135deg, hsl(25, 85%, 55%) 0%, hsl(35, 90%, 65%) 50%, hsl(20, 75%, 60%) 100%);
+    /* Blue-inspired gradients */
+    --gradient-sunset: linear-gradient(135deg, hsl(221, 83%, 53%), hsl(217, 91%, 60%), hsl(213, 94%, 68%));
+    --gradient-earth: linear-gradient(180deg, hsl(210, 40%, 98%), hsl(0, 0%, 100%));
+    --gradient-hero: linear-gradient(135deg, hsl(221, 83%, 53%) 0%, hsl(217, 91%, 60%) 50%, hsl(213, 94%, 68%) 100%);
     
     /* Elegant shadows */
-    --shadow-warm: 0 10px 30px -10px hsl(25 85% 55% / 0.3);
-    --shadow-glow: 0 0 40px hsl(35 90% 65% / 0.4);
-    --shadow-card: 0 4px 20px -4px hsl(25 25% 25% / 0.1);
+    --shadow-warm: 0 10px 30px -10px hsl(221 83% 53% / 0.3);
+    --shadow-glow: 0 0 40px hsl(217 91% 60% / 0.4);
+    --shadow-card: 0 4px 20px -4px hsl(222 84% 4.9% / 0.1);
 
     /* Smooth transitions */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -73,43 +73,43 @@ All colors MUST be HSL.
   }
 
   .dark {
-    /* Dark mode with warm African tones */
-    --background: 25 15% 8%;
-    --foreground: 35 20% 95%;
+    /* Dark mode with blue tones */
+    --background: 222 84% 4.9%;
+    --foreground: 210 40% 98%;
 
-    --card: 25 15% 10%;
-    --card-foreground: 35 20% 95%;
+    --card: 222 84% 4.9%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 25 15% 10%;
-    --popover-foreground: 35 20% 95%;
+    --popover: 222 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 35 90% 65%;
-    --primary-foreground: 25 15% 8%;
-    --primary-glow: 45 80% 70%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 84% 4.9%;
+    --primary-glow: 213 94% 68%;
 
-    --secondary: 25 20% 15%;
-    --secondary-foreground: 35 20% 95%;
+    --secondary: 217 32% 17%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 25 20% 15%;
-    --muted-foreground: 35 15% 65%;
+    --muted: 217 32% 17%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 20 75% 60%;
-    --accent-foreground: 35 20% 95%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 65% 50%;
-    --destructive-foreground: 35 20% 95%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 25 20% 15%;
-    --input: 25 20% 15%;
-    --ring: 35 90% 65%;
+    --border: 217 32% 17%;
+    --input: 217 32% 17%;
+    --ring: 217 91% 60%;
 
-    /* Dark gradients maintain warmth */
-    --gradient-sunset: linear-gradient(135deg, hsl(25, 75%, 45%), hsl(35, 80%, 55%), hsl(45, 70%, 60%));
-    --gradient-earth: linear-gradient(180deg, hsl(25, 20%, 15%), hsl(25, 15%, 10%));
-    --gradient-hero: linear-gradient(135deg, hsl(25, 75%, 45%) 0%, hsl(35, 80%, 55%) 50%, hsl(20, 65%, 50%) 100%);
+    /* Dark gradients with blue */
+    --gradient-sunset: linear-gradient(135deg, hsl(221, 83%, 53%), hsl(217, 91%, 60%), hsl(213, 94%, 68%));
+    --gradient-earth: linear-gradient(180deg, hsl(217, 32%, 17%), hsl(222, 84%, 4.9%));
+    --gradient-hero: linear-gradient(135deg, hsl(221, 83%, 53%) 0%, hsl(217, 91%, 60%) 50%, hsl(213, 94%, 68%) 100%);
     
-    --shadow-warm: 0 10px 30px -10px hsl(25 75% 45% / 0.4);
-    --shadow-glow: 0 0 40px hsl(35 80% 55% / 0.5);
+    --shadow-warm: 0 10px 30px -10px hsl(221 83% 53% / 0.4);
+    --shadow-glow: 0 0 40px hsl(217 91% 60% / 0.5);
     --shadow-card: 0 4px 20px -4px hsl(0 0% 0% / 0.3);
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;

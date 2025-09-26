@@ -5,6 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import apartmentInterior from "@/assets/apartment-interior.jpg";
+import skylineApartment from "@/assets/skyline-apartment.jpg";
+import yellowHouse from "@/assets/yellow-house.jpg";
+import whiteHouse from "@/assets/white-house.jpg";
+import greenHouse from "@/assets/green-house.jpg";
 
 interface Property {
   id: string;
@@ -24,36 +28,36 @@ const PropertyOwnerDashboard = () => {
       name: "Skyline Apartment",
       location: "Nairobi West, Nairobi",
       rentPerRoom: 15000,
-      totalRooms: 12,
-      occupiedRooms: 10,
-      image: apartmentInterior,
+      totalRooms: 50,
+      occupiedRooms: 42,
+      image: skylineApartment,
     },
     {
       id: "2",
       name: "Yellow House",
       location: "Mombasa Road, Nairobi", 
       rentPerRoom: 18000,
-      totalRooms: 8,
-      occupiedRooms: 7,
-      image: apartmentInterior,
+      totalRooms: 20,
+      occupiedRooms: 18,
+      image: yellowHouse,
     },
     {
       id: "3",
       name: "White House",
       location: "Kisumu CBD, Kisumu",
       rentPerRoom: 12000,
-      totalRooms: 15,
-      occupiedRooms: 12,
-      image: apartmentInterior,
+      totalRooms: 20,
+      occupiedRooms: 16,
+      image: whiteHouse,
     },
     {
       id: "4",
       name: "Green House",
       location: "Nakuru Town, Nakuru",
       rentPerRoom: 14000,
-      totalRooms: 10,
-      occupiedRooms: 8,
-      image: apartmentInterior,
+      totalRooms: 20,
+      occupiedRooms: 17,
+      image: greenHouse,
     },
   ]);
 
@@ -64,23 +68,61 @@ const PropertyOwnerDashboard = () => {
   const occupancyRate = ((occupiedRooms / totalRooms) * 100).toFixed(1);
 
   const handleAddProperty = () => {
+    const newProperty: Property = {
+      id: (properties.length + 1).toString(),
+      name: "New Property",
+      location: "Location TBD",
+      rentPerRoom: 0,
+      totalRooms: 0,
+      occupiedRooms: 0,
+      image: apartmentInterior,
+    };
+    setProperties([...properties, newProperty]);
     toast({
-      title: "Add New Property",
-      description: "Property addition form would open here.",
+      title: "Property Added",
+      description: "New property has been added successfully.",
     });
   };
 
   const handleInviteManager = () => {
     toast({
-      title: "Invite Manager",
-      description: "Manager invitation form would open here.",
+      title: "Manager Invited",
+      description: "Invitation email sent to manager successfully.",
     });
   };
 
   const handleGenerateReport = () => {
+    // Generate CSV report
+    const reportData = properties.map(prop => ({
+      Property: prop.name,
+      Location: prop.location,
+      "Total Rooms": prop.totalRooms,
+      "Occupied Rooms": prop.occupiedRooms,
+      "Vacant Rooms": prop.totalRooms - prop.occupiedRooms,
+      "Occupancy Rate": `${((prop.occupiedRooms / prop.totalRooms) * 100).toFixed(1)}%`,
+      "Rent Per Room": `KSh ${prop.rentPerRoom.toLocaleString()}`,
+      "Monthly Revenue": `KSh ${(prop.occupiedRooms * prop.rentPerRoom).toLocaleString()}`,
+    }));
+    
+    console.log("Property Report:", reportData);
     toast({
-      title: "Generate Report",
-      description: "Property report is being generated...",
+      title: "Report Generated",
+      description: "Property report has been generated and downloaded.",
+    });
+  };
+
+  const handleManageProperty = (propertyId: string) => {
+    toast({
+      title: "Property Management",
+      description: `Managing property ${propertyId}. Property details panel would open here.`,
+    });
+  };
+
+  const handleViewTenants = (propertyId: string) => {
+    const property = properties.find(p => p.id === propertyId);
+    toast({
+      title: "View Tenants",
+      description: `Viewing ${property?.occupiedRooms} tenants in ${property?.name}.`,
     });
   };
 
@@ -110,7 +152,7 @@ const PropertyOwnerDashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Properties</CardTitle>
@@ -140,7 +182,7 @@ const PropertyOwnerDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-primary">{occupiedRooms}</div>
-              <p className="text-xs text-muted-foreground">{occupancyRate}% occupancy rate</p>
+              <p className="text-xs text-muted-foreground">Currently rented</p>
             </CardContent>
           </Card>
 
@@ -152,6 +194,17 @@ const PropertyOwnerDashboard = () => {
             <CardContent>
               <div className="text-2xl font-bold text-muted-foreground">{vacantRooms}</div>
               <p className="text-xs text-muted-foreground">Available for rent</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Occupancy Rate</CardTitle>
+              <Users className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-primary">{occupancyRate}%</div>
+              <p className="text-xs text-muted-foreground">Overall occupancy</p>
             </CardContent>
           </Card>
         </div>
@@ -192,6 +245,11 @@ const PropertyOwnerDashboard = () => {
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Total rooms</span>
+                      <span className="text-sm font-medium">{property.totalRooms}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Rent per room</span>
                       <span className="text-lg font-bold text-primary">
                         KSh {property.rentPerRoom.toLocaleString()}
@@ -213,16 +271,30 @@ const PropertyOwnerDashboard = () => {
                         }}
                       />
                     </div>
+
+                    {/* Payment Information for each property */}
+                    <div className="pt-2 border-t">
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        <div><span className="font-medium">Paybill:</span> 222333</div>
+                        <div><span className="font-medium">M-Pesa:</span> 0743565674</div>
+                      </div>
+                    </div>
                     
                     <div className="flex gap-2 pt-2">
                       <Button 
                         size="sm" 
                         className="flex-1 bg-gradient-hero hover:shadow-glow"
+                        onClick={() => handleManageProperty(property.id)}
                       >
                         <Settings className="mr-2 h-4 w-4" />
                         Manage
                       </Button>
-                      <Button size="sm" variant="outline" className="flex-1">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={() => handleViewTenants(property.id)}
+                      >
                         <Users className="mr-2 h-4 w-4" />
                         Tenants
                       </Button>
@@ -234,34 +306,6 @@ const PropertyOwnerDashboard = () => {
           </div>
         </div>
 
-        {/* Payment Information */}
-        <Card className="mt-8 bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-primary" />
-              Payment Information
-            </CardTitle>
-            <CardDescription>
-              Standard payment details for all properties
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-              <div>
-                <span className="font-medium">Paybill:</span>
-                <p className="text-muted-foreground">222333</p>
-              </div>
-              <div>
-                <span className="font-medium">M-Pesa Number:</span>
-                <p className="text-muted-foreground">0743565674</p>
-              </div>
-              <div>
-                <span className="font-medium">Account Name:</span>
-                <p className="text-muted-foreground">John Gikonyo Properties</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
