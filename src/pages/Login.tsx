@@ -1,5 +1,4 @@
 import LoginForm, { UserRole } from "@/components/auth/LoginForm";
-import africanApartmentComplex from "@/assets/african-apartment-complex.jpg";
 import kaasmartLogo from "@/assets/kaasmart-logo.png";
 
 interface LoginProps {
@@ -8,27 +7,16 @@ interface LoginProps {
 
 const Login = ({ onLogin }: LoginProps) => {
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Background Image */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${africanApartmentComplex})` }}
-      >
-        <div className="absolute inset-0 bg-black/40" />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+      {/* Logo at top of login form */}
+      <div className="mb-8">
+        <img 
+          src={kaasmartLogo} 
+          alt="KaaSmart Logo" 
+          className="h-20 w-auto mx-auto"
+        />
       </div>
-      
-      {/* Content */}
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen">
-        {/* Logo at top of login form */}
-        <div className="mb-8">
-          <img 
-            src={kaasmartLogo} 
-            alt="KaaSmart Logo" 
-            className="h-20 w-auto mx-auto"
-          />
-        </div>
-        <LoginForm onLogin={onLogin} />
-      </div>
+      <LoginForm onLogin={onLogin} />
     </div>
   );
 };
