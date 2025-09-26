@@ -46,19 +46,12 @@ const InviteTenantModal = ({ isOpen, onClose, propertyId, roomId, roomNumber }: 
     const password = generatePassword();
 
     try {
-      // Hash the password before storing
-      const { data: hashedPassword, error: hashError } = await supabase
-        .rpc('hash_password', { password });
-
-      if (hashError) throw hashError;
-
-      // Create invitation record with hashed password and temporary password for display
+      // Create invitation record
       const { error: inviteError } = await supabase
         .from('invitations')
         .insert([{
           email,
-          password_hash: hashedPassword,
-          temporary_password: password, // Store temporarily for sharing
+          password,
           role: 'tenant',
           invited_by: (await supabase.auth.getUser()).data.user?.id,
           property_id: propertyId,
@@ -87,12 +80,11 @@ const InviteTenantModal = ({ isOpen, onClose, propertyId, roomId, roomNumber }: 
   };
 
   const copyCredentials = () => {
-    const systemLink = window.location.origin;
-    const credentials = `System Link: ${systemLink}\nEmail: ${email}\nPassword: ${generatedPassword}\nRoom: ${roomNumber}`;
+    const credentials = `Email: ${email}\nPassword: ${generatedPassword}\nRoom: ${roomNumber}`;
     navigator.clipboard.writeText(credentials);
     toast({
       title: "Copied",
-      description: "Login credentials and link copied to clipboard",
+      description: "Login credentials copied to clipboard",
     });
   };
 
@@ -156,7 +148,6 @@ const InviteTenantModal = ({ isOpen, onClose, propertyId, roomId, roomNumber }: 
               <div className="bg-muted p-4 rounded-lg space-y-2">
                 <h3 className="font-semibold">Tenant Login Credentials</h3>
                 <div className="space-y-1">
-                  <p><span className="font-medium">System Link:</span> {window.location.origin}</p>
                   <p><span className="font-medium">Name:</span> {fullName}</p>
                   <p><span className="font-medium">Email:</span> {email}</p>
                   <p><span className="font-medium">Password:</span> {generatedPassword}</p>
