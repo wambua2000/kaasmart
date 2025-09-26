@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings, ExternalLink, Wrench, MessageSquare, Eye, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { InviteManagerModal } from "@/components/invitation/InviteManagerModal";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -38,6 +40,8 @@ const PropertyOwnerDashboard = () => {
   const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
   const [messageText, setMessageText] = useState("");
   const [selectedRecipient, setSelectedRecipient] = useState("all");
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{isOpen: boolean, propertyId: string | null}>({isOpen: false, propertyId: null});
+  const [isInviteManagerModalOpen, setIsInviteManagerModalOpen] = useState(false);
   const [properties, setProperties] = useState<Property[]>([
     {
       id: "1",
@@ -106,10 +110,7 @@ const PropertyOwnerDashboard = () => {
   };
 
   const handleInviteManager = () => {
-    toast({
-      title: "Manager Invited",
-      description: "Invitation email sent to manager successfully.",
-    });
+    setIsInviteManagerModalOpen(true);
   };
 
   const handleGenerateReport = () => {
@@ -117,11 +118,17 @@ const PropertyOwnerDashboard = () => {
   };
 
   const handleDeleteProperty = (propertyId: string) => {
-    setProperties(properties.filter(p => p.id !== propertyId));
-    toast({
-      title: "Property Deleted",
-      description: "Property has been removed successfully.",
-    });
+    setDeleteConfirmation({isOpen: true, propertyId});
+  };
+
+  const confirmDeleteProperty = () => {
+    if (deleteConfirmation.propertyId) {
+      setProperties(properties.filter(p => p.id !== deleteConfirmation.propertyId));
+      toast({
+        title: "Property Deleted",
+        description: "Property has been removed successfully.",
+      });
+    }
   };
 
   const handleViewRooms = (propertyId: string) => {
@@ -415,6 +422,22 @@ const PropertyOwnerDashboard = () => {
           properties={properties}
           isOpen={isReportModalOpen}
           onClose={() => setIsReportModalOpen(false)}
+        />
+
+        <ConfirmationDialog
+          isOpen={deleteConfirmation.isOpen}
+          onClose={() => setDeleteConfirmation({isOpen: false, propertyId: null})}
+          onConfirm={confirmDeleteProperty}
+          title="Delete Property"
+          description="Are you sure you want to delete this property? This action cannot be undone."
+          confirmText="Delete"
+          variant="destructive"
+        />
+
+        <InviteManagerModal
+          isOpen={isInviteManagerModalOpen}
+          onClose={() => setIsInviteManagerModalOpen(false)}
+          properties={properties}
         />
 
         </div>

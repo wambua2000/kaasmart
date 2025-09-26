@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, User, Lock, Mail } from "lucide-react";
+import { Lock, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useInvitationAuth } from "./InvitationAuth";
 import kaasmartLogo from "@/assets/kaasmart-logo.png";
 
 export type UserRole = "owner" | "manager" | "tenant";
@@ -17,10 +18,13 @@ interface LoginFormProps {
 const LoginForm = ({ onLogin }: LoginFormProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("owner");
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  
+  // Use invitation auth hook
+  useInvitationAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!email || !password) {
@@ -32,26 +36,49 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
       return;
     }
 
-    // Demo credentials
-    const validCredentials = {
-      owner: { email: "owner@kaasmart.com", password: "admin123" },
-      manager: { email: "manager@kaasmart.com", password: "manager123" },
-      tenant: { email: "tenant@kaasmart.com", password: "tenant123" },
-    };
+    setIsLoading(true);
 
-    const creds = validCredentials[role];
-    if (email === creds.email && password === creds.password) {
-      toast({
-        title: "Welcome to KaaSmart!",
-        description: `Logged in as ${role === 'owner' ? 'Property Owner' : role === 'manager' ? 'Manager' : 'Tenant'}`,
+    try {
+      // First try to sign in with Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
-      onLogin(email, role);
-    } else {
+
+      if (error) {
+        toast({
+          title: "Sign In Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data.user) {
+        // Get user profile to determine role
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        const userRole = profile?.role || 'owner';
+        
+        toast({
+          title: "Welcome to KaaSmart!",
+          description: `Logged in as ${userRole === 'owner' ? 'Property Owner' : userRole === 'manager' ? 'Manager' : 'Tenant'}`,
+        });
+        
+        onLogin(email, userRole as UserRole);
+      }
+    } catch (error) {
       toast({
-        title: "Invalid Credentials",
-        description: "Please check your email, password, and role selection.",
+        title: "Sign In Error",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -78,34 +105,6 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
           
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="role">Login as</Label>
-                <Select value={role} onValueChange={(value: UserRole) => setRole(value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="owner">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        Property Owner
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="manager">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        Manager/Caretaker
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="tenant">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        Tenant
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -139,9 +138,10 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
 
               <Button 
                 type="submit" 
+                disabled={isLoading}
                 className="w-full bg-gradient-hero hover:shadow-glow transition-all duration-300"
               >
-                Sign In
+                {isLoading ? "Signing In..." : "Sign In"}
               </Button>
 
               <div className="text-center">
@@ -151,14 +151,12 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
               </div>
             </form>
 
-            {/* Demo Credentials */}
+            {/* Info for invited users */}
             <div className="mt-6 p-4 bg-muted/50 rounded-lg text-sm">
-              <p className="font-medium mb-2">Demo Credentials:</p>
-              <div className="space-y-1 text-muted-foreground">
-                <p><strong>Owner:</strong> owner@kaasmart.com / admin123</p>
-                <p><strong>Manager:</strong> manager@kaasmart.com / manager123</p>
-                <p><strong>Tenant:</strong> tenant@kaasmart.com / tenant123</p>
-              </div>
+              <p className="font-medium mb-2">New User?</p>
+              <p className="text-muted-foreground">
+                If you've been invited as a manager or tenant, use the email and password provided in your invitation.
+              </p>
             </div>
           </CardContent>
         </Card>
