@@ -1,8 +1,5 @@
 import { useState, useRef } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { FileText, Upload, CheckCircle, AlertCircle, Download, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -211,101 +208,80 @@ const LeaseUpload = () => {
   };
 
   return (
-    <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-primary" />
-          Lease Documents
-        </CardTitle>
-        <CardDescription>
-          Upload and manage your lease agreement documents
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Upload Section */}
-        <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.doc,.docx"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-          
-          {uploading ? (
-            <div className="space-y-3">
-              <div className="text-sm text-muted-foreground">Uploading lease document...</div>
-            </div>
-          ) : (
-            <>
-              <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm font-medium mb-1">Upload Lease Document</p>
-              <p className="text-xs text-muted-foreground mb-3">
-                PDF, DOC, or DOCX files up to 10MB
-              </p>
-              <Button 
-                onClick={handleFileSelect}
-                size="sm"
-                className="bg-gradient-hero hover:shadow-glow"
-              >
-                Select File
-              </Button>
-            </>
-          )}
-        </div>
-
-        {/* Uploaded Documents */}
-        {leaseDocuments.length > 0 && (
-          <div className="space-y-3">
-            <h4 className="font-medium text-sm">Uploaded Documents</h4>
-            {leaseDocuments.map((document) => (
-              <div key={document.id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{document.file_name}</p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{(document.file_size / 1024 / 1024).toFixed(2)} MB</span>
-                      <span>•</span>
-                      <span>{new Date(document.upload_date).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
-                    {getStatusIcon(document.status)}
-                    <Badge className={getStatusColor(document.status)}>
-                      {document.status}
-                    </Badge>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleDownload(document)}
-                  >
-                    <Download className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleDelete(document)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
+    <div className="space-y-4">
+      {/* Upload Section - Compact */}
+      <div className="border border-dashed border-border rounded-lg p-4">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.doc,.docx"
+          onChange={handleFileUpload}
+          className="hidden"
+        />
+        
+        {uploading ? (
+          <div className="text-center">
+            <div className="text-sm text-muted-foreground">Uploading...</div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Upload Lease</p>
+                <p className="text-xs text-muted-foreground">PDF, DOC, DOCX (max 10MB)</p>
               </div>
-            ))}
+            </div>
+            <Button 
+              onClick={handleFileSelect}
+              size="sm"
+              variant="outline"
+            >
+              <Upload className="h-3 w-3 mr-1" />
+              Select
+            </Button>
           </div>
         )}
+      </div>
 
-        {/* Instructions */}
-        <div className="text-xs text-muted-foreground space-y-1">
-          <p>• Upload your signed lease agreement for property manager review</p>
-          <p>• Accepted formats: PDF, DOC, DOCX (max 10MB)</p>
-          <p>• Documents will be reviewed and approved by the property manager</p>
+      {/* Uploaded Documents - Compact */}
+      {leaseDocuments.length > 0 && (
+        <div className="space-y-2">
+          {leaseDocuments.map((document) => (
+            <div key={document.id} className="flex items-center justify-between p-2 border rounded text-xs">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <FileText className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium truncate">{document.file_name}</p>
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    {getStatusIcon(document.status)}
+                    <span className="capitalize">{document.status}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 ml-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleDownload(document)}
+                  className="h-6 w-6 p-0"
+                >
+                  <Download className="h-3 w-3" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleDelete(document)}
+                  className="h-6 w-6 p-0"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 };
 

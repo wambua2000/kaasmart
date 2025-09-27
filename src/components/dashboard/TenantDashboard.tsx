@@ -161,7 +161,7 @@ const TenantDashboard = () => {
                   <CardTitle>Room Accessories</CardTitle>
                   <CardDescription>Items included in your room</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <div className="flex flex-wrap gap-2">
                     {tenantInfo.accessories.map((item, index) => (
                       <Badge key={index} variant="secondary">
@@ -169,12 +169,18 @@ const TenantDashboard = () => {
                       </Badge>
                     ))}
                   </div>
+                  
+                  {/* Lease Upload Section */}
+                  <div className="pt-4 border-t">
+                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-primary" />
+                      Lease Documents
+                    </h4>
+                    <LeaseUpload />
+                  </div>
                 </CardContent>
               </Card>
             </div>
-
-            {/* Lease Documents Section */}
-            <LeaseUpload />
 
             {/* Payment Information */}
             <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
