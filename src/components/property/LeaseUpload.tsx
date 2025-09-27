@@ -1,0 +1,312 @@
+import { useState, useRef } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { FileText, Upload, CheckCircle, AlertCircle, Download, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
+interface LeaseDocument {
+  id: string;
+  file_name: string;
+  file_path: string;
+  file_size: number;
+  upload_date: string;
+  status: "pending" | "approved" | "rejected";
+  notes?: string;
+}
+
+const LeaseUpload = () => {
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [leaseDocuments, setLeaseDocuments] = useState<LeaseDocument[]>([]);
+
+  const handleFileSelect = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type (PDF, DOC, DOCX)
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please upload a PDF, DOC, or DOCX file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please upload a file smaller than 10MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      // Create unique file path
+      const timestamp = Date.now();
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${timestamp}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      // Upload file to storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('leases')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Save document metadata to database
+      const { data: documentData, error: documentError } = await supabase
+        .from('lease_documents')
+        .insert({
+          tenant_id: user.id,
+          file_name: file.name,
+          file_path: filePath,
+          file_size: file.size,
+        })
+        .select()
+        .single();
+
+      if (documentError) throw documentError;
+
+      // Transform data to match LeaseDocument interface
+      const newDocument: LeaseDocument = {
+        id: documentData.id,
+        file_name: documentData.file_name,
+        file_path: documentData.file_path,
+        file_size: documentData.file_size,
+        upload_date: documentData.upload_date,
+        status: documentData.status as "pending" | "approved" | "rejected",
+        notes: documentData.notes,
+      };
+
+      setLeaseDocuments(prev => [...prev, newDocument]);
+
+      toast({
+        title: "Lease Uploaded Successfully",
+        description: "Your lease document has been uploaded and is pending review.",
+      });
+
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload lease document. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDownload = async (document: LeaseDocument) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('leases')
+        .download(document.file_path);
+
+      if (error) throw error;
+
+      // Create download link
+      const url = URL.createObjectURL(data);
+      const a = window.document.createElement('a');
+      a.href = url;
+      a.download = document.file_name;
+      window.document.body.appendChild(a);
+      a.click();
+      window.document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Download Started",
+        description: "Your lease document is being downloaded.",
+      });
+
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({
+        title: "Download Failed",
+        description: "Failed to download the document. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async (document: LeaseDocument) => {
+    try {
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('leases')
+        .remove([document.file_path]);
+
+      if (storageError) throw storageError;
+
+      // Delete from database
+      const { error: dbError } = await supabase
+        .from('lease_documents')
+        .delete()
+        .eq('id', document.id);
+
+      if (dbError) throw dbError;
+
+      setLeaseDocuments(prev => prev.filter(doc => doc.id !== document.id));
+
+      toast({
+        title: "Document Deleted",
+        description: "Your lease document has been deleted successfully.",
+      });
+
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete the document. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "approved":
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case "rejected":
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
+      default:
+        return <AlertCircle className="h-4 w-4 text-orange-500" />;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "approved":
+        return "bg-green-500";
+      case "rejected":
+        return "bg-red-500";
+      default:
+        return "bg-orange-500";
+    }
+  };
+
+  return (
+    <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <FileText className="h-5 w-5 text-primary" />
+          Lease Documents
+        </CardTitle>
+        <CardDescription>
+          Upload and manage your lease agreement documents
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Upload Section */}
+        <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          
+          {uploading ? (
+            <div className="space-y-3">
+              <div className="text-sm text-muted-foreground">Uploading lease document...</div>
+            </div>
+          ) : (
+            <>
+              <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm font-medium mb-1">Upload Lease Document</p>
+              <p className="text-xs text-muted-foreground mb-3">
+                PDF, DOC, or DOCX files up to 10MB
+              </p>
+              <Button 
+                onClick={handleFileSelect}
+                size="sm"
+                className="bg-gradient-hero hover:shadow-glow"
+              >
+                Select File
+              </Button>
+            </>
+          )}
+        </div>
+
+        {/* Uploaded Documents */}
+        {leaseDocuments.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="font-medium text-sm">Uploaded Documents</h4>
+            {leaseDocuments.map((document) => (
+              <div key={document.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center gap-3">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{document.file_name}</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>{(document.file_size / 1024 / 1024).toFixed(2)} MB</span>
+                      <span>•</span>
+                      <span>{new Date(document.upload_date).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    {getStatusIcon(document.status)}
+                    <Badge className={getStatusColor(document.status)}>
+                      {document.status}
+                    </Badge>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleDownload(document)}
+                  >
+                    <Download className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleDelete(document)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Instructions */}
+        <div className="text-xs text-muted-foreground space-y-1">
+          <p>• Upload your signed lease agreement for property manager review</p>
+          <p>• Accepted formats: PDF, DOC, DOCX (max 10MB)</p>
+          <p>• Documents will be reviewed and approved by the property manager</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default LeaseUpload;

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, User, Phone, Mail, MessageSquare, Wrench, FileText, MapPin, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import LeaseUpload from "@/components/property/LeaseUpload";
 import apartmentInterior from "@/assets/apartment-interior.jpg";
 
 interface TenantInfo {
@@ -171,6 +172,9 @@ const TenantDashboard = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Lease Documents Section */}
+            <LeaseUpload />
 
             {/* Payment Information */}
             <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
