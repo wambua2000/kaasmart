@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   User, Phone, Mail, Calendar, CreditCard, MapPin, 
   Upload, MessageSquare, UserPlus, Edit, Save, 
@@ -33,6 +34,12 @@ interface Room {
   status: "occupied" | "vacant";
   tenant?: Tenant;
   rentAmount: number;
+  tenantName?: string;
+  tenantEmail?: string;
+  tenantPhone?: string;
+  tenantDateOfEntry?: string;
+  tenantAccessories?: string[];
+  tenantNotes?: string;
 }
 
 interface Property {
@@ -60,62 +67,69 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
   const [globalEmergencyContact, setGlobalEmergencyContact] = useState("+254 701 234 567");
   const [editingEmergencyContact, setEditingEmergencyContact] = useState(false);
   const [tempEmergencyContact, setTempEmergencyContact] = useState(globalEmergencyContact);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch rooms from Supabase
+  const fetchRooms = async () => {
+    if (!property) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('property_id', property.id)
+        .order('room_number');
+      
+      if (error) throw error;
+      
+      const formattedRooms: Room[] = data.map(room => ({
+        id: room.id,
+        number: room.room_number,
+        status: room.is_occupied ? "occupied" : "vacant",
+        rentAmount: Number(room.rent_amount),
+        tenantName: room.tenant_name,
+        tenantEmail: room.tenant_email,
+        tenantPhone: room.tenant_phone,
+        tenantDateOfEntry: room.tenant_date_of_entry,
+        tenantAccessories: room.tenant_accessories || [],
+        tenantNotes: room.tenant_notes,
+        tenant: room.is_occupied && room.tenant_name ? {
+          id: room.tenant_id || "",
+          name: room.tenant_name,
+          email: room.tenant_email || "",
+          phone: room.tenant_phone || "",
+          dateOfEntry: room.tenant_date_of_entry || "",
+          rentAmount: Number(room.rent_amount),
+          rentStatus: room.rent_status as "paid" | "not-paid",
+          accessories: room.tenant_accessories || [],
+          emergencyContact: globalEmergencyContact,
+          notes: room.tenant_notes
+        } : undefined
+      }));
+      
+      setRooms(formattedRooms);
+    } catch (error) {
+      console.error('Error fetching rooms:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load rooms. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && property) {
+      fetchRooms();
+    }
+  }, [isOpen, property]);
 
   if (!property) return null;
 
-  // Generate mock rooms with detailed tenant data
-  const generateRooms = (totalRooms: number, occupiedRooms: number): Room[] => {
-    const rooms: Room[] = [];
-    const tenantNames = [
-      "John Kamau", "Mary Wanjiku", "Peter Ochieng", "Grace Akinyi", "David Mwangi",
-      "Sarah Njeri", "James Kiprotich", "Lucy Wambui", "Samuel Otieno", "Rose Wairimu",
-      "Michael Kiplagat", "Faith Nyambura", "Joseph Muturi", "Alice Wanjiru", "Daniel Kimani"
-    ];
-
-    // Generate room prefix based on property name
-    const getRoomPrefix = (propertyName: string): string => {
-      const nameMap: Record<string, string> = {
-        "White House": "white",
-        "Yellow House": "yellow", 
-        "Green House": "green",
-        "Skyline Apartment": "skyline"
-      };
-      return nameMap[propertyName] || "room";
-    };
-
-    const roomPrefix = getRoomPrefix(property.name);
-
-    for (let i = 1; i <= totalRooms; i++) {
-      const isOccupied = i <= occupiedRooms;
-      const room: Room = {
-        id: `${property.id}-${i}`,
-        number: `${roomPrefix}${i.toString().padStart(3, '0')}`,
-        status: isOccupied ? "occupied" : "vacant",
-        rentAmount: property.rentPerRoom,
-      };
-
-      if (isOccupied) {
-        const randomTenant = tenantNames[Math.floor(Math.random() * tenantNames.length)];
-        room.tenant = {
-          id: `tenant-${i}`,
-          name: randomTenant,
-          email: `${randomTenant.toLowerCase().replace(' ', '.')}@email.com`,
-          phone: `+254 7${Math.floor(10000000 + Math.random() * 90000000)}`,
-          dateOfEntry: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          rentAmount: property.rentPerRoom,
-          rentStatus: Math.random() > 0.7 ? "not-paid" : "paid",
-          accessories: ["Bed", "Table", "Chair"].filter(() => Math.random() > 0.3),
-          emergencyContact: globalEmergencyContact,
-          notes: Math.random() > 0.5 ? "Good tenant, pays on time" : undefined,
-        };
-      }
-
-      rooms.push(room);
-    }
-    return rooms;
-  };
-
-  const rooms = generateRooms(property.totalRooms, property.occupiedRooms);
 
   const handleRoomSelect = (room: Room) => {
     setSelectedRoom(room);
@@ -127,14 +141,44 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
     setEditingTenant({ ...tenant });
   };
 
-  const handleSaveTenant = () => {
+  const handleSaveTenant = async () => {
     if (!editingTenant || !selectedRoom) return;
     
-    toast({
-      title: "Tenant Updated",
-      description: "Tenant information has been saved successfully.",
-    });
-    setEditingTenant(null);
+    setLoading(true);
+    try {
+      // Update only tenant-specific fields, preserving room details
+      const { error } = await supabase
+        .from('rooms')
+        .update({
+          tenant_name: editingTenant.name,
+          tenant_email: editingTenant.email,
+          tenant_phone: editingTenant.phone,
+          tenant_date_of_entry: editingTenant.dateOfEntry,
+          tenant_accessories: editingTenant.accessories,
+          tenant_notes: editingTenant.notes,
+          rent_status: editingTenant.rentStatus,
+          is_occupied: true
+        })
+        .eq('id', selectedRoom.id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Tenant Updated",
+        description: "Tenant information has been saved successfully.",
+      });
+      setEditingTenant(null);
+      fetchRooms(); // Refresh the rooms data
+    } catch (error) {
+      console.error('Error saving tenant:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save tenant information. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleMarkRentPaid = (roomId: string) => {
@@ -168,6 +212,8 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
   };
 
   const handleAddTenant = () => {
+    if (!selectedRoom) return;
+    
     setShowAddTenant(true);
     setEditingTenant({
       id: "",
@@ -175,11 +221,52 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
       email: "",
       phone: "",
       dateOfEntry: new Date().toISOString().split('T')[0],
-      rentAmount: property.rentPerRoom,
+      rentAmount: selectedRoom.rentAmount,
       rentStatus: "not-paid",
       accessories: [],
       emergencyContact: globalEmergencyContact,
     });
+  };
+
+  const handleSaveNewTenant = async () => {
+    if (!editingTenant || !selectedRoom) return;
+    
+    setLoading(true);
+    try {
+      // Add tenant to existing room, preserving room details
+      const { error } = await supabase
+        .from('rooms')
+        .update({
+          tenant_name: editingTenant.name,
+          tenant_email: editingTenant.email,
+          tenant_phone: editingTenant.phone,
+          tenant_date_of_entry: editingTenant.dateOfEntry,
+          tenant_accessories: editingTenant.accessories,
+          tenant_notes: editingTenant.notes,
+          rent_status: editingTenant.rentStatus,
+          is_occupied: true
+        })
+        .eq('id', selectedRoom.id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Tenant Added",
+        description: "New tenant has been added successfully.",
+      });
+      setEditingTenant(null);
+      setShowAddTenant(false);
+      fetchRooms(); // Refresh the rooms data
+    } catch (error) {
+      console.error('Error adding tenant:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add tenant. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSaveEmergencyContact = () => {
@@ -313,7 +400,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                         Rent: KSh {selectedRoom.rentAmount.toLocaleString()}/month
                       </p>
                       {userRole === "owner" && (
-                        <Button onClick={handleAddTenant}>
+                        <Button onClick={handleAddTenant} disabled={loading}>
                           <UserPlus className="mr-2 h-4 w-4" />
                           Add Tenant
                         </Button>
@@ -389,9 +476,9 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                                 Note: As a manager, you can only edit name, phone, and email.
                               </p>
                             )}
-                            <Button onClick={handleSaveTenant}>
+                            <Button onClick={showAddTenant ? handleSaveNewTenant : handleSaveTenant} disabled={loading}>
                               <Save className="mr-2 h-4 w-4" />
-                              Save Changes
+                              {showAddTenant ? "Add Tenant" : "Save Changes"}
                             </Button>
                           </div>
                          ) : (
