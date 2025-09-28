@@ -341,6 +341,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_rooms_for_property: {
+        Args: {
+          property_id_param: string
+          property_name_param: string
+          rent_amount_param: number
+          total_rooms_param: number
+        }
+        Returns: undefined
+      }
       get_invitation_credentials: {
         Args: { invitation_email: string }
         Returns: {

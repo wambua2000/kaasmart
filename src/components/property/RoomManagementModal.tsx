@@ -30,16 +30,18 @@ interface Tenant {
 
 interface Room {
   id: string;
-  number: string;
-  status: "occupied" | "vacant";
-  tenant?: Tenant;
-  rentAmount: number;
-  tenantName?: string;
-  tenantEmail?: string;
-  tenantPhone?: string;
-  tenantDateOfEntry?: string;
-  tenantAccessories?: string[];
-  tenantNotes?: string;
+  room_number: string;
+  tenant_id?: string;
+  tenant_name?: string;
+  tenant_email?: string;
+  tenant_phone?: string;
+  tenant_date_of_entry?: string;
+  rent_amount: number;
+  rent_status: "paid" | "not-paid";
+  tenant_accessories?: string[];
+  tenant_notes?: string;
+  is_occupied: boolean;
+  property_id: string;
 }
 
 interface Property {
@@ -61,66 +63,14 @@ interface RoomManagementModalProps {
 
 const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManagementModalProps) => {
   const { toast } = useToast();
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [showAddTenant, setShowAddTenant] = useState(false);
   const [globalEmergencyContact, setGlobalEmergencyContact] = useState("+254 701 234 567");
   const [editingEmergencyContact, setEditingEmergencyContact] = useState(false);
   const [tempEmergencyContact, setTempEmergencyContact] = useState(globalEmergencyContact);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  // Fetch rooms from Supabase
-  const fetchRooms = async () => {
-    if (!property) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('rooms')
-        .select('*')
-        .eq('property_id', property.id)
-        .order('room_number');
-      
-      if (error) throw error;
-      
-      const formattedRooms: Room[] = data.map(room => ({
-        id: room.id,
-        number: room.room_number,
-        status: room.is_occupied ? "occupied" : "vacant",
-        rentAmount: Number(room.rent_amount),
-        tenantName: room.tenant_name,
-        tenantEmail: room.tenant_email,
-        tenantPhone: room.tenant_phone,
-        tenantDateOfEntry: room.tenant_date_of_entry,
-        tenantAccessories: room.tenant_accessories || [],
-        tenantNotes: room.tenant_notes,
-        tenant: room.is_occupied && room.tenant_name ? {
-          id: room.tenant_id || "",
-          name: room.tenant_name,
-          email: room.tenant_email || "",
-          phone: room.tenant_phone || "",
-          dateOfEntry: room.tenant_date_of_entry || "",
-          rentAmount: Number(room.rent_amount),
-          rentStatus: room.rent_status as "paid" | "not-paid",
-          accessories: room.tenant_accessories || [],
-          emergencyContact: globalEmergencyContact,
-          notes: room.tenant_notes
-        } : undefined
-      }));
-      
-      setRooms(formattedRooms);
-    } catch (error) {
-      console.error('Error fetching rooms:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load rooms. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (isOpen && property) {
@@ -128,8 +78,48 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
     }
   }, [isOpen, property]);
 
-  if (!property) return null;
+  const fetchRooms = async () => {
+    if (!property) return;
+    
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('property_id', property.id)
+        .order('room_number');
 
+      if (error) throw error;
+
+      // Transform database data to match Room interface
+      const transformedRooms: Room[] = (data || []).map(room => ({
+        id: room.id,
+        room_number: room.room_number,
+        tenant_id: room.tenant_id,
+        tenant_name: room.tenant_name,
+        tenant_email: room.tenant_email,
+        tenant_phone: room.tenant_phone,
+        tenant_date_of_entry: room.tenant_date_of_entry,
+        rent_amount: room.rent_amount,
+        rent_status: room.rent_status as "paid" | "not-paid",
+        tenant_accessories: room.tenant_accessories,
+        tenant_notes: room.tenant_notes,
+        is_occupied: room.is_occupied,
+        property_id: room.property_id,
+      }));
+
+      setRooms(transformedRooms);
+    } catch (error) {
+      console.error('Error fetching rooms:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load rooms. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleRoomSelect = (room: Room) => {
     setSelectedRoom(room);
@@ -137,47 +127,63 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
     setEditingTenant(null);
   };
 
-  const handleEditTenant = (tenant: Tenant) => {
-    setEditingTenant({ ...tenant });
+  const handleEditTenant = (room: Room) => {
+    const tenant: Tenant = {
+      id: room.tenant_id || '',
+      name: room.tenant_name || '',
+      email: room.tenant_email || '',
+      phone: room.tenant_phone || '',
+      dateOfEntry: room.tenant_date_of_entry || new Date().toISOString().split('T')[0],
+      rentAmount: room.rent_amount,
+      rentStatus: room.rent_status,
+      accessories: room.tenant_accessories || [],
+      emergencyContact: globalEmergencyContact,
+      notes: room.tenant_notes,
+    };
+    setEditingTenant(tenant);
   };
 
   const handleSaveTenant = async () => {
-    if (!editingTenant || !selectedRoom) return;
+    if (!editingTenant || !selectedRoom || !property) return;
     
-    setLoading(true);
     try {
-      // Update only tenant-specific fields, preserving room details
+      const updateData = {
+        tenant_id: editingTenant.id || null,
+        tenant_name: editingTenant.name || null,
+        tenant_email: editingTenant.email || null,
+        tenant_phone: editingTenant.phone || null,
+        tenant_date_of_entry: editingTenant.dateOfEntry || null,
+        rent_amount: editingTenant.rentAmount,
+        rent_status: editingTenant.rentStatus,
+        tenant_accessories: editingTenant.accessories.length > 0 ? editingTenant.accessories : null,
+        tenant_notes: editingTenant.notes || null,
+        is_occupied: editingTenant.name ? true : false,
+      };
+
       const { error } = await supabase
         .from('rooms')
-        .update({
-          tenant_name: editingTenant.name,
-          tenant_email: editingTenant.email,
-          tenant_phone: editingTenant.phone,
-          tenant_date_of_entry: editingTenant.dateOfEntry,
-          tenant_accessories: editingTenant.accessories,
-          tenant_notes: editingTenant.notes,
-          rent_status: editingTenant.rentStatus,
-          is_occupied: true
-        })
+        .update(updateData)
         .eq('id', selectedRoom.id);
-      
+
       if (error) throw error;
-      
+
       toast({
         title: "Tenant Updated",
         description: "Tenant information has been saved successfully.",
       });
+      
+      // Refresh the rooms data
+      await fetchRooms();
       setEditingTenant(null);
-      fetchRooms(); // Refresh the rooms data
+      setShowAddTenant(false);
+      
     } catch (error) {
       console.error('Error saving tenant:', error);
       toast({
         title: "Error",
-        description: "Failed to save tenant information. Please try again.",
-        variant: "destructive"
+        description: "Failed to save tenant information.",
+        variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -212,79 +218,39 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
   };
 
   const handleAddTenant = () => {
-    if (!selectedRoom) return;
+    if (!selectedRoom || !property) return;
     
     setShowAddTenant(true);
     setEditingTenant({
-      id: "",
+      id: `tenant-${Date.now()}`, // Generate temporary ID
       name: "",
       email: "",
       phone: "",
       dateOfEntry: new Date().toISOString().split('T')[0],
-      rentAmount: selectedRoom.rentAmount,
+      rentAmount: property.rentPerRoom,
       rentStatus: "not-paid",
       accessories: [],
       emergencyContact: globalEmergencyContact,
     });
   };
 
-  const handleSaveNewTenant = async () => {
-    if (!editingTenant || !selectedRoom) return;
-    
-    setLoading(true);
-    try {
-      // Add tenant to existing room, preserving room details
-      const { error } = await supabase
-        .from('rooms')
-        .update({
-          tenant_name: editingTenant.name,
-          tenant_email: editingTenant.email,
-          tenant_phone: editingTenant.phone,
-          tenant_date_of_entry: editingTenant.dateOfEntry,
-          tenant_accessories: editingTenant.accessories,
-          tenant_notes: editingTenant.notes,
-          rent_status: editingTenant.rentStatus,
-          is_occupied: true
-        })
-        .eq('id', selectedRoom.id);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Tenant Added",
-        description: "New tenant has been added successfully.",
-      });
-      setEditingTenant(null);
-      setShowAddTenant(false);
-      fetchRooms(); // Refresh the rooms data
-    } catch (error) {
-      console.error('Error adding tenant:', error);
-      toast({
-        title: "Error",
-        description: "Failed to add tenant. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleSaveEmergencyContact = () => {
-    if (userRole !== "owner") {
-      toast({
-        title: "Access Denied",
-        description: "Only property owners can edit emergency contact.",
-        variant: "destructive"
-      });
-      return;
-    }
-    setGlobalEmergencyContact(tempEmergencyContact);
-    setEditingEmergencyContact(false);
-    toast({
-      title: "Emergency Contact Updated",
-      description: "Global emergency contact has been updated for all rooms.",
-    });
-  };
+  if (!property) return null;
+
+  if (loading) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Loading...</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center h-64">
+            <div className="text-muted-foreground">Loading rooms...</div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -296,50 +262,10 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
           </DialogTitle>
         </DialogHeader>
 
-        {/* Global Emergency Contact Section - Only for Property Owner */}
-        {userRole === "owner" && (
-          <div className="border-b pb-4 mb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-medium">Global Emergency Contact</h3>
-                <p className="text-sm text-muted-foreground">This emergency contact applies to all rooms</p>
-              </div>
-              {editingEmergencyContact ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={tempEmergencyContact}
-                    onChange={(e) => setTempEmergencyContact(e.target.value)}
-                    placeholder="Emergency contact number"
-                    className="w-48"
-                  />
-                  <Button size="sm" onClick={handleSaveEmergencyContact}>
-                    <Save className="mr-2 h-4 w-4" />
-                    Save
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => {
-                    setEditingEmergencyContact(false);
-                    setTempEmergencyContact(globalEmergencyContact);
-                  }}>
-                    Cancel
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{globalEmergencyContact}</span>
-                  <Button size="sm" variant="outline" onClick={() => setEditingEmergencyContact(true)}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Edit
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
         <div className="flex gap-6 h-[75vh]">
           {/* Rooms List */}
           <div className="w-1/3 border-r pr-6 overflow-y-auto">
-            <h3 className="font-semibold mb-4">Rooms ({property.totalRooms})</h3>
+            <h3 className="font-semibold mb-4">Rooms ({rooms.length})</h3>
             <div className="space-y-2">
               {rooms.map((room) => (
                 <Card 
@@ -351,22 +277,22 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                 >
                   <CardContent className="p-3">
                      <div className="flex items-center justify-between">
-                       <span className="font-medium">{room.number}</span>
-                       <Badge variant={room.status === "occupied" ? "default" : "secondary"}>
-                         {room.status}
+                       <span className="font-medium">{room.room_number}</span>
+                       <Badge variant={room.is_occupied ? "default" : "secondary"}>
+                         {room.is_occupied ? "occupied" : "vacant"}
                        </Badge>
                      </div>
-                     {room.tenant && (
+                     {room.is_occupied && room.tenant_name && (
                        <div className="mt-2 space-y-1">
-                         <p className="text-sm text-muted-foreground">{room.tenant.name}</p>
+                         <p className="text-sm text-muted-foreground">{room.tenant_name}</p>
                          <div className="flex items-center justify-between">
                            <span className="text-xs text-muted-foreground">Rent:</span>
-                           <span className="text-xs font-medium">KSh {room.tenant.rentAmount.toLocaleString()}</span>
+                           <span className="text-xs font-medium">KSh {room.rent_amount.toLocaleString()}</span>
                          </div>
                          <div className="flex items-center justify-between">
                            <span className="text-xs text-muted-foreground">Status:</span>
-                           <Badge variant={room.tenant.rentStatus === "paid" ? "default" : "destructive"} className="text-xs">
-                             {room.tenant.rentStatus === "paid" ? "Paid" : "Due"}
+                           <Badge variant={room.rent_status === "paid" ? "default" : "destructive"} className="text-xs">
+                             {room.rent_status === "paid" ? "Paid" : "Due"}
                            </Badge>
                          </div>
                        </div>
@@ -382,32 +308,32 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
             {selectedRoom ? (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold">{selectedRoom.number}</h2>
+                  <h2 className="text-2xl font-bold">{selectedRoom.room_number}</h2>
                   <Badge 
-                    variant={selectedRoom.status === "occupied" ? "default" : "secondary"}
+                    variant={selectedRoom.is_occupied ? "default" : "secondary"}
                     className="text-base px-3 py-1"
                   >
-                    {selectedRoom.status}
+                    {selectedRoom.is_occupied ? "occupied" : "vacant"}
                   </Badge>
                 </div>
 
-                {selectedRoom.status === "vacant" ? (
+                {!selectedRoom.is_occupied ? (
                   <Card>
                     <CardContent className="p-6 text-center">
                       <Home className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                       <h3 className="text-xl font-semibold mb-2">Vacant Room</h3>
                       <p className="text-muted-foreground mb-4">
-                        Rent: KSh {selectedRoom.rentAmount.toLocaleString()}/month
+                        Rent: KSh {selectedRoom.rent_amount.toLocaleString()}/month
                       </p>
                       {userRole === "owner" && (
-                        <Button onClick={handleAddTenant} disabled={loading}>
+                        <Button onClick={handleAddTenant}>
                           <UserPlus className="mr-2 h-4 w-4" />
                           Add Tenant
                         </Button>
                       )}
                     </CardContent>
                   </Card>
-                ) : selectedRoom.tenant ? (
+                ) : selectedRoom.tenant_name ? (
                   <>
                     {/* Tenant Details */}
                     <Card>
@@ -421,7 +347,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleEditTenant(selectedRoom.tenant!)}
+                              onClick={() => handleEditTenant(selectedRoom)}
                             >
                               <Edit className="mr-2 h-4 w-4" />
                               Edit {userRole === "manager" ? "Info" : ""}
@@ -430,7 +356,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        {editingTenant && editingTenant.id === selectedRoom.tenant.id ? (
+                        {editingTenant && editingTenant.id === selectedRoom.tenant_id ? (
                           <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                               <div>
@@ -476,9 +402,9 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                                 Note: As a manager, you can only edit name, phone, and email.
                               </p>
                             )}
-                            <Button onClick={showAddTenant ? handleSaveNewTenant : handleSaveTenant} disabled={loading}>
+                            <Button onClick={handleSaveTenant}>
                               <Save className="mr-2 h-4 w-4" />
-                              {showAddTenant ? "Add Tenant" : "Save Changes"}
+                              Save Changes
                             </Button>
                           </div>
                          ) : (
@@ -486,19 +412,19 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
                                   <Label>Name</Label>
-                                  <p className="font-medium">{selectedRoom.tenant.name}</p>
+                                  <p className="font-medium">{selectedRoom.tenant_name}</p>
                                 </div>
                                 <div>
                                   <Label>Email</Label>
-                                  <p>{selectedRoom.tenant.email}</p>
+                                  <p>{selectedRoom.tenant_email}</p>
                                 </div>
                                 <div>
                                   <Label>Phone</Label>
-                                  <p>{selectedRoom.tenant.phone}</p>
+                                  <p>{selectedRoom.tenant_phone}</p>
                                 </div>
                                 <div>
                                   <Label>Date of Entry</Label>
-                                  <p>{selectedRoom.tenant.dateOfEntry}</p>
+                                  <p>{selectedRoom.tenant_date_of_entry}</p>
                                 </div>
                                 <div>
                                   <Label>Rent Amount</Label>
@@ -506,57 +432,60 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                                     <div className="flex items-center gap-2">
                                       <Input
                                         type="number"
-                                        value={selectedRoom.tenant.rentAmount}
-                                        onChange={(e) => {
+                                        value={selectedRoom.rent_amount}
+                                        onChange={async (e) => {
                                           const newAmount = parseInt(e.target.value) || 0;
-                                          // Update rent amount logic here
-                                          toast({
-                                            title: "Rent Updated",
-                                            description: `Rent amount updated to KSh ${newAmount.toLocaleString()}`,
-                                          });
+                                          try {
+                                            const { error } = await supabase
+                                              .from('rooms')
+                                              .update({ rent_amount: newAmount })
+                                              .eq('id', selectedRoom.id);
+                                            
+                                            if (error) throw error;
+                                            
+                                            await fetchRooms();
+                                            toast({
+                                              title: "Rent Updated",
+                                              description: `Rent amount updated to KSh ${newAmount.toLocaleString()}`,
+                                            });
+                                          } catch (error) {
+                                            toast({
+                                              title: "Error",
+                                              description: "Failed to update rent amount.",
+                                              variant: "destructive",
+                                            });
+                                          }
                                         }}
                                         className="w-32"
                                       />
                                       <span className="text-sm text-muted-foreground">KSh</span>
                                     </div>
                                   ) : (
-                                    <p className="font-semibold">KSh {selectedRoom.tenant.rentAmount.toLocaleString()}</p>
+                                    <p className="font-medium">KSh {selectedRoom.rent_amount.toLocaleString()}</p>
                                   )}
                                 </div>
                                 <div>
-                                  <Label>Rent Status</Label>
-                                  <Badge variant={selectedRoom.tenant.rentStatus === "paid" ? "default" : "destructive"}>
-                                    {selectedRoom.tenant.rentStatus === "paid" ? "Paid" : "Not Paid"}
-                                  </Badge>
-                                </div>
-                                {userRole === "owner" && (
-                                  <div>
-                                    <Label>Emergency Contact (Global)</Label>
-                                    <p>{globalEmergencyContact}</p>
+                                  <Label>Accessories</Label>
+                                  <div className="flex gap-1 mt-1">
+                                    {selectedRoom.tenant_accessories?.map((item, index) => (
+                                      <Badge key={index} variant="outline">{item}</Badge>
+                                    )) || <span className="text-muted-foreground text-sm">No accessories listed</span>}
                                   </div>
-                                )}
-                               <div>
-                                 <Label>Accessories</Label>
-                                 <div className="flex gap-1 mt-1">
-                                   {selectedRoom.tenant.accessories.map((item, index) => (
-                                     <Badge key={index} variant="outline">{item}</Badge>
-                                   ))}
-                                 </div>
-                               </div>
-                             </div>
+                                </div>
+                              </div>
 
-                             {/* Payment Details Section */}
-                             <div className="bg-muted rounded-lg p-4 space-y-3">
-                               <h4 className="font-medium">Payment Details</h4>
-                               <div className="grid grid-cols-2 gap-4 text-sm">
-                                 <div className="flex justify-between">
-                                   <span>Monthly Rent:</span>
-                                   <span className="font-medium">KSh {selectedRoom.tenant.rentAmount.toLocaleString()}</span>
-                                 </div>
-                                 <div className="flex justify-between">
-                                   <span>Security Deposit:</span>
-                                   <span className="font-medium">KSh {(selectedRoom.tenant.rentAmount * 2).toLocaleString()}</span>
-                                 </div>
+                              {/* Payment Details Section */}
+                              <div className="bg-muted rounded-lg p-4 space-y-3">
+                                <h4 className="font-medium">Payment Details</h4>
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                  <div className="flex justify-between">
+                                    <span>Monthly Rent:</span>
+                                    <span className="font-medium">KSh {selectedRoom.rent_amount.toLocaleString()}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>Security Deposit:</span>
+                                    <span className="font-medium">KSh {(selectedRoom.rent_amount * 2).toLocaleString()}</span>
+                                  </div>
                                  <div className="flex justify-between">
                                    <span>Next Due Date:</span>
                                    <span className="font-medium">
@@ -569,16 +498,16 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                                  </div>
                                </div>
                                
-                               {selectedRoom.tenant.rentStatus === "not-paid" && (
-                                 <div className="mt-3 p-2 bg-destructive/10 rounded border border-destructive/20">
-                                   <p className="text-destructive text-sm font-medium">
-                                     ⚠️ Rent Due: KSh {selectedRoom.tenant.rentAmount.toLocaleString()}
-                                   </p>
-                                   <p className="text-destructive text-xs mt-1">
-                                     Please contact tenant for payment or mark as paid once payment is received.
-                                   </p>
-                                 </div>
-                               )}
+                                {selectedRoom.rent_status === "not-paid" && (
+                                  <div className="mt-3 p-2 bg-destructive/10 rounded border border-destructive/20">
+                                    <p className="text-destructive text-sm font-medium">
+                                      ⚠️ Rent Due: KSh {selectedRoom.rent_amount.toLocaleString()}
+                                    </p>
+                                    <p className="text-destructive text-xs mt-1">
+                                      Please contact tenant for payment or mark as paid once payment is received.
+                                    </p>
+                                  </div>
+                                )}
                              </div>
                            </div>
                          )}
@@ -588,7 +517,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                     {/* Action Buttons - Owner Only */}
                     {userRole === "owner" && (
                       <div className="flex gap-3">
-                        {selectedRoom.tenant.rentStatus === "not-paid" && (
+                        {selectedRoom.rent_status === "not-paid" && (
                           <Button 
                             onClick={() => handleMarkRentPaid(selectedRoom.id)}
                             className="bg-primary"
@@ -631,7 +560,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                         <CardContent>
                           <Textarea
                             placeholder="Add notes about this tenant..."
-                            defaultValue={selectedRoom.tenant.notes}
+                            defaultValue={selectedRoom.tenant_notes || ""}
                             onBlur={(e) => handleSaveNotes(e.target.value)}
                           />
                         </CardContent>
