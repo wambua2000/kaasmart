@@ -43,8 +43,6 @@ interface Property {
 
 const PropertyOwnerDashboard = () => {
   const { toast } = useToast();
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [isAddPropertyModalOpen, setIsAddPropertyModalOpen] = useState(false);
@@ -56,6 +54,8 @@ const PropertyOwnerDashboard = () => {
   const [selectedRecipient, setSelectedRecipient] = useState("all");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Image mapping for properties
   const getPropertyImage = (propertyName: string) => {
@@ -75,10 +75,10 @@ const PropertyOwnerDashboard = () => {
   const fetchProperties = async () => {
     try {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: user } = await supabase.auth.getUser();
       
-      if (!user) {
-        // If no user, use mock data for demo purposes
+      if (!user.user) {
+        // Use mock data for demo purposes when not authenticated
         setProperties([
           {
             id: "1",
@@ -121,36 +121,28 @@ const PropertyOwnerDashboard = () => {
         return;
       }
 
-      const { data: propertiesData, error } = await supabase
+      const { data, error } = await supabase
         .from('properties')
         .select(`
           *,
-          rooms!inner(
-            id,
-            is_occupied
-          )
+          rooms(id, is_occupied)
         `)
-        .eq('owner_id', user.id);
+        .eq('owner_id', user.user.id);
 
       if (error) throw error;
 
-      // Transform data to match Property interface
-      const transformedProperties: Property[] = (propertiesData || []).map(prop => {
-        const totalRooms = prop.total_rooms;
-        const occupiedRooms = prop.rooms?.filter((room: any) => room.is_occupied).length || 0;
-        
-        return {
-          id: prop.id,
-          name: prop.name,
-          location: prop.location,
-          rentPerRoom: prop.rent_per_room,
-          totalRooms: totalRooms,
-          occupiedRooms: occupiedRooms,
-          image: getPropertyImage(prop.name),
-        };
-      });
+      const transformedProperties: Property[] = (data || []).map(property => ({
+        id: property.id,
+        name: property.name,
+        location: property.location,
+        rentPerRoom: property.rent_per_room,
+        totalRooms: property.total_rooms,
+        occupiedRooms: property.rooms?.filter((room: any) => room.is_occupied).length || 0,
+        image: getPropertyImage(property.name),
+      }));
 
       setProperties(transformedProperties);
+      
     } catch (error) {
       console.error('Error fetching properties:', error);
       toast({
@@ -167,7 +159,7 @@ const PropertyOwnerDashboard = () => {
   const totalRooms = properties.reduce((sum, prop) => sum + prop.totalRooms, 0);
   const occupiedRooms = properties.reduce((sum, prop) => sum + prop.occupiedRooms, 0);
   const vacantRooms = totalRooms - occupiedRooms;
-  const occupancyRate = ((occupiedRooms / totalRooms) * 100).toFixed(1);
+  const occupancyRate = totalRooms > 0 ? ((occupiedRooms / totalRooms) * 100).toFixed(1) : "0";
 
   const handleAddProperty = () => {
     setIsAddPropertyModalOpen(true);
@@ -175,13 +167,19 @@ const PropertyOwnerDashboard = () => {
 
   const handleAddPropertySubmit = async (newProperty: Property) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        // Fallback to mock data if no user
-        setProperties([...properties, newProperty]);
+      const { data: user } = await supabase.auth.getUser();
+      
+      if (!user.user) {
+        // Add to mock data for demo
+        setProperties([...properties, { ...newProperty, id: Date.now().toString() }]);
+        toast({
+          title: "Property Added",
+          description: `${newProperty.name} has been added successfully.`,
+        });
         return;
       }
 
+      // Insert property into database
       const { data, error } = await supabase
         .from('properties')
         .insert({
@@ -189,24 +187,31 @@ const PropertyOwnerDashboard = () => {
           location: newProperty.location,
           rent_per_room: newProperty.rentPerRoom,
           total_rooms: newProperty.totalRooms,
-          owner_id: user.id,
-          image_url: newProperty.image,
+          owner_id: user.user.id,
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      // Generate rooms for the new property
-      await generateRoomsForNewProperty(data.id, newProperty.name, newProperty.totalRooms, newProperty.rentPerRoom);
-      
-      // Refresh properties list
-      await fetchProperties();
-      
+      // Generate rooms for the new property using the database function
+      const { error: roomError } = await supabase.rpc('generate_rooms_for_property', {
+        property_id_param: data.id,
+        property_name_param: newProperty.name,
+        total_rooms_param: newProperty.totalRooms,
+        rent_amount_param: newProperty.rentPerRoom,
+      });
+
+      if (roomError) throw roomError;
+
       toast({
         title: "Property Added",
-        description: "New property has been added successfully with rooms.",
+        description: `${newProperty.name} has been added successfully with ${newProperty.totalRooms} rooms.`,
       });
+
+      // Refresh the properties list
+      await fetchProperties();
+      
     } catch (error) {
       console.error('Error adding property:', error);
       toast({
@@ -215,44 +220,6 @@ const PropertyOwnerDashboard = () => {
         variant: "destructive",
       });
     }
-  };
-
-  const generateRoomsForNewProperty = async (propertyId: string, propertyName: string, totalRooms: number, rentAmount: number) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const roomPrefix = getRoomPrefix(propertyName);
-      const roomsToInsert = [];
-
-      for (let i = 1; i <= totalRooms; i++) {
-        roomsToInsert.push({
-          room_number: `${roomPrefix}${i.toString().padStart(3, '0')}`,
-          property_id: propertyId,
-          rent_amount: rentAmount,
-          rent_status: 'not-paid',
-          is_occupied: false,
-        });
-      }
-
-      const { error } = await supabase
-        .from('rooms')
-        .insert(roomsToInsert);
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error generating rooms:', error);
-      throw error;
-    }
-  };
-
-  const getRoomPrefix = (propertyName: string): string => {
-    const nameMap: Record<string, string> = {
-      "White House": "white",
-      "Yellow House": "yellow", 
-      "Green House": "green",
-      "Skyline Apartment": "skyline"
-    };
-    return nameMap[propertyName] || "room";
   };
 
   const handleOpenSheet = () => {
@@ -286,40 +253,46 @@ const PropertyOwnerDashboard = () => {
   };
 
   const confirmDeleteProperty = async () => {
-    if (!propertyToDelete) return;
-    
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
+    if (propertyToDelete) {
+      try {
+        const { data: user } = await supabase.auth.getUser();
+        
+        if (!user.user) {
+          // Delete from mock data for demo
+          setProperties(properties.filter(p => p.id !== propertyToDelete));
+          toast({
+            title: "Property Deleted",
+            description: "Property has been removed successfully.",
+          });
+          setDeleteConfirmOpen(false);
+          setPropertyToDelete(null);
+          return;
+        }
+
         const { error } = await supabase
           .from('properties')
           .delete()
-          .eq('id', propertyToDelete)
-          .eq('owner_id', user.id);
+          .eq('id', propertyToDelete);
 
         if (error) throw error;
-        
-        // Refresh properties list
+
+        toast({
+          title: "Property Deleted",
+          description: "Property has been removed successfully.",
+        });
+
+        // Refresh the properties list
         await fetchProperties();
-      } else {
-        // Fallback for mock data
-        setProperties(properties.filter(p => p.id !== propertyToDelete));
+        
+      } catch (error) {
+        console.error('Error deleting property:', error);
+        toast({
+          title: "Error",
+          description: "Failed to delete property. Please try again.",
+          variant: "destructive",
+        });
       }
-      
-      toast({
-        title: "Property Deleted",
-        description: "Property has been removed successfully.",
-      });
-    } catch (error) {
-      console.error('Error deleting property:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete property. Please try again.",
-        variant: "destructive",
-      });
     }
-    
     setDeleteConfirmOpen(false);
     setPropertyToDelete(null);
   };
@@ -332,23 +305,6 @@ const PropertyOwnerDashboard = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen">
-        <div className="w-full h-16 bg-blue-600 flex items-center px-6">
-          <h1 className="text-white text-2xl font-bold">KaaSmart Property Management</h1>
-        </div>
-        <div className="bg-gradient-earth p-6">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center justify-center h-64">
-              <div className="text-muted-foreground">Loading properties...</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen">
       {/* Blue Header Bar covering full width */}
@@ -358,249 +314,258 @@ const PropertyOwnerDashboard = () => {
       <div className="bg-gradient-earth p-6">
         <div className="max-w-7xl mx-auto">
         
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Property Owner Dashboard</h1>
-              <p className="text-muted-foreground">Manage your properties with ease</p>
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-muted-foreground">Loading properties...</div>
             </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <Button onClick={handleOpenSheet} variant="outline">
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Open Sheet
-            </Button>
-            
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline">
-                  <Wrench className="mr-2 h-4 w-4" />
-                  Maintenance
-                </Button>
-              </SheetTrigger>
-              <SheetContent>
-                <SheetHeader>
-                  <SheetTitle>Maintenance Messages</SheetTitle>
-                </SheetHeader>
-                <div className="mt-6 space-y-4">
-                  {maintenanceMessages.length > 0 ? (
-                    maintenanceMessages.map((msg) => (
-                      <div key={msg.id} className="border rounded-lg p-4 space-y-2">
-                        <div className="flex justify-between text-sm text-muted-foreground">
-                          <span>{msg.property} - {msg.room}</span>
-                          <span>{msg.timestamp}</span>
-                        </div>
-                        <p className="font-medium">{msg.tenant}</p>
-                        <p className="text-sm">{msg.message}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-muted-foreground text-center">No maintenance requests</p>
-                  )}
+          ) : (
+            <>
+              {/* Header */}
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h1 className="text-3xl font-bold text-foreground">Property Owner Dashboard</h1>
+                  <p className="text-muted-foreground">Manage your properties with ease</p>
                 </div>
-              </SheetContent>
-            </Sheet>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Button onClick={handleOpenSheet} variant="outline">
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Open Sheet
+                  </Button>
+                  
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <Button variant="outline">
+                        <Wrench className="mr-2 h-4 w-4" />
+                        Maintenance
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent>
+                      <SheetHeader>
+                        <SheetTitle>Maintenance Messages</SheetTitle>
+                      </SheetHeader>
+                      <div className="mt-6 space-y-4">
+                        {maintenanceMessages.length > 0 ? (
+                          maintenanceMessages.map((msg) => (
+                            <div key={msg.id} className="border rounded-lg p-4 space-y-2">
+                              <div className="flex justify-between text-sm text-muted-foreground">
+                                <span>{msg.property} - {msg.room}</span>
+                                <span>{msg.timestamp}</span>
+                              </div>
+                              <p className="font-medium">{msg.tenant}</p>
+                              <p className="text-sm">{msg.message}</p>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-muted-foreground text-center">No maintenance requests</p>
+                        )}
+                      </div>
+                    </SheetContent>
+                  </Sheet>
 
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline">
-                  <MessageSquare className="mr-2 h-4 w-4" />
-                  Message All
-                </Button>
-              </SheetTrigger>
-              <SheetContent>
-                <SheetHeader>
-                  <SheetTitle>Send Message</SheetTitle>
-                </SheetHeader>
-                <div className="mt-6 space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="recipient">Send to:</Label>
-                    <select 
-                      id="recipient"
-                      value={selectedRecipient}
-                      onChange={(e) => setSelectedRecipient(e.target.value)}
-                      className="w-full p-2 border rounded-md"
-                    >
-                      <option value="all">All Tenants</option>
-                      {properties.map(property => (
-                        <option key={property.id} value={property.name}>{property.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="message">Message:</Label>
-                    <Textarea
-                      id="message"
-                      value={messageText}
-                      onChange={(e) => setMessageText(e.target.value)}
-                      placeholder="Type your message here..."
-                      rows={4}
-                    />
-                  </div>
-                  <Button onClick={handleSendMessage} className="w-full">
-                    Send Message
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <Button variant="outline">
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        Message All
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent>
+                      <SheetHeader>
+                        <SheetTitle>Send Message</SheetTitle>
+                      </SheetHeader>
+                      <div className="mt-6 space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="recipient">Send to:</Label>
+                          <select 
+                            id="recipient"
+                            value={selectedRecipient}
+                            onChange={(e) => setSelectedRecipient(e.target.value)}
+                            className="w-full p-2 border rounded-md"
+                          >
+                            <option value="all">All Tenants</option>
+                            {properties.map(property => (
+                              <option key={property.id} value={property.name}>{property.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="message">Message:</Label>
+                          <Textarea
+                            id="message"
+                            value={messageText}
+                            onChange={(e) => setMessageText(e.target.value)}
+                            placeholder="Type your message here..."
+                            rows={4}
+                          />
+                        </div>
+                        <Button onClick={handleSendMessage} className="w-full">
+                          Send Message
+                        </Button>
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+
+                  <Button onClick={handleGenerateReport} variant="outline">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Generate Report
+                  </Button>
+                  <Button onClick={handleInviteManager} variant="outline">
+                    <Mail className="mr-2 h-4 w-4" />
+                    Invite Manager
+                  </Button>
+                  <Button onClick={handleAddProperty} className="bg-gradient-hero hover:shadow-glow">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Property
                   </Button>
                 </div>
-              </SheetContent>
-            </Sheet>
+              </div>
 
-            <Button onClick={handleGenerateReport} variant="outline">
-              <FileText className="mr-2 h-4 w-4" />
-              Generate Report
-            </Button>
-            <Button onClick={handleInviteManager} variant="outline">
-              <Mail className="mr-2 h-4 w-4" />
-              Invite Manager
-            </Button>
-            <Button onClick={handleAddProperty} className="bg-gradient-hero hover:shadow-glow">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Property
-            </Button>
-          </div>
-        </div>
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+                <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Properties</CardTitle>
+                    <Building2 className="h-4 w-4 text-primary" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-primary">{totalProperties}</div>
+                    <p className="text-xs text-muted-foreground">Active properties</p>
+                  </CardContent>
+                </Card>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Properties</CardTitle>
-              <Building2 className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">{totalProperties}</div>
-              <p className="text-xs text-muted-foreground">Active properties</p>
-            </CardContent>
-          </Card>
+                <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Rooms</CardTitle>
+                    <Home className="h-4 w-4 text-accent" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-accent">{totalRooms}</div>
+                    <p className="text-xs text-muted-foreground">Across all properties</p>
+                  </CardContent>
+                </Card>
 
-          <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Rooms</CardTitle>
-              <Home className="h-4 w-4 text-accent" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-accent">{totalRooms}</div>
-              <p className="text-xs text-muted-foreground">Across all properties</p>
-            </CardContent>
-          </Card>
+                <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Occupied Rooms</CardTitle>
+                    <Users className="h-4 w-4 text-primary" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-primary">{occupiedRooms}</div>
+                    <p className="text-xs text-muted-foreground">Currently rented</p>
+                  </CardContent>
+                </Card>
 
-          <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Occupied Rooms</CardTitle>
-              <Users className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">{occupiedRooms}</div>
-              <p className="text-xs text-muted-foreground">Currently rented</p>
-            </CardContent>
-          </Card>
+                <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Vacant Rooms</CardTitle>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-muted-foreground">{vacantRooms}</div>
+                    <p className="text-xs text-muted-foreground">Available for rent</p>
+                  </CardContent>
+                </Card>
 
-          <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Vacant Rooms</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-muted-foreground">{vacantRooms}</div>
-              <p className="text-xs text-muted-foreground">Available for rent</p>
-            </CardContent>
-          </Card>
+                <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Occupancy Rate</CardTitle>
+                    <Users className="h-4 w-4 text-primary" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-primary">{occupancyRate}%</div>
+                    <p className="text-xs text-muted-foreground">Overall occupancy</p>
+                  </CardContent>
+                </Card>
+              </div>
 
-          <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Occupancy Rate</CardTitle>
-              <Users className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">{occupancyRate}%</div>
-              <p className="text-xs text-muted-foreground">Overall occupancy</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Properties Grid */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-foreground">Your Properties</h2>
-            <Badge variant="secondary" className="text-sm">
-              {properties.length} Properties
-            </Badge>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {properties.map((property) => (
-              <Card key={property.id} className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card hover:shadow-warm transition-all duration-300 overflow-hidden group">
-                <div className="relative">
-                  <img
-                    src={property.image}
-                    alt={property.name}
-                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute top-4 right-4">
-                    <Badge className="bg-primary/90 text-primary-foreground">
-                      {property.occupiedRooms}/{property.totalRooms} Occupied
-                    </Badge>
-                  </div>
+              {/* Properties Grid */}
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-foreground">Your Properties</h2>
+                  <Badge variant="secondary" className="text-sm">
+                    {properties.length} Properties
+                  </Badge>
                 </div>
-                
-                <CardHeader>
-                  <CardTitle className="text-lg">{property.name}</CardTitle>
-                  <CardDescription className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    {property.location}
-                  </CardDescription>
-                </CardHeader>
-                
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Total rooms</span>
-                      <span className="text-sm font-medium">{property.totalRooms}</span>
-                    </div>
 
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Rent per room</span>
-                      <span className="text-lg font-bold text-primary">
-                        KSh {property.rentPerRoom.toLocaleString()}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Occupancy</span>
-                      <span className="text-sm font-medium">
-                        {((property.occupiedRooms / property.totalRooms) * 100).toFixed(0)}%
-                      </span>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {properties.map((property) => (
+                    <Card key={property.id} className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card hover:shadow-warm transition-all duration-300 overflow-hidden group">
+                      <div className="relative">
+                        <img
+                          src={property.image}
+                          alt={property.name}
+                          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute top-4 right-4">
+                          <Badge className="bg-primary/90 text-primary-foreground">
+                            {property.occupiedRooms}/{property.totalRooms} Occupied
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      <CardHeader>
+                        <CardTitle className="text-lg">{property.name}</CardTitle>
+                        <CardDescription className="flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          {property.location}
+                        </CardDescription>
+                      </CardHeader>
+                      
+                      <CardContent>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Total rooms</span>
+                            <span className="text-sm font-medium">{property.totalRooms}</span>
+                          </div>
 
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div
-                        className="bg-gradient-hero h-2 rounded-full transition-all duration-300"
-                        style={{
-                          width: `${(property.occupiedRooms / property.totalRooms) * 100}%`,
-                        }}
-                      />
-                     </div>
-                     
-                      <div className="flex gap-2 pt-2">
-                      <Button 
-                        size="sm" 
-                        className="flex-1 bg-gradient-hero hover:shadow-glow"
-                        onClick={() => handleViewRooms(property.id)}
-                      >
-                        <Eye className="mr-2 h-4 w-4" />
-                        View Rooms
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="destructive"
-                        onClick={() => handleDeleteProperty(property.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Rent per room</span>
+                            <span className="text-lg font-bold text-primary">
+                              KSh {property.rentPerRoom.toLocaleString()}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Occupancy</span>
+                            <span className="text-sm font-medium">
+                              {property.totalRooms > 0 ? ((property.occupiedRooms / property.totalRooms) * 100).toFixed(0) : 0}%
+                            </span>
+                          </div>
+
+                          <div className="w-full bg-muted rounded-full h-2">
+                            <div
+                              className="bg-gradient-hero h-2 rounded-full transition-all duration-300"
+                              style={{
+                                width: `${property.totalRooms > 0 ? (property.occupiedRooms / property.totalRooms) * 100 : 0}%`,
+                              }}
+                            />
+                          </div>
+                          
+                          <div className="flex gap-2 pt-2">
+                            <Button 
+                              size="sm" 
+                              className="flex-1 bg-gradient-hero hover:shadow-glow"
+                              onClick={() => handleViewRooms(property.id)}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Rooms
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="destructive"
+                              onClick={() => handleDeleteProperty(property.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <RoomDetailsModal
@@ -643,21 +608,18 @@ const PropertyOwnerDashboard = () => {
         <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Property</AlertDialogTitle>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete this property? This action cannot be undone.
+                This action cannot be undone. This will permanently delete the property
+                and all associated rooms and tenant data.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDeleteProperty} className="bg-destructive hover:bg-destructive/90">
-                Delete
-              </AlertDialogAction>
+              <AlertDialogAction onClick={confirmDeleteProperty}>Delete</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-        </div>
       </div>
     </div>
   );
