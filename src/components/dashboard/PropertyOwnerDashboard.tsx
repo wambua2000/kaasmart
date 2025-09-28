@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings, ExternalLink, Wrench, MessageSquare, Eye, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -54,172 +53,57 @@ const PropertyOwnerDashboard = () => {
   const [selectedRecipient, setSelectedRecipient] = useState("all");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Image mapping for properties
-  const getPropertyImage = (propertyName: string) => {
-    const imageMap: Record<string, string> = {
-      "Skyline Apartment": skylineApartment,
-      "Yellow House": yellowHouse,
-      "White House": whiteHouse,
-      "Green House": greenHouse,
-    };
-    return imageMap[propertyName] || apartmentInterior;
-  };
-
-  useEffect(() => {
-    fetchProperties();
-  }, []);
-
-  const fetchProperties = async () => {
-    try {
-      setLoading(true);
-      const { data: user } = await supabase.auth.getUser();
-      
-      if (!user.user) {
-        // Use mock data for demo purposes when not authenticated
-        setProperties([
-          {
-            id: "1",
-            name: "Skyline Apartment",
-            location: "Nairobi West, Nairobi",
-            rentPerRoom: 15000,
-            totalRooms: 50,
-            occupiedRooms: 42,
-            image: skylineApartment,
-          },
-          {
-            id: "2",
-            name: "Yellow House",
-            location: "Mombasa Road, Nairobi", 
-            rentPerRoom: 18000,
-            totalRooms: 20,
-            occupiedRooms: 18,
-            image: yellowHouse,
-          },
-          {
-            id: "3",
-            name: "White House",
-            location: "Kisumu CBD, Kisumu",
-            rentPerRoom: 12000,
-            totalRooms: 20,
-            occupiedRooms: 16,
-            image: whiteHouse,
-          },
-          {
-            id: "4",
-            name: "Green House",
-            location: "Nakuru Town, Nakuru",
-            rentPerRoom: 14000,
-            totalRooms: 20,
-            occupiedRooms: 17,
-            image: greenHouse,
-          },
-        ]);
-        setLoading(false);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('properties')
-        .select(`
-          *,
-          rooms(id, is_occupied)
-        `)
-        .eq('owner_id', user.user.id);
-
-      if (error) throw error;
-
-      const transformedProperties: Property[] = (data || []).map(property => ({
-        id: property.id,
-        name: property.name,
-        location: property.location,
-        rentPerRoom: property.rent_per_room,
-        totalRooms: property.total_rooms,
-        occupiedRooms: property.rooms?.filter((room: any) => room.is_occupied).length || 0,
-        image: getPropertyImage(property.name),
-      }));
-
-      setProperties(transformedProperties);
-      
-    } catch (error) {
-      console.error('Error fetching properties:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load properties. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [properties, setProperties] = useState<Property[]>([
+    {
+      id: "1",
+      name: "Skyline Apartment",
+      location: "Nairobi West, Nairobi",
+      rentPerRoom: 15000,
+      totalRooms: 50,
+      occupiedRooms: 42,
+      image: skylineApartment,
+    },
+    {
+      id: "2",
+      name: "Yellow House",
+      location: "Mombasa Road, Nairobi", 
+      rentPerRoom: 18000,
+      totalRooms: 20,
+      occupiedRooms: 18,
+      image: yellowHouse,
+    },
+    {
+      id: "3",
+      name: "White House",
+      location: "Kisumu CBD, Kisumu",
+      rentPerRoom: 12000,
+      totalRooms: 20,
+      occupiedRooms: 16,
+      image: whiteHouse,
+    },
+    {
+      id: "4",
+      name: "Green House",
+      location: "Nakuru Town, Nakuru",
+      rentPerRoom: 14000,
+      totalRooms: 20,
+      occupiedRooms: 17,
+      image: greenHouse,
+    },
+  ]);
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.totalRooms, 0);
   const occupiedRooms = properties.reduce((sum, prop) => sum + prop.occupiedRooms, 0);
   const vacantRooms = totalRooms - occupiedRooms;
-  const occupancyRate = totalRooms > 0 ? ((occupiedRooms / totalRooms) * 100).toFixed(1) : "0";
+  const occupancyRate = ((occupiedRooms / totalRooms) * 100).toFixed(1);
 
   const handleAddProperty = () => {
     setIsAddPropertyModalOpen(true);
   };
 
-  const handleAddPropertySubmit = async (newProperty: Property) => {
-    try {
-      const { data: user } = await supabase.auth.getUser();
-      
-      if (!user.user) {
-        // Add to mock data for demo
-        setProperties([...properties, { ...newProperty, id: Date.now().toString() }]);
-        toast({
-          title: "Property Added",
-          description: `${newProperty.name} has been added successfully.`,
-        });
-        return;
-      }
-
-      // Insert property into database
-      const { data, error } = await supabase
-        .from('properties')
-        .insert({
-          name: newProperty.name,
-          location: newProperty.location,
-          rent_per_room: newProperty.rentPerRoom,
-          total_rooms: newProperty.totalRooms,
-          owner_id: user.user.id,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Generate rooms for the new property using the database function
-      const { error: roomError } = await supabase.rpc('generate_rooms_for_property', {
-        property_id_param: data.id,
-        property_name_param: newProperty.name,
-        total_rooms_param: newProperty.totalRooms,
-        rent_amount_param: newProperty.rentPerRoom,
-      });
-
-      if (roomError) throw roomError;
-
-      toast({
-        title: "Property Added",
-        description: `${newProperty.name} has been added successfully with ${newProperty.totalRooms} rooms.`,
-      });
-
-      // Refresh the properties list
-      await fetchProperties();
-      
-    } catch (error) {
-      console.error('Error adding property:', error);
-      toast({
-        title: "Error",
-        description: "Failed to add property. Please try again.",
-        variant: "destructive",
-      });
-    }
+  const handleAddPropertySubmit = (newProperty: Property) => {
+    setProperties([...properties, newProperty]);
   };
 
   const handleOpenSheet = () => {
@@ -252,46 +136,13 @@ const PropertyOwnerDashboard = () => {
     setDeleteConfirmOpen(true);
   };
 
-  const confirmDeleteProperty = async () => {
+  const confirmDeleteProperty = () => {
     if (propertyToDelete) {
-      try {
-        const { data: user } = await supabase.auth.getUser();
-        
-        if (!user.user) {
-          // Delete from mock data for demo
-          setProperties(properties.filter(p => p.id !== propertyToDelete));
-          toast({
-            title: "Property Deleted",
-            description: "Property has been removed successfully.",
-          });
-          setDeleteConfirmOpen(false);
-          setPropertyToDelete(null);
-          return;
-        }
-
-        const { error } = await supabase
-          .from('properties')
-          .delete()
-          .eq('id', propertyToDelete);
-
-        if (error) throw error;
-
-        toast({
-          title: "Property Deleted",
-          description: "Property has been removed successfully.",
-        });
-
-        // Refresh the properties list
-        await fetchProperties();
-        
-      } catch (error) {
-        console.error('Error deleting property:', error);
-        toast({
-          title: "Error",
-          description: "Failed to delete property. Please try again.",
-          variant: "destructive",
-        });
-      }
+      setProperties(properties.filter(p => p.id !== propertyToDelete));
+      toast({
+        title: "Property Deleted",
+        description: "Property has been removed successfully.",
+      });
     }
     setDeleteConfirmOpen(false);
     setPropertyToDelete(null);
@@ -314,258 +165,249 @@ const PropertyOwnerDashboard = () => {
       <div className="bg-gradient-earth p-6">
         <div className="max-w-7xl mx-auto">
         
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-muted-foreground">Loading properties...</div>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Property Owner Dashboard</h1>
+              <p className="text-muted-foreground">Manage your properties with ease</p>
             </div>
-          ) : (
-            <>
-              {/* Header */}
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h1 className="text-3xl font-bold text-foreground">Property Owner Dashboard</h1>
-                  <p className="text-muted-foreground">Manage your properties with ease</p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button onClick={handleOpenSheet} variant="outline">
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Open Sheet
+            </Button>
+            
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline">
+                  <Wrench className="mr-2 h-4 w-4" />
+                  Maintenance
+                </Button>
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Maintenance Messages</SheetTitle>
+                </SheetHeader>
+                <div className="mt-6 space-y-4">
+                  {maintenanceMessages.length > 0 ? (
+                    maintenanceMessages.map((msg) => (
+                      <div key={msg.id} className="border rounded-lg p-4 space-y-2">
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                          <span>{msg.property} - {msg.room}</span>
+                          <span>{msg.timestamp}</span>
+                        </div>
+                        <p className="font-medium">{msg.tenant}</p>
+                        <p className="text-sm">{msg.message}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground text-center">No maintenance requests</p>
+                  )}
                 </div>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <Button onClick={handleOpenSheet} variant="outline">
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Open Sheet
+              </SheetContent>
+            </Sheet>
+
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline">
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Message All
+                </Button>
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Send Message</SheetTitle>
+                </SheetHeader>
+                <div className="mt-6 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="recipient">Send to:</Label>
+                    <select 
+                      id="recipient"
+                      value={selectedRecipient}
+                      onChange={(e) => setSelectedRecipient(e.target.value)}
+                      className="w-full p-2 border rounded-md"
+                    >
+                      <option value="all">All Tenants</option>
+                      {properties.map(property => (
+                        <option key={property.id} value={property.name}>{property.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="message">Message:</Label>
+                    <Textarea
+                      id="message"
+                      value={messageText}
+                      onChange={(e) => setMessageText(e.target.value)}
+                      placeholder="Type your message here..."
+                      rows={4}
+                    />
+                  </div>
+                  <Button onClick={handleSendMessage} className="w-full">
+                    Send Message
                   </Button>
-                  
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <Button variant="outline">
-                        <Wrench className="mr-2 h-4 w-4" />
-                        Maintenance
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            <Button onClick={handleGenerateReport} variant="outline">
+              <FileText className="mr-2 h-4 w-4" />
+              Generate Report
+            </Button>
+            <Button onClick={handleInviteManager} variant="outline">
+              <Mail className="mr-2 h-4 w-4" />
+              Invite Manager
+            </Button>
+            <Button onClick={handleAddProperty} className="bg-gradient-hero hover:shadow-glow">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Property
+            </Button>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+          <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Properties</CardTitle>
+              <Building2 className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-primary">{totalProperties}</div>
+              <p className="text-xs text-muted-foreground">Active properties</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Rooms</CardTitle>
+              <Home className="h-4 w-4 text-accent" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-accent">{totalRooms}</div>
+              <p className="text-xs text-muted-foreground">Across all properties</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Occupied Rooms</CardTitle>
+              <Users className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-primary">{occupiedRooms}</div>
+              <p className="text-xs text-muted-foreground">Currently rented</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Vacant Rooms</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-muted-foreground">{vacantRooms}</div>
+              <p className="text-xs text-muted-foreground">Available for rent</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Occupancy Rate</CardTitle>
+              <Users className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-primary">{occupancyRate}%</div>
+              <p className="text-xs text-muted-foreground">Overall occupancy</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Properties Grid */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-foreground">Your Properties</h2>
+            <Badge variant="secondary" className="text-sm">
+              {properties.length} Properties
+            </Badge>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {properties.map((property) => (
+              <Card key={property.id} className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card hover:shadow-warm transition-all duration-300 overflow-hidden group">
+                <div className="relative">
+                  <img
+                    src={property.image}
+                    alt={property.name}
+                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute top-4 right-4">
+                    <Badge className="bg-primary/90 text-primary-foreground">
+                      {property.occupiedRooms}/{property.totalRooms} Occupied
+                    </Badge>
+                  </div>
+                </div>
+                
+                <CardHeader>
+                  <CardTitle className="text-lg">{property.name}</CardTitle>
+                  <CardDescription className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
+                    {property.location}
+                  </CardDescription>
+                </CardHeader>
+                
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Total rooms</span>
+                      <span className="text-sm font-medium">{property.totalRooms}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Rent per room</span>
+                      <span className="text-lg font-bold text-primary">
+                        KSh {property.rentPerRoom.toLocaleString()}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Occupancy</span>
+                      <span className="text-sm font-medium">
+                        {((property.occupiedRooms / property.totalRooms) * 100).toFixed(0)}%
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div
+                        className="bg-gradient-hero h-2 rounded-full transition-all duration-300"
+                        style={{
+                          width: `${(property.occupiedRooms / property.totalRooms) * 100}%`,
+                        }}
+                      />
+                     </div>
+                     
+                      <div className="flex gap-2 pt-2">
+                      <Button 
+                        size="sm" 
+                        className="flex-1 bg-gradient-hero hover:shadow-glow"
+                        onClick={() => handleViewRooms(property.id)}
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        View Rooms
                       </Button>
-                    </SheetTrigger>
-                    <SheetContent>
-                      <SheetHeader>
-                        <SheetTitle>Maintenance Messages</SheetTitle>
-                      </SheetHeader>
-                      <div className="mt-6 space-y-4">
-                        {maintenanceMessages.length > 0 ? (
-                          maintenanceMessages.map((msg) => (
-                            <div key={msg.id} className="border rounded-lg p-4 space-y-2">
-                              <div className="flex justify-between text-sm text-muted-foreground">
-                                <span>{msg.property} - {msg.room}</span>
-                                <span>{msg.timestamp}</span>
-                              </div>
-                              <p className="font-medium">{msg.tenant}</p>
-                              <p className="text-sm">{msg.message}</p>
-                            </div>
-                          ))
-                        ) : (
-                          <p className="text-muted-foreground text-center">No maintenance requests</p>
-                        )}
-                      </div>
-                    </SheetContent>
-                  </Sheet>
-
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <Button variant="outline">
-                        <MessageSquare className="mr-2 h-4 w-4" />
-                        Message All
+                      <Button 
+                        size="sm" 
+                        variant="destructive"
+                        onClick={() => handleDeleteProperty(property.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
-                    </SheetTrigger>
-                    <SheetContent>
-                      <SheetHeader>
-                        <SheetTitle>Send Message</SheetTitle>
-                      </SheetHeader>
-                      <div className="mt-6 space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="recipient">Send to:</Label>
-                          <select 
-                            id="recipient"
-                            value={selectedRecipient}
-                            onChange={(e) => setSelectedRecipient(e.target.value)}
-                            className="w-full p-2 border rounded-md"
-                          >
-                            <option value="all">All Tenants</option>
-                            {properties.map(property => (
-                              <option key={property.id} value={property.name}>{property.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="message">Message:</Label>
-                          <Textarea
-                            id="message"
-                            value={messageText}
-                            onChange={(e) => setMessageText(e.target.value)}
-                            placeholder="Type your message here..."
-                            rows={4}
-                          />
-                        </div>
-                        <Button onClick={handleSendMessage} className="w-full">
-                          Send Message
-                        </Button>
-                      </div>
-                    </SheetContent>
-                  </Sheet>
-
-                  <Button onClick={handleGenerateReport} variant="outline">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Generate Report
-                  </Button>
-                  <Button onClick={handleInviteManager} variant="outline">
-                    <Mail className="mr-2 h-4 w-4" />
-                    Invite Manager
-                  </Button>
-                  <Button onClick={handleAddProperty} className="bg-gradient-hero hover:shadow-glow">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Property
-                  </Button>
-                </div>
-              </div>
-
-              {/* Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Properties</CardTitle>
-                    <Building2 className="h-4 w-4 text-primary" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-primary">{totalProperties}</div>
-                    <p className="text-xs text-muted-foreground">Active properties</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Rooms</CardTitle>
-                    <Home className="h-4 w-4 text-accent" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-accent">{totalRooms}</div>
-                    <p className="text-xs text-muted-foreground">Across all properties</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Occupied Rooms</CardTitle>
-                    <Users className="h-4 w-4 text-primary" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-primary">{occupiedRooms}</div>
-                    <p className="text-xs text-muted-foreground">Currently rented</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Vacant Rooms</CardTitle>
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-muted-foreground">{vacantRooms}</div>
-                    <p className="text-xs text-muted-foreground">Available for rent</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Occupancy Rate</CardTitle>
-                    <Users className="h-4 w-4 text-primary" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-primary">{occupancyRate}%</div>
-                    <p className="text-xs text-muted-foreground">Overall occupancy</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Properties Grid */}
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-foreground">Your Properties</h2>
-                  <Badge variant="secondary" className="text-sm">
-                    {properties.length} Properties
-                  </Badge>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {properties.map((property) => (
-                    <Card key={property.id} className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card hover:shadow-warm transition-all duration-300 overflow-hidden group">
-                      <div className="relative">
-                        <img
-                          src={property.image}
-                          alt={property.name}
-                          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        <div className="absolute top-4 right-4">
-                          <Badge className="bg-primary/90 text-primary-foreground">
-                            {property.occupiedRooms}/{property.totalRooms} Occupied
-                          </Badge>
-                        </div>
-                      </div>
-                      
-                      <CardHeader>
-                        <CardTitle className="text-lg">{property.name}</CardTitle>
-                        <CardDescription className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
-                          {property.location}
-                        </CardDescription>
-                      </CardHeader>
-                      
-                      <CardContent>
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Total rooms</span>
-                            <span className="text-sm font-medium">{property.totalRooms}</span>
-                          </div>
-
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Rent per room</span>
-                            <span className="text-lg font-bold text-primary">
-                              KSh {property.rentPerRoom.toLocaleString()}
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Occupancy</span>
-                            <span className="text-sm font-medium">
-                              {property.totalRooms > 0 ? ((property.occupiedRooms / property.totalRooms) * 100).toFixed(0) : 0}%
-                            </span>
-                          </div>
-
-                          <div className="w-full bg-muted rounded-full h-2">
-                            <div
-                              className="bg-gradient-hero h-2 rounded-full transition-all duration-300"
-                              style={{
-                                width: `${property.totalRooms > 0 ? (property.occupiedRooms / property.totalRooms) * 100 : 0}%`,
-                              }}
-                            />
-                          </div>
-                          
-                          <div className="flex gap-2 pt-2">
-                            <Button 
-                              size="sm" 
-                              className="flex-1 bg-gradient-hero hover:shadow-glow"
-                              onClick={() => handleViewRooms(property.id)}
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Rooms
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="destructive"
-                              onClick={() => handleDeleteProperty(property.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
+                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
 
         <RoomDetailsModal
@@ -608,18 +450,21 @@ const PropertyOwnerDashboard = () => {
         <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogTitle>Delete Property</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the property
-                and all associated rooms and tenant data.
+                Are you sure you want to delete this property? This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDeleteProperty}>Delete</AlertDialogAction>
+              <AlertDialogAction onClick={confirmDeleteProperty} className="bg-destructive hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        </div>
       </div>
     </div>
   );
