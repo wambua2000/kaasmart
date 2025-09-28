@@ -1,0 +1,7 @@
+{
+  "nodeModulesDir": "auto",
+  "imports": {
+    "std/": "https://deno.land/std@0.190.0/",
+    "supabase": "https://esm.sh/@supabase/supabase-js@2"
+  }
+}
