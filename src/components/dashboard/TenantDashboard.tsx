@@ -22,6 +22,8 @@ interface TenantInfo {
   dateOfEntry: string;
   emergencyContact: string;
   accessories: string[];
+  roomId?: string;
+  propertyId?: string;
 }
 
 const TenantDashboard = () => {
@@ -37,6 +39,8 @@ const TenantDashboard = () => {
     dateOfEntry: "2023-10-15",
     emergencyContact: "0723456789",
     accessories: ["Bed", "Table", "Chair", "Wardrobe", "Study Desk"],
+    roomId: "mock-room-id",
+    propertyId: "mock-property-id",
   });
 
   const [maintenanceRequest, setMaintenanceRequest] = useState("");
@@ -176,7 +180,7 @@ const TenantDashboard = () => {
                       <FileText className="h-4 w-4 text-primary" />
                       Lease Documents
                     </h4>
-                    <LeaseUpload />
+                    <LeaseUpload roomId={tenantInfo.roomId} propertyId={tenantInfo.propertyId} />
                   </div>
                 </CardContent>
               </Card>

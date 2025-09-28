@@ -224,7 +224,7 @@ const RoomDetailsModal = ({ property, isOpen, onClose }: RoomDetailsModalProps) 
                 {/* Lease Documents for this room */}
                 <RoomLeaseViewer 
                   roomId={room.id}
-                  tenantId={room.tenant?.email} // Using email as tenant ID for now
+                  tenantEmail={room.tenant?.email}
                   roomNumber={room.number}
                 />
               </div>

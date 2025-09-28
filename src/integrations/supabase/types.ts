@@ -121,7 +121,22 @@ export type Database = {
           updated_at?: string
           upload_date?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_lease_documents_property_id"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_lease_documents_room_id"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {

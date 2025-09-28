@@ -19,22 +19,22 @@ interface LeaseDocument {
 
 interface RoomLeaseViewerProps {
   roomId?: string;
-  tenantId?: string;
+  tenantEmail?: string;
   roomNumber: string;
 }
 
-const RoomLeaseViewer = ({ roomId, tenantId, roomNumber }: RoomLeaseViewerProps) => {
+const RoomLeaseViewer = ({ roomId, tenantEmail, roomNumber }: RoomLeaseViewerProps) => {
   const { toast } = useToast();
   const [leaseDocuments, setLeaseDocuments] = useState<LeaseDocument[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (tenantId) {
+    if (tenantEmail || roomId) {
       fetchLeaseDocuments();
     } else {
       setLoading(false);
     }
-  }, [tenantId, roomId]);
+  }, [tenantEmail, roomId]);
 
   const fetchLeaseDocuments = async () => {
     try {
@@ -45,11 +45,24 @@ const RoomLeaseViewer = ({ roomId, tenantId, roomNumber }: RoomLeaseViewerProps)
         .select('*')
         .order('upload_date', { ascending: false });
 
-      // Filter by tenant_id if provided, or room_id if provided
-      if (tenantId) {
-        query = query.eq('tenant_id', tenantId);
-      } else if (roomId) {
+      // If we have a roomId, filter by room_id
+      if (roomId) {
         query = query.eq('room_id', roomId);
+      } else if (tenantEmail) {
+        // If we only have tenant email, we need to get the tenant_id first
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', tenantEmail)
+          .single();
+        
+        if (profiles) {
+          query = query.eq('tenant_id', profiles.id);
+        } else {
+          setLeaseDocuments([]);
+          setLoading(false);
+          return;
+        }
       }
 
       const { data, error } = await query;
@@ -191,7 +204,7 @@ const RoomLeaseViewer = ({ roomId, tenantId, roomNumber }: RoomLeaseViewerProps)
     );
   }
 
-  if (!tenantId) {
+  if (!tenantEmail) {
     return (
       <Card className="bg-card/30">
         <CardHeader>

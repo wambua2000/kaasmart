@@ -14,7 +14,12 @@ interface LeaseDocument {
   notes?: string;
 }
 
-const LeaseUpload = () => {
+interface LeaseUploadProps {
+  roomId?: string;
+  propertyId?: string;
+}
+
+const LeaseUpload = ({ roomId, propertyId }: LeaseUploadProps = {}) => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -69,11 +74,30 @@ const LeaseUpload = () => {
 
       if (uploadError) throw uploadError;
 
+      // Get current user's room and property info if not provided
+      let currentRoomId = roomId;
+      let currentPropertyId = propertyId;
+      
+      if (!currentRoomId || !currentPropertyId) {
+        const { data: roomData } = await supabase
+          .from('rooms')
+          .select('id, property_id')
+          .eq('tenant_id', user.id)
+          .single();
+          
+        if (roomData) {
+          currentRoomId = roomData.id;
+          currentPropertyId = roomData.property_id;
+        }
+      }
+
       // Save document metadata to database
       const { data: documentData, error: documentError } = await supabase
         .from('lease_documents')
         .insert({
           tenant_id: user.id,
+          room_id: currentRoomId,
+          property_id: currentPropertyId,
           file_name: file.name,
           file_path: filePath,
           file_size: file.size,
