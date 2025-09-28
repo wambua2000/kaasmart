@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, User, Phone, Mail, MessageSquare, Wrench, FileText, MapPin, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import LeaseUpload from "@/components/property/LeaseUpload";
-import apartmentInterior from "@/assets/apartment-interior.jpg";
+import beautifulTenantRoom from "@/assets/beautiful-tenant-room.jpg";
 
 interface TenantInfo {
   name: string;
@@ -94,8 +94,8 @@ const TenantDashboard = () => {
         <Card className="mb-8 bg-card/80 backdrop-blur-sm border-border/50 shadow-card overflow-hidden">
           <div className="relative">
             <img
-              src={apartmentInterior}
-              alt="Your room"
+              src={beautifulTenantRoom}
+              alt="Your beautiful room with accessories"
               className="w-full h-64 object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
