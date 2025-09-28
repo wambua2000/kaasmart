@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   User, Phone, Mail, Calendar, CreditCard, MapPin, 
   Upload, MessageSquare, UserPlus, Edit, Save, 
-  Bed, Table, Home, Copy, Send, CheckCircle
+  Bed, Table, Home
 } from "lucide-react";
 
 interface Tenant {
@@ -69,76 +69,8 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
   const [tempEmergencyContact, setTempEmergencyContact] = useState(globalEmergencyContact);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(false);
-  const [generatedCredentials, setGeneratedCredentials] = useState<{
-    email: string;
-    password: string;
-    loginUrl: string;
-  } | null>(null);
-  const [showCredentials, setShowCredentials] = useState(false);
-  const [sendingEmail, setSendingEmail] = useState(false);
 
-  // Generate credentials for tenant
-  const generateTenantCredentials = (propertyName: string, roomNumber: string) => {
-    const propertyPrefix = propertyName.toLowerCase().replace(/\s+/g, '');
-    const email = `${roomNumber}@kaasmart.com`;
-    const password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase();
-    const loginUrl = window.location.origin + "/login";
-    
-    return { email, password, loginUrl };
-  };
-
-  // Copy to clipboard function
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast({
-        title: "Copied!",
-        description: "Credentials copied to clipboard.",
-      });
-    } catch (error) {
-      toast({
-        title: "Copy Failed",
-        description: "Please copy the credentials manually.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Send credentials via email
-  const sendCredentialsEmail = async () => {
-    if (!generatedCredentials || !editingTenant || !selectedRoom) return;
-    
-    setSendingEmail(true);
-    try {
-      const { error } = await supabase.functions.invoke('send-tenant-credentials', {
-        body: {
-          tenantName: editingTenant.name,
-          tenantEmail: editingTenant.email,
-          propertyName: property.name,
-          roomNumber: selectedRoom.number,
-          generatedEmail: generatedCredentials.email,
-          temporaryPassword: generatedCredentials.password,
-          loginUrl: generatedCredentials.loginUrl
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Email Sent!",
-        description: "Login credentials have been sent to the tenant's email.",
-      });
-    } catch (error) {
-      console.error('Error sending email:', error);
-      toast({
-        title: "Email Failed",
-        description: "Failed to send credentials email. Please share manually.",
-        variant: "destructive"
-      });
-    } finally {
-      setSendingEmail(false);
-    }
-  };
+  // Fetch rooms from Supabase
   const fetchRooms = async () => {
     if (!property) return;
     
@@ -299,10 +231,6 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
   const handleSaveNewTenant = async () => {
     if (!editingTenant || !selectedRoom) return;
     
-    // Generate credentials before saving
-    const credentials = generateTenantCredentials(property.name, selectedRoom.number);
-    setGeneratedCredentials(credentials);
-    
     setLoading(true);
     try {
       // Add tenant to existing room, preserving room details
@@ -324,11 +252,10 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
       
       toast({
         title: "Tenant Added",
-        description: "New tenant has been added successfully. Credentials generated!",
+        description: "New tenant has been added successfully.",
       });
       setEditingTenant(null);
       setShowAddTenant(false);
-      setShowCredentials(true);
       fetchRooms(); // Refresh the rooms data
     } catch (error) {
       console.error('Error adding tenant:', error);
@@ -807,118 +734,6 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
             )}
           </div>
         </div>
-
-        {/* Credentials Modal */}
-        {showCredentials && generatedCredentials && (
-          <Dialog open={showCredentials} onOpenChange={setShowCredentials}>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  Tenant Login Credentials Generated
-                </DialogTitle>
-              </DialogHeader>
-              
-              <div className="space-y-6">
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-                    <div>
-                      <h3 className="font-medium text-green-800">Tenant Added Successfully!</h3>
-                      <p className="text-sm text-green-700 mt-1">
-                        Login credentials have been generated for the new tenant.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                  <h3 className="font-semibold text-blue-900 mb-4">Generated Login Credentials</h3>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-sm font-medium text-blue-800">Email Address</Label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <code className="flex-1 bg-white px-3 py-2 rounded border text-sm font-mono">
-                          {generatedCredentials.email}
-                        </code>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => copyToClipboard(generatedCredentials.email)}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label className="text-sm font-medium text-blue-800">Temporary Password</Label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <code className="flex-1 bg-white px-3 py-2 rounded border text-sm font-mono">
-                          {generatedCredentials.password}
-                        </code>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => copyToClipboard(generatedCredentials.password)}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label className="text-sm font-medium text-blue-800">Login URL</Label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <code className="flex-1 bg-white px-3 py-2 rounded border text-sm font-mono">
-                          {generatedCredentials.loginUrl}
-                        </code>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => copyToClipboard(generatedCredentials.loginUrl)}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="pt-4 border-t">
-                      <Button
-                        onClick={() => copyToClipboard(`Email: ${generatedCredentials.email}\nPassword: ${generatedCredentials.password}\nLogin URL: ${generatedCredentials.loginUrl}`)}
-                        className="w-full mb-3"
-                        variant="outline"
-                      >
-                        <Copy className="mr-2 h-4 w-4" />
-                        Copy All Credentials
-                      </Button>
-
-                      <Button
-                        onClick={sendCredentialsEmail}
-                        disabled={sendingEmail || !editingTenant?.email}
-                        className="w-full bg-gradient-hero hover:shadow-glow"
-                      >
-                        <Send className="mr-2 h-4 w-4" />
-                        {sendingEmail ? "Sending..." : "Send via Email"}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                  <h4 className="font-medium text-amber-800 mb-2">Important Notes:</h4>
-                  <ul className="text-sm text-amber-700 space-y-1">
-                    <li>• The tenant should change their password after first login</li>
-                    <li>• Share these credentials securely with the tenant</li>
-                    <li>• Keep a record of the generated email for future reference</li>
-                    <li>• The login URL will direct them to the tenant portal</li>
-                  </ul>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
       </DialogContent>
     </Dialog>
   );
