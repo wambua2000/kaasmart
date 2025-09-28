@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings, ExternalLink, Wrench, MessageSquare, Eye, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -42,6 +43,8 @@ interface Property {
 
 const PropertyOwnerDashboard = () => {
   const { toast } = useToast();
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [isAddPropertyModalOpen, setIsAddPropertyModalOpen] = useState(false);
@@ -53,44 +56,112 @@ const PropertyOwnerDashboard = () => {
   const [selectedRecipient, setSelectedRecipient] = useState("all");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
-  const [properties, setProperties] = useState<Property[]>([
-    {
-      id: "1",
-      name: "Skyline Apartment",
-      location: "Nairobi West, Nairobi",
-      rentPerRoom: 15000,
-      totalRooms: 50,
-      occupiedRooms: 42,
-      image: skylineApartment,
-    },
-    {
-      id: "2",
-      name: "Yellow House",
-      location: "Mombasa Road, Nairobi", 
-      rentPerRoom: 18000,
-      totalRooms: 20,
-      occupiedRooms: 18,
-      image: yellowHouse,
-    },
-    {
-      id: "3",
-      name: "White House",
-      location: "Kisumu CBD, Kisumu",
-      rentPerRoom: 12000,
-      totalRooms: 20,
-      occupiedRooms: 16,
-      image: whiteHouse,
-    },
-    {
-      id: "4",
-      name: "Green House",
-      location: "Nakuru Town, Nakuru",
-      rentPerRoom: 14000,
-      totalRooms: 20,
-      occupiedRooms: 17,
-      image: greenHouse,
-    },
-  ]);
+
+  // Image mapping for properties
+  const getPropertyImage = (propertyName: string) => {
+    const imageMap: Record<string, string> = {
+      "Skyline Apartment": skylineApartment,
+      "Yellow House": yellowHouse,
+      "White House": whiteHouse,
+      "Green House": greenHouse,
+    };
+    return imageMap[propertyName] || apartmentInterior;
+  };
+
+  useEffect(() => {
+    fetchProperties();
+  }, []);
+
+  const fetchProperties = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        // If no user, use mock data for demo purposes
+        setProperties([
+          {
+            id: "1",
+            name: "Skyline Apartment",
+            location: "Nairobi West, Nairobi",
+            rentPerRoom: 15000,
+            totalRooms: 50,
+            occupiedRooms: 42,
+            image: skylineApartment,
+          },
+          {
+            id: "2",
+            name: "Yellow House",
+            location: "Mombasa Road, Nairobi", 
+            rentPerRoom: 18000,
+            totalRooms: 20,
+            occupiedRooms: 18,
+            image: yellowHouse,
+          },
+          {
+            id: "3",
+            name: "White House",
+            location: "Kisumu CBD, Kisumu",
+            rentPerRoom: 12000,
+            totalRooms: 20,
+            occupiedRooms: 16,
+            image: whiteHouse,
+          },
+          {
+            id: "4",
+            name: "Green House",
+            location: "Nakuru Town, Nakuru",
+            rentPerRoom: 14000,
+            totalRooms: 20,
+            occupiedRooms: 17,
+            image: greenHouse,
+          },
+        ]);
+        setLoading(false);
+        return;
+      }
+
+      const { data: propertiesData, error } = await supabase
+        .from('properties')
+        .select(`
+          *,
+          rooms!inner(
+            id,
+            is_occupied
+          )
+        `)
+        .eq('owner_id', user.id);
+
+      if (error) throw error;
+
+      // Transform data to match Property interface
+      const transformedProperties: Property[] = (propertiesData || []).map(prop => {
+        const totalRooms = prop.total_rooms;
+        const occupiedRooms = prop.rooms?.filter((room: any) => room.is_occupied).length || 0;
+        
+        return {
+          id: prop.id,
+          name: prop.name,
+          location: prop.location,
+          rentPerRoom: prop.rent_per_room,
+          totalRooms: totalRooms,
+          occupiedRooms: occupiedRooms,
+          image: getPropertyImage(prop.name),
+        };
+      });
+
+      setProperties(transformedProperties);
+    } catch (error) {
+      console.error('Error fetching properties:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load properties. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.totalRooms, 0);
@@ -102,8 +173,86 @@ const PropertyOwnerDashboard = () => {
     setIsAddPropertyModalOpen(true);
   };
 
-  const handleAddPropertySubmit = (newProperty: Property) => {
-    setProperties([...properties, newProperty]);
+  const handleAddPropertySubmit = async (newProperty: Property) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        // Fallback to mock data if no user
+        setProperties([...properties, newProperty]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('properties')
+        .insert({
+          name: newProperty.name,
+          location: newProperty.location,
+          rent_per_room: newProperty.rentPerRoom,
+          total_rooms: newProperty.totalRooms,
+          owner_id: user.id,
+          image_url: newProperty.image,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Generate rooms for the new property
+      await generateRoomsForNewProperty(data.id, newProperty.name, newProperty.totalRooms, newProperty.rentPerRoom);
+      
+      // Refresh properties list
+      await fetchProperties();
+      
+      toast({
+        title: "Property Added",
+        description: "New property has been added successfully with rooms.",
+      });
+    } catch (error) {
+      console.error('Error adding property:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add property. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const generateRoomsForNewProperty = async (propertyId: string, propertyName: string, totalRooms: number, rentAmount: number) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const roomPrefix = getRoomPrefix(propertyName);
+      const roomsToInsert = [];
+
+      for (let i = 1; i <= totalRooms; i++) {
+        roomsToInsert.push({
+          room_number: `${roomPrefix}${i.toString().padStart(3, '0')}`,
+          property_id: propertyId,
+          rent_amount: rentAmount,
+          rent_status: 'not-paid',
+          is_occupied: false,
+        });
+      }
+
+      const { error } = await supabase
+        .from('rooms')
+        .insert(roomsToInsert);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error generating rooms:', error);
+      throw error;
+    }
+  };
+
+  const getRoomPrefix = (propertyName: string): string => {
+    const nameMap: Record<string, string> = {
+      "White House": "white",
+      "Yellow House": "yellow", 
+      "Green House": "green",
+      "Skyline Apartment": "skyline"
+    };
+    return nameMap[propertyName] || "room";
   };
 
   const handleOpenSheet = () => {
@@ -136,14 +285,41 @@ const PropertyOwnerDashboard = () => {
     setDeleteConfirmOpen(true);
   };
 
-  const confirmDeleteProperty = () => {
-    if (propertyToDelete) {
-      setProperties(properties.filter(p => p.id !== propertyToDelete));
+  const confirmDeleteProperty = async () => {
+    if (!propertyToDelete) return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        const { error } = await supabase
+          .from('properties')
+          .delete()
+          .eq('id', propertyToDelete)
+          .eq('owner_id', user.id);
+
+        if (error) throw error;
+        
+        // Refresh properties list
+        await fetchProperties();
+      } else {
+        // Fallback for mock data
+        setProperties(properties.filter(p => p.id !== propertyToDelete));
+      }
+      
       toast({
         title: "Property Deleted",
         description: "Property has been removed successfully.",
       });
+    } catch (error) {
+      console.error('Error deleting property:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete property. Please try again.",
+        variant: "destructive",
+      });
     }
+    
     setDeleteConfirmOpen(false);
     setPropertyToDelete(null);
   };
@@ -155,6 +331,23 @@ const PropertyOwnerDashboard = () => {
       setIsRoomManagementOpen(true);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen">
+        <div className="w-full h-16 bg-blue-600 flex items-center px-6">
+          <h1 className="text-white text-2xl font-bold">KaaSmart Property Management</h1>
+        </div>
+        <div className="bg-gradient-earth p-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-center h-64">
+              <div className="text-muted-foreground">Loading properties...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
