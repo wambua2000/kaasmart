@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { User, Phone, Mail, Calendar, CreditCard, MapPin, Users } from "lucide-react";
+import RoomLeaseViewer from "./RoomLeaseViewer";
 
 interface Room {
   id: string;
@@ -161,63 +162,72 @@ const RoomDetailsModal = ({ property, isOpen, onClose }: RoomDetailsModalProps) 
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {rooms.map((room) => (
-              <Card key={room.id} className="bg-card/30">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{room.number}</CardTitle>
-                    <Badge className={getStatusColor(room.status)}>
-                      {room.status}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {room.tenant ? (
-                    <>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{room.tenant.name}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Phone className="h-4 w-4" />
-                          <span>{room.tenant.phone}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Mail className="h-4 w-4" />
-                          <span className="truncate">{room.tenant.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Calendar className="h-4 w-4" />
-                          <span>Moved in: {room.tenant.moveInDate}</span>
-                        </div>
-                      </div>
-                      <Separator />
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Monthly Rent:</span>
-                          <span className="font-semibold">KSh {room.tenant.rent.toLocaleString()}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Payment Status:</span>
-                          <Badge className={getPaymentStatusColor(room.tenant.paymentStatus)}>
-                            {room.tenant.paymentStatus}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Last Payment:</span>
-                          <span>{room.tenant.lastPayment}</span>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-center py-6 text-muted-foreground">
-                      <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Room Available</p>
-                      <p className="text-xs">KSh {room.rent.toLocaleString()}/month</p>
+              <div key={room.id} className="space-y-4">
+                <Card className="bg-card/30">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">{room.number}</CardTitle>
+                      <Badge className={getStatusColor(room.status)}>
+                        {room.status}
+                      </Badge>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {room.tenant ? (
+                      <>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">{room.tenant.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Phone className="h-4 w-4" />
+                            <span>{room.tenant.phone}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Mail className="h-4 w-4" />
+                            <span className="truncate">{room.tenant.email}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Calendar className="h-4 w-4" />
+                            <span>Moved in: {room.tenant.moveInDate}</span>
+                          </div>
+                        </div>
+                        <Separator />
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Monthly Rent:</span>
+                            <span className="font-semibold">KSh {room.tenant.rent.toLocaleString()}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Payment Status:</span>
+                            <Badge className={getPaymentStatusColor(room.tenant.paymentStatus)}>
+                              {room.tenant.paymentStatus}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Last Payment:</span>
+                            <span>{room.tenant.lastPayment}</span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center py-6 text-muted-foreground">
+                        <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">Room Available</p>
+                        <p className="text-xs">KSh {room.rent.toLocaleString()}/month</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+                
+                {/* Lease Documents for this room */}
+                <RoomLeaseViewer 
+                  roomId={room.id}
+                  tenantId={room.tenant?.email} // Using email as tenant ID for now
+                  roomNumber={room.number}
+                />
+              </div>
             ))}
           </div>
         </div>
