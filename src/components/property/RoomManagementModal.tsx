@@ -63,66 +63,66 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
   const [tempEmergencyContact, setTempEmergencyContact] = useState(globalEmergencyContact);
   const [rooms, setRooms] = useState<Room[]>([]);
 
-  if (!property) return null;
-
-  // Generate initial room data and store in state
-  const generateRooms = (totalRooms: number, occupiedRooms: number): Room[] => {
-    const tenantNames = [
-      "John Kamau", "Mary Wanjiku", "Peter Ochieng", "Grace Akinyi", "David Mwangi",
-      "Sarah Njeri", "James Kiprotich", "Lucy Wambui", "Samuel Otieno", "Rose Wairimu",
-      "Michael Kiplagat", "Faith Nyambura", "Joseph Muturi", "Alice Wanjiru", "Daniel Kimani"
-    ];
-
-    // Generate room prefix based on property name
-    const getRoomPrefix = (propertyName: string): string => {
-      const nameMap: Record<string, string> = {
-        "White House": "white",
-        "Yellow House": "yellow", 
-        "Green House": "green",
-        "Skyline Apartment": "skyline"
-      };
-      return nameMap[propertyName] || "room";
-    };
-
-    const roomPrefix = getRoomPrefix(property.name);
-    const newRooms: Room[] = [];
-
-    for (let i = 1; i <= totalRooms; i++) {
-      const isOccupied = i <= occupiedRooms;
-      const room: Room = {
-        id: `${property.id}-${i}`,
-        number: `${roomPrefix}${i.toString().padStart(3, '0')}`,
-        status: isOccupied ? "occupied" : "vacant",
-        rentAmount: property.rentPerRoom,
-      };
-
-      if (isOccupied) {
-        const randomTenant = tenantNames[Math.floor(Math.random() * tenantNames.length)];
-        room.tenant = {
-          id: `tenant-${i}`,
-          name: randomTenant,
-          email: `${randomTenant.toLowerCase().replace(' ', '.')}@email.com`,
-          phone: `+254 7${Math.floor(10000000 + Math.random() * 90000000)}`,
-          dateOfEntry: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          rentAmount: property.rentPerRoom,
-          rentStatus: Math.random() > 0.7 ? "not-paid" : "paid",
-          accessories: ["Bed", "Table", "Chair"].filter(() => Math.random() > 0.3),
-          emergencyContact: globalEmergencyContact,
-          notes: Math.random() > 0.5 ? "Good tenant, pays on time" : undefined,
-        };
-      }
-
-      newRooms.push(room);
-    }
-    return newRooms;
-  };
-
-  // Initialize rooms when property changes
+  // Initialize rooms when property changes - MUST be before early return
   React.useEffect(() => {
     if (property) {
+      const generateRooms = (totalRooms: number, occupiedRooms: number): Room[] => {
+        const tenantNames = [
+          "John Kamau", "Mary Wanjiku", "Peter Ochieng", "Grace Akinyi", "David Mwangi",
+          "Sarah Njeri", "James Kiprotich", "Lucy Wambui", "Samuel Otieno", "Rose Wairimu",
+          "Michael Kiplagat", "Faith Nyambura", "Joseph Muturi", "Alice Wanjiru", "Daniel Kimani"
+        ];
+
+        // Generate room prefix based on property name
+        const getRoomPrefix = (propertyName: string): string => {
+          const nameMap: Record<string, string> = {
+            "White House": "white",
+            "Yellow House": "yellow", 
+            "Green House": "green",
+            "Skyline Apartment": "skyline"
+          };
+          return nameMap[propertyName] || "room";
+        };
+
+        const roomPrefix = getRoomPrefix(property.name);
+        const newRooms: Room[] = [];
+
+        for (let i = 1; i <= totalRooms; i++) {
+          const isOccupied = i <= occupiedRooms;
+          const room: Room = {
+            id: `${property.id}-${i}`,
+            number: `${roomPrefix}${i.toString().padStart(3, '0')}`,
+            status: isOccupied ? "occupied" : "vacant",
+            rentAmount: property.rentPerRoom,
+          };
+
+          if (isOccupied) {
+            const randomTenant = tenantNames[Math.floor(Math.random() * tenantNames.length)];
+            room.tenant = {
+              id: `tenant-${i}`,
+              name: randomTenant,
+              email: `${randomTenant.toLowerCase().replace(' ', '.')}@email.com`,
+              phone: `+254 7${Math.floor(10000000 + Math.random() * 90000000)}`,
+              dateOfEntry: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              rentAmount: property.rentPerRoom,
+              rentStatus: Math.random() > 0.7 ? "not-paid" : "paid",
+              accessories: ["Bed", "Table", "Chair"].filter(() => Math.random() > 0.3),
+              emergencyContact: globalEmergencyContact,
+              notes: Math.random() > 0.5 ? "Good tenant, pays on time" : undefined,
+            };
+          }
+
+          newRooms.push(room);
+        }
+        return newRooms;
+      };
+
       setRooms(generateRooms(property.totalRooms, property.occupiedRooms));
     }
-  }, [property?.id]); // Only regenerate when property changes
+  }, [property?.id, globalEmergencyContact]);
+
+  if (!property) return null;
+
 
   const handleRoomSelect = (room: Room) => {
     setSelectedRoom(room);
