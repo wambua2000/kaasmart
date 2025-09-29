@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -61,12 +61,12 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
   const [globalEmergencyContact, setGlobalEmergencyContact] = useState("+254 701 234 567");
   const [editingEmergencyContact, setEditingEmergencyContact] = useState(false);
   const [tempEmergencyContact, setTempEmergencyContact] = useState(globalEmergencyContact);
+  const [rooms, setRooms] = useState<Room[]>([]);
 
   if (!property) return null;
 
-  // Generate mock rooms with detailed tenant data
+  // Generate initial room data and store in state
   const generateRooms = (totalRooms: number, occupiedRooms: number): Room[] => {
-    const rooms: Room[] = [];
     const tenantNames = [
       "John Kamau", "Mary Wanjiku", "Peter Ochieng", "Grace Akinyi", "David Mwangi",
       "Sarah Njeri", "James Kiprotich", "Lucy Wambui", "Samuel Otieno", "Rose Wairimu",
@@ -85,6 +85,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
     };
 
     const roomPrefix = getRoomPrefix(property.name);
+    const newRooms: Room[] = [];
 
     for (let i = 1; i <= totalRooms; i++) {
       const isOccupied = i <= occupiedRooms;
@@ -111,12 +112,17 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
         };
       }
 
-      rooms.push(room);
+      newRooms.push(room);
     }
-    return rooms;
+    return newRooms;
   };
 
-  const rooms = generateRooms(property.totalRooms, property.occupiedRooms);
+  // Initialize rooms when property changes
+  React.useEffect(() => {
+    if (property) {
+      setRooms(generateRooms(property.totalRooms, property.occupiedRooms));
+    }
+  }, [property?.id]); // Only regenerate when property changes
 
   const handleRoomSelect = (room: Room) => {
     setSelectedRoom(room);
@@ -130,6 +136,18 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
   const handleSaveTenant = () => {
     if (!editingTenant || !selectedRoom) return;
     
+    // Update the specific room with the edited tenant data
+    setRooms(prevRooms => 
+      prevRooms.map(room => 
+        room.id === selectedRoom.id 
+          ? { ...room, tenant: editingTenant }
+          : room
+      )
+    );
+    
+    // Update the selected room to reflect changes
+    setSelectedRoom(prev => prev ? { ...prev, tenant: editingTenant } : null);
+    
     toast({
       title: "Tenant Updated",
       description: "Tenant information has been saved successfully.",
@@ -138,6 +156,23 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
   };
 
   const handleMarkRentPaid = (roomId: string) => {
+    // Update the specific room's rent status
+    setRooms(prevRooms =>
+      prevRooms.map(room =>
+        room.id === roomId && room.tenant
+          ? { ...room, tenant: { ...room.tenant, rentStatus: "paid" } }
+          : room
+      )
+    );
+    
+    // Update selected room if it's the one being updated
+    if (selectedRoom?.id === roomId && selectedRoom.tenant) {
+      setSelectedRoom(prev => prev ? {
+        ...prev,
+        tenant: { ...prev.tenant!, rentStatus: "paid" }
+      } : null);
+    }
+    
     toast({
       title: "Rent Marked as Paid",
       description: "The rent status has been updated.",
