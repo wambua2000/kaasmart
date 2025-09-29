@@ -32,26 +32,51 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
       return;
     }
 
-    // Demo credentials
+    // Get stored manager credentials
+    const storedManagerCredentials = JSON.parse(localStorage.getItem('managerCredentials') || '[]');
+    
+    // Demo credentials (manager credentials are now dynamic)
     const validCredentials = {
       owner: { email: "owner@kaasmart.com", password: "admin123" },
-      manager: { email: "manager@kaasmart.com", password: "manager123" },
       tenant: { email: "tenant@kaasmart.com", password: "tenant123" },
     };
 
-    const creds = validCredentials[role];
-    if (email === creds.email && password === creds.password) {
-      toast({
-        title: "Welcome to KaaSmart!",
-        description: `Logged in as ${role === 'owner' ? 'Property Owner' : role === 'manager' ? 'Manager' : 'Tenant'}`,
-      });
-      onLogin(email, role);
+    // Check credentials based on role
+    if (role === 'manager') {
+      // Check against stored manager credentials
+      const managerMatch = storedManagerCredentials.find((cred: any) => 
+        cred.email === email && cred.password === password
+      );
+      
+      if (managerMatch) {
+        toast({
+          title: "Welcome to KaaSmart!",
+          description: `Logged in as Manager`,
+        });
+        onLogin(email, role);
+      } else {
+        toast({
+          title: "Invalid Credentials",
+          description: "Manager credentials not found. Please contact the property owner for access.",
+          variant: "destructive",
+        });
+      }
     } else {
-      toast({
-        title: "Invalid Credentials",
-        description: "Please check your email, password, and role selection.",
-        variant: "destructive",
-      });
+      // Check owner/tenant credentials
+      const creds = validCredentials[role];
+      if (email === creds.email && password === creds.password) {
+        toast({
+          title: "Welcome to KaaSmart!",
+          description: `Logged in as ${role === 'owner' ? 'Property Owner' : 'Tenant'}`,
+        });
+        onLogin(email, role);
+      } else {
+        toast({
+          title: "Invalid Credentials",
+          description: "Please check your email, password, and role selection.",
+          variant: "destructive",
+        });
+      }
     }
   };
 

@@ -29,6 +29,7 @@ import AddPropertyModal from "@/components/property/AddPropertyModal";
 import RoomManagementModal from "@/components/property/RoomManagementModal";
 import ReportModal from "@/components/property/ReportModal";
 import DocumentReport from "@/components/property/DocumentReport";
+import InviteManagerModal from "@/components/manager/InviteManagerModal";
 
 interface Property {
   id: string;
@@ -48,6 +49,7 @@ const PropertyOwnerDashboard = () => {
   const [isRoomManagementOpen, setIsRoomManagementOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isDocumentReportOpen, setIsDocumentReportOpen] = useState(false);
+  const [isInviteManagerOpen, setIsInviteManagerOpen] = useState(false);
   const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
   const [messageText, setMessageText] = useState("");
   const [selectedRecipient, setSelectedRecipient] = useState("all");
@@ -121,9 +123,24 @@ const PropertyOwnerDashboard = () => {
   };
 
   const handleInviteManager = () => {
+    setIsInviteManagerOpen(true);
+  };
+
+  const handleManagerInvited = (managerData: {
+    email: string;
+    password: string;
+    scope: 'all' | 'single';
+    propertyId?: string;
+    propertyName?: string;
+  }) => {
+    // Store manager credentials in localStorage
+    const existingCredentials = JSON.parse(localStorage.getItem('managerCredentials') || '[]');
+    const newCredentials = [...existingCredentials, managerData];
+    localStorage.setItem('managerCredentials', JSON.stringify(newCredentials));
+    
     toast({
-      title: "Manager Invited",
-      description: "Invitation email sent to manager successfully.",
+      title: "Manager Invited Successfully",
+      description: `Manager credentials generated for ${managerData.propertyName || 'selected scope'}`,
     });
   };
 
@@ -445,6 +462,13 @@ const PropertyOwnerDashboard = () => {
           properties={properties}
           isOpen={isDocumentReportOpen}
           onClose={() => setIsDocumentReportOpen(false)}
+        />
+
+        <InviteManagerModal
+          isOpen={isInviteManagerOpen}
+          onClose={() => setIsInviteManagerOpen(false)}
+          properties={properties.map(p => ({ id: p.id, name: p.name }))}
+          onManagerInvited={handleManagerInvited}
         />
 
         <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
