@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings, ExternalLink, Wrench, MessageSquare, Eye, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import useProfileSync from "@/hooks/useProfileSync";
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -43,6 +45,7 @@ interface Property {
 
 const PropertyOwnerDashboard = () => {
   const { toast } = useToast();
+  useProfileSync(); // Enable real-time profile synchronization
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [isAddPropertyModalOpen, setIsAddPropertyModalOpen] = useState(false);
@@ -55,45 +58,79 @@ const PropertyOwnerDashboard = () => {
   const [selectedRecipient, setSelectedRecipient] = useState("all");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
-  const [properties, setProperties] = useState<Property[]>([
-    {
-      id: "1",
-      name: "Skyline Apartment",
-      location: "Nairobi West, Nairobi",
-      rentPerRoom: 15000,
-      totalRooms: 50,
-      occupiedRooms: 42,
-      image: skylineApartment,
-    },
-    {
-      id: "2",
-      name: "Yellow House",
-      location: "Mombasa Road, Nairobi", 
-      rentPerRoom: 18000,
-      totalRooms: 20,
-      occupiedRooms: 18,
-      image: yellowHouse,
-    },
-    {
-      id: "3",
-      name: "White House",
-      location: "Kisumu CBD, Kisumu",
-      rentPerRoom: 12000,
-      totalRooms: 20,
-      occupiedRooms: 16,
-      image: whiteHouse,
-    },
-    {
-      id: "4",
-      name: "Green House",
-      location: "Nakuru Town, Nakuru",
-      rentPerRoom: 14000,
-      totalRooms: 20,
-      occupiedRooms: 17,
-      image: greenHouse,
-    },
-  ]);
+  const [properties, setProperties] = useState<Property[]>([]);
 
+  // Fetch real data from Supabase
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Fetch properties from database
+        const { data: propertiesData } = await supabase
+          .from('properties')
+          .select(`
+            *,
+            rooms (
+              id,
+              is_occupied
+            )
+          `)
+          .eq('owner_id', user.id);
+
+        if (propertiesData) {
+          const formattedProperties = propertiesData.map(prop => ({
+            id: prop.id,
+            name: prop.name,
+            location: prop.location,
+            rentPerRoom: prop.rent_per_room,
+            totalRooms: prop.total_rooms,
+            occupiedRooms: prop.rooms?.filter((room: any) => room.is_occupied).length || 0,
+            image: getPropertyImage(prop.name),
+          }));
+          setProperties(formattedProperties);
+        }
+
+        // Fetch messages for maintenance
+        const { data: messagesData } = await supabase
+          .from('messages')
+          .select(`
+            *,
+            properties (name),
+            rooms (room_number)
+          `)
+          .order('created_at', { ascending: false });
+
+        if (messagesData) {
+          const formattedMessages = messagesData.map(msg => ({
+            id: msg.id,
+            property: msg.properties?.name || 'Unknown Property',
+            room: msg.rooms?.room_number || 'N/A',
+            tenant: 'Tenant',
+            message: msg.message,
+            timestamp: new Date(msg.created_at).toLocaleDateString()
+          }));
+          setMaintenanceMessages(formattedMessages);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const getPropertyImage = (name: string) => {
+    switch (name) {
+      case 'Skyline Apartment': return skylineApartment;
+      case 'Yellow House': return yellowHouse;
+      case 'White House': return whiteHouse;
+      case 'Green House': return greenHouse;
+      default: return apartmentInterior;
+    }
+  };
+  // Remove the static properties array as it's now fetched from database
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.totalRooms, 0);
   const occupiedRooms = properties.reduce((sum, prop) => sum + prop.occupiedRooms, 0);
@@ -108,18 +145,71 @@ const PropertyOwnerDashboard = () => {
     setProperties([...properties, newProperty]);
   };
 
+  const handleGenerateReport = () => {
+    setIsDocumentReportOpen(true);
+  };
+
   const handleOpenSheet = () => {
     window.open("https://docs.google.com/spreadsheets/d/1zi_wSIlvUlOoaJH9kcn1DjbzJnnHi8a1tOUps2z3BK4/edit?gid=0#gid=0", "_blank");
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!messageText.trim()) return;
     
-    toast({
-      title: "Message Sent",
-      description: `Message sent to ${selectedRecipient === "all" ? "all tenants" : selectedRecipient}`,
-    });
-    setMessageText("");
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      let tenantIds: string[] = [];
+
+      if (selectedRecipient === "all") {
+        // Get all tenant IDs from all properties
+        const { data: roomsData } = await supabase
+          .from('rooms')
+          .select('tenant_id')
+          .not('tenant_id', 'is', null)
+          .in('property_id', properties.map(p => p.id));
+
+        tenantIds = roomsData?.map(room => room.tenant_id).filter(Boolean) || [];
+      } else {
+        // Get tenant IDs from specific property
+        const selectedProp = properties.find(p => p.name === selectedRecipient);
+        if (selectedProp) {
+          const { data: roomsData } = await supabase
+            .from('rooms')
+            .select('tenant_id')
+            .eq('property_id', selectedProp.id)
+            .not('tenant_id', 'is', null);
+
+          tenantIds = roomsData?.map(room => room.tenant_id).filter(Boolean) || [];
+        }
+      }
+
+      // Send message to each tenant
+      const messagePromises = tenantIds.map(tenantId => 
+        supabase.from('messages').insert({
+          tenant_id: tenantId,
+          sender_id: user.id,
+          property_id: selectedRecipient === "all" ? null : properties.find(p => p.name === selectedRecipient)?.id,
+          message: messageText
+        })
+      );
+
+      await Promise.all(messagePromises);
+
+      toast({
+        title: "Message Sent",
+        description: `Message sent to ${selectedRecipient === "all" ? "all tenants" : selectedRecipient} (${tenantIds.length} recipients)`,
+      });
+      setMessageText("");
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleInviteManager = () => {
@@ -142,10 +232,6 @@ const PropertyOwnerDashboard = () => {
       title: "Manager Invited Successfully",
       description: `Manager credentials generated for ${managerData.propertyName || 'selected scope'}`,
     });
-  };
-
-  const handleGenerateReport = () => {
-    setIsDocumentReportOpen(true);
   };
 
   const handleDeleteProperty = (propertyId: string) => {

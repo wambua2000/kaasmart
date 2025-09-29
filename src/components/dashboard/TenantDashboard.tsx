@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, User, Phone, Mail, MessageSquare, Wrench, FileText, MapPin, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import useProfileSync from "@/hooks/useProfileSync";
 import LeaseUpload from "@/components/property/LeaseUpload";
 import beautifulTenantRoom from "@/assets/beautiful-tenant-room.jpg";
 
@@ -38,6 +40,7 @@ interface TenantDashboardProps {
 
 const TenantDashboard = ({ tenantInfo: loggedInTenantInfo }: TenantDashboardProps) => {
   const { toast } = useToast();
+  useProfileSync(); // Enable real-time profile synchronization
   const [tenantInfo, setTenantInfo] = useState<TenantInfo>(() => {
     // Use logged-in tenant info if available, otherwise use demo data
     if (loggedInTenantInfo) {
@@ -84,35 +87,191 @@ const TenantDashboard = ({ tenantInfo: loggedInTenantInfo }: TenantDashboardProp
 
   const [maintenanceRequest, setMaintenanceRequest] = useState("");
   const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState<Array<{id: string, message: string, sender_name: string, created_at: string}>>([]);
+  const [maintenanceHistory, setMaintenanceHistory] = useState<Array<{id: string, message: string, created_at: string, status: string}>>([]);
 
-  const handleUpdateInfo = (field: keyof TenantInfo, value: string) => {
+  // Fetch messages and maintenance history
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Fetch messages for this tenant
+        const { data: messagesData } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('tenant_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (messagesData) {
+          const formattedMessages = messagesData.map(msg => ({
+            id: msg.id,
+            message: msg.message,
+            sender_name: msg.sender_id === user.id ? 'You' : 'Property Manager',
+            created_at: new Date(msg.created_at).toLocaleDateString()
+          }));
+          setMessages(formattedMessages);
+
+          // Separate maintenance requests from regular messages
+          const maintenanceRequests = messagesData
+            .filter(msg => msg.message.toLowerCase().includes('maintenance') || msg.message.toLowerCase().includes('repair'))
+            .map(msg => ({
+              id: msg.id,
+              message: msg.message,
+              created_at: new Date(msg.created_at).toLocaleDateString(),
+              status: 'pending' // Could be enhanced with actual status from database
+            }));
+          setMaintenanceHistory(maintenanceRequests);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const handleUpdateInfo = async (field: keyof TenantInfo, value: string) => {
     if (field === "name" || field === "email" || field === "phone") {
-      setTenantInfo(prev => ({ ...prev, [field]: value }));
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Update profile in database
+        const updateData: any = {};
+        if (field === "name") updateData.full_name = value;
+        if (field === "email") updateData.email = value;
+        if (field === "phone") updateData.phone = value;
+
+        const { error } = await supabase
+          .from('profiles')
+          .update(updateData)
+          .eq('id', user.id);
+
+        if (error) throw error;
+
+        // Update tenant info in rooms table if needed
+        if (field === "name" || field === "email" || field === "phone") {
+          const roomUpdateData: any = {};
+          if (field === "name") roomUpdateData.tenant_name = value;
+          if (field === "email") roomUpdateData.tenant_email = value;
+          if (field === "phone") roomUpdateData.tenant_phone = value;
+
+          await supabase
+            .from('rooms')
+            .update(roomUpdateData)
+            .eq('tenant_id', user.id);
+        }
+
+        setTenantInfo(prev => ({ ...prev, [field]: value }));
+        toast({
+          title: "Information Updated",
+          description: "Your information has been updated successfully and synced across the system.",
+        });
+      } catch (error) {
+        console.error('Error updating profile:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update information. Please try again.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const handleMaintenanceRequest = async () => {
+    if (!maintenanceRequest.trim()) return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get tenant's room and property info
+      const { data: roomData } = await supabase
+        .from('rooms')
+        .select('property_id, room_number')
+        .eq('tenant_id', user.id)
+        .single();
+
+      if (!roomData) return;
+
+      // Insert maintenance request message
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          tenant_id: user.id,
+          sender_id: user.id,
+          property_id: roomData.property_id,
+          room_id: null,
+          message: `MAINTENANCE REQUEST: ${maintenanceRequest}`
+        });
+
+      if (error) throw error;
+
       toast({
-        title: "Information Updated",
-        description: "Your information has been updated successfully.",
+        title: "Maintenance Request Sent",
+        description: "Your maintenance request has been submitted to the manager and property owner.",
+      });
+      setMaintenanceRequest("");
+
+      // Refresh messages
+      window.location.reload();
+    } catch (error) {
+      console.error('Error sending maintenance request:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send maintenance request. Please try again.",
+        variant: "destructive"
       });
     }
   };
 
-  const handleMaintenanceRequest = () => {
-    if (!maintenanceRequest.trim()) return;
-    
-    toast({
-      title: "Maintenance Request Sent",
-      description: "Your maintenance request has been submitted to the manager.",
-    });
-    setMaintenanceRequest("");
-  };
-
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!message.trim()) return;
     
-    toast({
-      title: "Message Sent",
-      description: "Your message has been sent to the property manager.",
-    });
-    setMessage("");
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get tenant's room and property info
+      const { data: roomData } = await supabase
+        .from('rooms')
+        .select('property_id, room_number')
+        .eq('tenant_id', user.id)
+        .single();
+
+      if (!roomData) return;
+
+      // Insert message
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          tenant_id: user.id,
+          sender_id: user.id,
+          property_id: roomData.property_id,
+          room_id: null,
+          message: message
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Message Sent",
+        description: "Your message has been sent to the property manager and owner.",
+      });
+      setMessage("");
+
+      // Refresh messages
+      window.location.reload();
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -355,20 +514,21 @@ const TenantDashboard = ({ tenantInfo: loggedInTenantInfo }: TenantDashboardProp
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium">Leaking faucet in bathroom</span>
-                      <Badge variant="destructive">Pending</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Submitted on Jan 15, 2024</p>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium">Light bulb replacement</span>
-                      <Badge variant="secondary">Completed</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Submitted on Jan 10, 2024</p>
-                  </div>
+                  {maintenanceHistory.length > 0 ? (
+                    maintenanceHistory.map((request) => (
+                      <div key={request.id} className="p-3 border rounded-lg">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium">{request.message.replace('MAINTENANCE REQUEST: ', '')}</span>
+                          <Badge variant={request.status === 'completed' ? 'secondary' : 'destructive'}>
+                            {request.status}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">Submitted on {request.created_at}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground text-center">No maintenance requests yet</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -407,22 +567,22 @@ const TenantDashboard = ({ tenantInfo: loggedInTenantInfo }: TenantDashboardProp
                 <div className="border-t pt-4">
                   <h4 className="font-medium mb-3">Recent Messages</h4>
                   <div className="space-y-3">
-                    <div className="p-3 bg-muted/50 rounded-lg">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium">Property Manager</span>
-                        <span className="text-xs text-muted-foreground">1 hour ago</span>
-                      </div>
-                      <p className="text-sm">We've received your maintenance request and will send someone to fix the faucet tomorrow.</p>
-                    </div>
-                    <div className="p-3 bg-muted/50 rounded-lg">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium">Property Owner</span>
-                        <span className="text-xs text-muted-foreground">2 days ago</span>
-                      </div>
-                      <p className="text-sm">Thank you for your payment. Your rent for this month has been received.</p>
-                    </div>
+                    {messages.length > 0 ? (
+                      messages.slice(0, 5).map((msg) => (
+                        <div key={msg.id} className="p-3 bg-muted/50 rounded-lg">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium">{msg.sender_name}</span>
+                            <span className="text-xs text-muted-foreground">{msg.created_at}</span>
+                          </div>
+                          <p className="text-sm">{msg.message}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground text-center">No messages yet</p>
+                    )}
                   </div>
                 </div>
+
               </CardContent>
             </Card>
           </TabsContent>

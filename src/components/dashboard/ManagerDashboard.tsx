@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Home, Users, DollarSign, MapPin, Eye, Wrench } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import useProfileSync from "@/hooks/useProfileSync";
 import apartmentInterior from "@/assets/apartment-interior.jpg";
 import skylineApartment from "@/assets/skyline-apartment.jpg";
 import yellowHouse from "@/assets/yellow-house.jpg";
@@ -25,48 +27,79 @@ interface Property {
 
 const ManagerDashboard = () => {
   const { toast } = useToast();
+  useProfileSync(); // Enable real-time profile synchronization
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [isRoomManagementOpen, setIsRoomManagementOpen] = useState(false);
   const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
-  const [properties, setProperties] = useState<Property[]>([
-    {
-      id: "1",
-      name: "Skyline Apartment",
-      location: "Nairobi West, Nairobi",
-      rentPerRoom: 15000,
-      totalRooms: 50,
-      occupiedRooms: 42,
-      image: skylineApartment,
-    },
-    {
-      id: "2",
-      name: "Yellow House",
-      location: "Mombasa Road, Nairobi", 
-      rentPerRoom: 18000,
-      totalRooms: 20,
-      occupiedRooms: 18,
-      image: yellowHouse,
-    },
-    {
-      id: "3",
-      name: "White House",
-      location: "Kisumu CBD, Kisumu",
-      rentPerRoom: 12000,
-      totalRooms: 20,
-      occupiedRooms: 16,
-      image: whiteHouse,
-    },
-    {
-      id: "4",
-      name: "Green House",
-      location: "Nakuru Town, Nakuru",
-      rentPerRoom: 14000,
-      totalRooms: 20,
-      occupiedRooms: 17,
-      image: greenHouse,
-    },
-  ]);
+
+  // Fetch real data from Supabase
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch properties from database (managers can see all properties for now)
+        const { data: propertiesData } = await supabase
+          .from('properties')
+          .select(`
+            *,
+            rooms (
+              id,
+              is_occupied
+            )
+          `);
+
+        if (propertiesData) {
+          const formattedProperties = propertiesData.map(prop => ({
+            id: prop.id,
+            name: prop.name,
+            location: prop.location,
+            rentPerRoom: prop.rent_per_room,
+            totalRooms: prop.total_rooms,
+            occupiedRooms: prop.rooms?.filter((room: any) => room.is_occupied).length || 0,
+            image: getPropertyImage(prop.name),
+          }));
+          setProperties(formattedProperties);
+        }
+
+        // Fetch messages for maintenance
+        const { data: messagesData } = await supabase
+          .from('messages')
+          .select(`
+            *,
+            properties (name),
+            rooms (room_number)
+          `)
+          .order('created_at', { ascending: false });
+
+        if (messagesData) {
+          const formattedMessages = messagesData.map(msg => ({
+            id: msg.id,
+            property: msg.properties?.name || 'Unknown Property',
+            room: msg.rooms?.room_number || 'N/A',
+            tenant: 'Tenant',
+            message: msg.message,
+            timestamp: new Date(msg.created_at).toLocaleDateString()
+          }));
+          setMaintenanceMessages(formattedMessages);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const getPropertyImage = (name: string) => {
+    switch (name) {
+      case 'Skyline Apartment': return skylineApartment;
+      case 'Yellow House': return yellowHouse;
+      case 'White House': return whiteHouse;
+      case 'Green House': return greenHouse;
+      default: return apartmentInterior;
+    }
+  };
+  const [properties, setProperties] = useState<Property[]>([]);
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.totalRooms, 0);
