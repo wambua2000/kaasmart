@@ -32,13 +32,13 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
       return;
     }
 
-    // Get stored manager credentials
+    // Get stored manager and tenant credentials
     const storedManagerCredentials = JSON.parse(localStorage.getItem('managerCredentials') || '[]');
+    const storedTenantCredentials = JSON.parse(localStorage.getItem('tenantCredentials') || '[]');
     
-    // Demo credentials (manager credentials are now dynamic)
+    // Demo credentials (only owner remains as demo)
     const validCredentials = {
       owner: { email: "owner@kaasmart.com", password: "admin123" },
-      tenant: { email: "tenant@kaasmart.com", password: "tenant123" },
     };
 
     // Check credentials based on role
@@ -61,13 +61,32 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
           variant: "destructive",
         });
       }
+    } else if (role === 'tenant') {
+      // Check against stored tenant credentials
+      const tenantMatch = storedTenantCredentials.find((cred: any) => 
+        cred.email === email && cred.password === password
+      );
+      
+      if (tenantMatch) {
+        toast({
+          title: "Welcome to KaaSmart!",
+          description: `Logged in as Tenant - ${tenantMatch.propertyName}`,
+        });
+        onLogin(email, role);
+      } else {
+        toast({
+          title: "Invalid Credentials",
+          description: "Tenant credentials not found. Please contact the property owner for access.",
+          variant: "destructive",
+        });
+      }
     } else {
-      // Check owner/tenant credentials
+      // Check owner credentials
       const creds = validCredentials[role];
       if (email === creds.email && password === creds.password) {
         toast({
           title: "Welcome to KaaSmart!",
-          description: `Logged in as ${role === 'owner' ? 'Property Owner' : 'Tenant'}`,
+          description: `Logged in as Property Owner`,
         });
         onLogin(email, role);
       } else {

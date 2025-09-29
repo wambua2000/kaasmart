@@ -13,6 +13,7 @@ import {
   Upload, MessageSquare, UserPlus, Edit, Save, 
   Bed, Table, Home
 } from "lucide-react";
+import InviteTenantModal from "./InviteTenantModal";
 
 interface Tenant {
   id: string;
@@ -56,7 +57,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
   const { toast } = useToast();
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
-  const [showAddTenant, setShowAddTenant] = useState(false);
+  const [isInviteTenantOpen, setIsInviteTenantOpen] = useState(false);
   const [globalEmergencyContact, setGlobalEmergencyContact] = useState("+254 701 234 567");
   const [editingEmergencyContact, setEditingEmergencyContact] = useState(false);
   const [tempEmergencyContact, setTempEmergencyContact] = useState(globalEmergencyContact);
@@ -119,7 +120,6 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
 
   const handleRoomSelect = (room: Room) => {
     setSelectedRoom(room);
-    setShowAddTenant(false);
     setEditingTenant(null);
   };
 
@@ -168,17 +168,27 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
   };
 
   const handleAddTenant = () => {
-    setShowAddTenant(true);
-    setEditingTenant({
-      id: "",
-      name: "",
-      email: "",
-      phone: "",
-      dateOfEntry: new Date().toISOString().split('T')[0],
-      rentAmount: property.rentPerRoom,
-      rentStatus: "not-paid",
-      accessories: [],
-      emergencyContact: globalEmergencyContact,
+    if (selectedRoom) {
+      setIsInviteTenantOpen(true);
+    }
+  };
+
+  const handleTenantInvited = (tenantData: {
+    email: string;
+    password: string;
+    propertyName: string;
+    roomNumber: string;
+    name: string;
+    dateOfEntry: string;
+  }) => {
+    // Store tenant credentials in localStorage
+    const existingCredentials = JSON.parse(localStorage.getItem('tenantCredentials') || '[]');
+    const newCredentials = [...existingCredentials, tenantData];
+    localStorage.setItem('tenantCredentials', JSON.stringify(newCredentials));
+    
+    toast({
+      title: "Tenant Invited Successfully",
+      description: `Login credentials generated for ${tenantData.name} in ${tenantData.roomNumber}`,
     });
   };
 
@@ -571,74 +581,6 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                   </>
                 ) : null}
 
-                {/* Add Tenant Form - Owner Only */}
-                {showAddTenant && userRole === "owner" && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Add New Tenant</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="new-name">Name</Label>
-                            <Input
-                              id="new-name"
-                              value={editingTenant?.name || ""}
-                              onChange={(e) => setEditingTenant(prev => prev ? {...prev, name: e.target.value} : null)}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="new-email">Email</Label>
-                            <Input
-                              id="new-email"
-                              type="email"
-                              value={editingTenant?.email || ""}
-                              onChange={(e) => setEditingTenant(prev => prev ? {...prev, email: e.target.value} : null)}
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="new-phone">Phone</Label>
-                            <Input
-                              id="new-phone"
-                              value={editingTenant?.phone || ""}
-                              onChange={(e) => setEditingTenant(prev => prev ? {...prev, phone: e.target.value} : null)}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="new-emergency">Emergency Contact</Label>
-                            <Input
-                              id="new-emergency"
-                              value={editingTenant?.emergencyContact || ""}
-                              onChange={(e) => setEditingTenant(prev => prev ? {...prev, emergencyContact: e.target.value} : null)}
-                            />
-                          </div>
-                        </div>
-                        <div className="flex gap-3">
-                          <Button 
-                            onClick={() => {
-                              toast({
-                                title: "Tenant Added",
-                                description: "New tenant has been added successfully. Login credentials generated.",
-                              });
-                              setShowAddTenant(false);
-                            }}
-                          >
-                            Add Tenant
-                          </Button>
-                          <Button 
-                            variant="outline"
-                            onClick={() => setShowAddTenant(false)}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
               </div>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -647,6 +589,14 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
             )}
           </div>
         </div>
+
+        <InviteTenantModal
+          isOpen={isInviteTenantOpen}
+          onClose={() => setIsInviteTenantOpen(false)}
+          onTenantInvited={handleTenantInvited}
+          propertyName={property.name}
+          roomNumber={selectedRoom?.number || ''}
+        />
       </DialogContent>
     </Dialog>
   );
