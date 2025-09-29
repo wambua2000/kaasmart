@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Copy, Mail, Lock, User, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface InviteTenantModalProps {
   isOpen: boolean;
@@ -36,7 +37,7 @@ const InviteTenantModal = ({
     password: string;
   } | null>(null);
 
-  const generateTenantCredentials = () => {
+  const generateTenantCredentials = async () => {
     if (!tenantName.trim()) {
       toast({
         title: "Missing Information",
@@ -46,25 +47,48 @@ const InviteTenantModal = ({
       return;
     }
 
-    // Generate email based on property and room
-    const propertyPrefix = propertyName.toLowerCase().split(' ')[0]; // "white", "skyline", etc.
-    const roomNumOnly = roomNumber.replace(/[^0-9]/g, ''); // Extract just numbers from room
-    const email = `${propertyPrefix}${roomNumOnly.padStart(3, '0')}@kaasmart.com`;
+    try {
+      // Generate email based on property and room
+      const propertyPrefix = propertyName.toLowerCase().split(' ')[0]; // "white", "skyline", etc.
+      const roomNumOnly = roomNumber.replace(/[^0-9]/g, ''); // Extract just numbers from room
+      const email = `${propertyPrefix}${roomNumOnly.padStart(3, '0')}@kaasmart.com`;
 
-    // Generate random password
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let password = '';
-    for (let i = 0; i < 8; i++) {
-      password += characters.charAt(Math.floor(Math.random() * characters.length));
+      // Use the database function to generate credentials
+      const { data, error } = await supabase.rpc('generate_invitation_credentials', {
+        invitation_email: email,
+        invitation_role: 'tenant'
+      });
+
+      if (error) {
+        console.error('Error generating invitation:', error);
+        toast({
+          title: "Error",
+          description: "Failed to generate invitation credentials. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const credentials = {
+          email: data[0].email,
+          password: data[0].temporary_password
+        };
+        setGeneratedCredentials(credentials);
+
+        toast({
+          title: "Credentials Generated",
+          description: "Tenant login credentials have been generated successfully.",
+        });
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate credentials. Please try again.",
+        variant: "destructive",
+      });
     }
-
-    const credentials = { email, password };
-    setGeneratedCredentials(credentials);
-
-    toast({
-      title: "Credentials Generated",
-      description: "Tenant login credentials have been generated successfully.",
-    });
   };
 
   const copyToClipboard = (text: string, type: string) => {

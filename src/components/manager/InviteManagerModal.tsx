@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Copy, Mail, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Property {
   id: string;
@@ -36,61 +37,83 @@ const InviteManagerModal = ({ isOpen, onClose, properties, onManagerInvited }: I
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
 
-  const generatePassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let password = '';
-    for (let i = 0; i < 12; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return password;
-  };
+  const generateCredentials = async () => {
+    try {
+      let email = '';
+      let propertyName = '';
+      let propertyId = null;
+      
+      if (inviteType === 'all') {
+        email = 'allmanager@kaasmart.com';
+        propertyName = 'All Properties';
+      } else {
+        const selectedProperty = properties.find(p => p.id === selectedPropertyId);
+        if (!selectedProperty) {
+          toast({
+            title: "Error",
+            description: "Please select a property first.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        if (selectedProperty.name === 'Skyline Apartment') {
+          email = 'skylinemanager@kaasmart.com';
+        } else {
+          // For other properties, use a general format
+          const propertySlug = selectedProperty.name.toLowerCase().replace(/\s+/g, '');
+          email = `${propertySlug}manager@kaasmart.com`;
+        }
+        propertyName = selectedProperty.name;
+        propertyId = selectedProperty.id;
+      }
 
-  const generateCredentials = () => {
-    let email = '';
-    let propertyName = '';
-    
-    if (inviteType === 'all') {
-      email = 'allmanager@kaasmart.com';
-      propertyName = 'All Properties';
-    } else {
-      const selectedProperty = properties.find(p => p.id === selectedPropertyId);
-      if (!selectedProperty) {
+      // Use the database function to generate credentials
+      const { data, error } = await supabase.rpc('generate_invitation_credentials', {
+        invitation_email: email,
+        invitation_role: 'manager',
+        invite_property_id: propertyId
+      });
+
+      if (error) {
+        console.error('Error generating invitation:', error);
         toast({
           title: "Error",
-          description: "Please select a property first.",
+          description: "Failed to generate invitation credentials. Please try again.",
           variant: "destructive",
         });
         return;
       }
-      
-      if (selectedProperty.name === 'Skyline Apartment') {
-        email = 'skylinemanager@kaasmart.com';
-      } else {
-        // For other properties, use a general format
-        const propertySlug = selectedProperty.name.toLowerCase().replace(/\s+/g, '');
-        email = `${propertySlug}manager@kaasmart.com`;
+
+      if (data && data.length > 0) {
+        const credentials = {
+          email: data[0].email,
+          password: data[0].temporary_password
+        };
+        setGeneratedCredentials(credentials);
+
+        // Call the callback for backward compatibility
+        onManagerInvited({
+          email,
+          password: data[0].temporary_password,
+          scope: inviteType,
+          propertyId: inviteType === 'single' ? selectedPropertyId : undefined,
+          propertyName,
+        });
+
+        toast({
+          title: "Manager Credentials Generated",
+          description: `Credentials created for ${propertyName}`,
+        });
       }
-      propertyName = selectedProperty.name;
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate credentials. Please try again.",
+        variant: "destructive",
+      });
     }
-
-    const password = generatePassword();
-    
-    const credentials = { email, password };
-    setGeneratedCredentials(credentials);
-
-    // Call the callback to register the credentials in the system
-    onManagerInvited({
-      email,
-      password,
-      scope: inviteType,
-      propertyId: inviteType === 'single' ? selectedPropertyId : undefined,
-      propertyName,
-    });
-
-    toast({
-      title: "Manager Credentials Generated",
-      description: `Credentials created for ${propertyName}`,
-    });
   };
 
   const copyToClipboard = (text: string, type: string) => {
