@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -61,12 +61,11 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
   const [globalEmergencyContact, setGlobalEmergencyContact] = useState("+254 701 234 567");
   const [editingEmergencyContact, setEditingEmergencyContact] = useState(false);
   const [tempEmergencyContact, setTempEmergencyContact] = useState(globalEmergencyContact);
-  const [rooms, setRooms] = useState<Room[]>([]);
 
   if (!property) return null;
 
-  // Initialize rooms data when property changes
-  const generateInitialRooms = (totalRooms: number, occupiedRooms: number): Room[] => {
+  // Generate mock rooms with detailed tenant data
+  const generateRooms = (totalRooms: number, occupiedRooms: number): Room[] => {
     const rooms: Room[] = [];
     const tenantNames = [
       "John Kamau", "Mary Wanjiku", "Peter Ochieng", "Grace Akinyi", "David Mwangi",
@@ -117,12 +116,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
     return rooms;
   };
 
-  // Initialize rooms when component mounts or property changes
-  useEffect(() => {
-    if (property) {
-      setRooms(generateInitialRooms(property.totalRooms, property.occupiedRooms));
-    }
-  }, [property]);
+  const rooms = generateRooms(property.totalRooms, property.occupiedRooms);
 
   const handleRoomSelect = (room: Room) => {
     setSelectedRoom(room);
@@ -135,22 +129,6 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
 
   const handleSaveTenant = () => {
     if (!editingTenant || !selectedRoom) return;
-    
-    // Update the specific room's tenant data in the rooms array
-    setRooms(prevRooms => 
-      prevRooms.map(room => 
-        room.id === selectedRoom.id 
-          ? { ...room, tenant: { ...editingTenant } }
-          : room
-      )
-    );
-    
-    // Update the selected room to reflect the changes
-    setSelectedRoom(prevRoom => 
-      prevRoom && prevRoom.id === selectedRoom.id 
-        ? { ...prevRoom, tenant: { ...editingTenant } }
-        : prevRoom
-    );
     
     toast({
       title: "Tenant Updated",
