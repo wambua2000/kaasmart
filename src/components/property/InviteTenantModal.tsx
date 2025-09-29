@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Copy, Mail, Lock, User, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface InviteTenantModalProps {
   isOpen: boolean;
@@ -19,6 +20,8 @@ interface InviteTenantModalProps {
   }) => void;
   propertyName: string;
   roomNumber: string;
+  propertyId: string;
+  roomId: string;
 }
 
 const InviteTenantModal = ({ 
@@ -26,7 +29,9 @@ const InviteTenantModal = ({
   onClose, 
   onTenantInvited, 
   propertyName, 
-  roomNumber 
+  roomNumber,
+  propertyId,
+  roomId
 }: InviteTenantModalProps) => {
   const { toast } = useToast();
   const [tenantName, setTenantName] = useState("");
@@ -75,7 +80,7 @@ const InviteTenantModal = ({
     });
   };
 
-  const handleInviteTenant = () => {
+  const handleInviteTenant = async () => {
     if (!generatedCredentials || !tenantName.trim()) {
       toast({
         title: "Missing Information",
@@ -85,19 +90,66 @@ const InviteTenantModal = ({
       return;
     }
 
-    onTenantInvited({
-      ...generatedCredentials,
-      propertyName,
-      roomNumber,
-      name: tenantName,
-      dateOfEntry,
-    });
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to invite tenants.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    // Reset form
-    setTenantName("");
-    setDateOfEntry(new Date().toISOString().split('T')[0]);
-    setGeneratedCredentials(null);
-    onClose();
+      // Create invitation in database
+      const { error } = await supabase
+        .from('invitations')
+        .insert({
+          email: generatedCredentials.email,
+          temporary_password: generatedCredentials.password,
+          role: 'tenant',
+          property_id: propertyId,
+          room_id: roomId,
+          invited_by: user.id,
+        });
+
+      if (error) {
+        console.error('Error creating invitation:', error);
+        toast({
+          title: "Invitation Failed",
+          description: "Failed to create tenant invitation. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Tenant Invited Successfully",
+        description: `Invitation created for ${tenantName} in ${roomNumber}`,
+      });
+
+      onTenantInvited({
+        ...generatedCredentials,
+        propertyName,
+        roomNumber,
+        name: tenantName,
+        dateOfEntry,
+      });
+
+      // Reset form
+      setTenantName("");
+      setDateOfEntry(new Date().toISOString().split('T')[0]);
+      setGeneratedCredentials(null);
+      onClose();
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleClose = () => {

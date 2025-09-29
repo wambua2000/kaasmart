@@ -203,19 +203,6 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
     name: string;
     dateOfEntry: string;
   }) => {
-    // Store tenant credentials in localStorage for login recognition
-    const existingCredentials = JSON.parse(localStorage.getItem('tenantCredentials') || '[]');
-    const newCredentials = {
-      email: tenantData.email,
-      password: tenantData.password,
-      propertyName: tenantData.propertyName,
-      roomNumber: tenantData.roomNumber,
-      tenantName: tenantData.name,
-      dateOfEntry: tenantData.dateOfEntry,
-    };
-    existingCredentials.push(newCredentials);
-    localStorage.setItem('tenantCredentials', JSON.stringify(existingCredentials));
-    
     toast({
       title: "Tenant Invited Successfully",
       description: `Login credentials generated for ${tenantData.name} in ${tenantData.roomNumber}`,
@@ -626,6 +613,8 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
           onTenantInvited={handleTenantInvited}
           propertyName={property.name}
           roomNumber={selectedRoom?.number || ''}
+          propertyId={property.id}
+          roomId={selectedRoom?.id || ''}
         />
       </DialogContent>
     </Dialog>
