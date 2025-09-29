@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings, ExternalLink, Wrench, MessageSquare, Eye, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -55,44 +56,117 @@ const PropertyOwnerDashboard = () => {
   const [selectedRecipient, setSelectedRecipient] = useState("all");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
-  const [properties, setProperties] = useState<Property[]>([
-    {
-      id: "1",
-      name: "Skyline Apartment",
-      location: "Nairobi West, Nairobi",
-      rentPerRoom: 15000,
-      totalRooms: 50,
-      occupiedRooms: 42,
-      image: skylineApartment,
-    },
-    {
-      id: "2",
-      name: "Yellow House",
-      location: "Mombasa Road, Nairobi", 
-      rentPerRoom: 18000,
-      totalRooms: 20,
-      occupiedRooms: 18,
-      image: yellowHouse,
-    },
-    {
-      id: "3",
-      name: "White House",
-      location: "Kisumu CBD, Kisumu",
-      rentPerRoom: 12000,
-      totalRooms: 20,
-      occupiedRooms: 16,
-      image: whiteHouse,
-    },
-    {
-      id: "4",
-      name: "Green House",
-      location: "Nakuru Town, Nakuru",
-      rentPerRoom: 14000,
-      totalRooms: 20,
-      occupiedRooms: 17,
-      image: greenHouse,
-    },
-  ]);
+  const [properties, setProperties] = useState<Property[]>([]);
+
+  // Fetch properties from Supabase
+  useEffect(() => {
+    const fetchProperties = async () => {
+      const { data, error } = await supabase
+        .from('properties')
+        .select(`
+          *,
+          rooms (
+            id,
+            is_occupied
+          )
+        `);
+
+      if (error) {
+        console.error('Error fetching properties:', error);
+        // Fallback to demo data
+        setProperties([
+          {
+            id: "1",
+            name: "Skyline Apartment",
+            location: "Nairobi West, Nairobi",
+            rentPerRoom: 15000,
+            totalRooms: 50,
+            occupiedRooms: 42,
+            image: skylineApartment,
+          },
+          {
+            id: "2", 
+            name: "Yellow House",
+            location: "Mombasa Road, Nairobi",
+            rentPerRoom: 18000,
+            totalRooms: 20,
+            occupiedRooms: 18,
+            image: yellowHouse,
+          },
+          {
+            id: "3",
+            name: "White House",
+            location: "Kisumu CBD, Kisumu",
+            rentPerRoom: 12000,
+            totalRooms: 20,
+            occupiedRooms: 16,
+            image: whiteHouse,
+          },
+          {
+            id: "4",
+            name: "Green House",
+            location: "Nakuru Town, Nakuru",
+            rentPerRoom: 14000,
+            totalRooms: 20,
+            occupiedRooms: 17,
+            image: greenHouse,
+          },
+        ]);
+        return;
+      }
+
+      if (data) {
+        const processedProperties = data.map(property => {
+          const occupiedRooms = property.rooms?.filter(room => room.is_occupied).length || 0;
+          
+          // Map property names to images
+          const getImageForProperty = (name: string) => {
+            switch (name) {
+              case 'Skyline Apartment': return skylineApartment;
+              case 'Yellow House': return yellowHouse;
+              case 'White House': return whiteHouse;
+              case 'Green House': return greenHouse;
+              default: return apartmentInterior;
+            }
+          };
+
+          return {
+            id: property.id,
+            name: property.name,
+            location: property.location,
+            rentPerRoom: Number(property.rent_per_room),
+            totalRooms: property.total_rooms,
+            occupiedRooms,
+            image: property.image_url || getImageForProperty(property.name),
+          };
+        });
+        
+        setProperties(processedProperties);
+      }
+    };
+
+    fetchProperties();
+
+    // Set up real-time subscription for room changes
+    const roomsSubscription = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rooms'
+        },
+        () => {
+          fetchProperties(); // Refetch properties when rooms change
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(roomsSubscription);
+    };
+  }, []);
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.totalRooms, 0);

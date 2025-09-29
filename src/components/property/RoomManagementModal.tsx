@@ -352,7 +352,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                       <p className="text-muted-foreground mb-4">
                         Rent: KSh {selectedRoom.rentAmount.toLocaleString()}/month
                       </p>
-                      {userRole === "owner" && (
+                       {userRole === "owner" && (
                         <Button onClick={handleAddTenant}>
                           <UserPlus className="mr-2 h-4 w-4" />
                           Add Tenant
@@ -626,6 +626,8 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
           onTenantInvited={handleTenantInvited}
           propertyName={property.name}
           roomNumber={selectedRoom?.number || ''}
+          propertyId={property.id}
+          roomId={selectedRoom?.id || ''}
         />
       </DialogContent>
     </Dialog>
