@@ -8,10 +8,18 @@ import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 
 const Index = () => {
-  const [user, setUser] = useState<{ email: string; role: UserRole } | null>(null);
+  const [user, setUser] = useState<{ email: string; role: UserRole; tenantInfo?: any } | null>(null);
 
   const handleLogin = (email: string, role: UserRole) => {
-    setUser({ email, role });
+    let tenantInfo = null;
+    
+    // If logging in as tenant, get their room/property info
+    if (role === 'tenant') {
+      const storedTenantCredentials = JSON.parse(localStorage.getItem('tenantCredentials') || '[]');
+      tenantInfo = storedTenantCredentials.find((cred: any) => cred.email === email);
+    }
+    
+    setUser({ email, role, tenantInfo });
   };
 
   const handleLogout = () => {
@@ -40,7 +48,7 @@ const Index = () => {
       {/* Dashboard based on role */}
       {user.role === "owner" && <PropertyOwnerDashboard />}
       {user.role === "manager" && <ManagerDashboard />}
-      {user.role === "tenant" && <TenantDashboard />}
+      {user.role === "tenant" && <TenantDashboard tenantInfo={user.tenantInfo} />}
     </div>
   );
 };

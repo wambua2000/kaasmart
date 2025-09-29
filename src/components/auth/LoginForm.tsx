@@ -70,7 +70,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
       if (tenantMatch) {
         toast({
           title: "Welcome to KaaSmart!",
-          description: `Logged in as Tenant - ${tenantMatch.propertyName}`,
+          description: `Logged in as Tenant - ${tenantMatch.propertyName}, Room ${tenantMatch.roomNumber}`,
         });
         onLogin(email, role);
       } else {

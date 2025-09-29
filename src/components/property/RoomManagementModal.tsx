@@ -181,10 +181,18 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
     name: string;
     dateOfEntry: string;
   }) => {
-    // Store tenant credentials in localStorage
+    // Store tenant credentials in localStorage for login recognition
     const existingCredentials = JSON.parse(localStorage.getItem('tenantCredentials') || '[]');
-    const newCredentials = [...existingCredentials, tenantData];
-    localStorage.setItem('tenantCredentials', JSON.stringify(newCredentials));
+    const newCredentials = {
+      email: tenantData.email,
+      password: tenantData.password,
+      propertyName: tenantData.propertyName,
+      roomNumber: tenantData.roomNumber,
+      tenantName: tenantData.name,
+      dateOfEntry: tenantData.dateOfEntry,
+    };
+    existingCredentials.push(newCredentials);
+    localStorage.setItem('tenantCredentials', JSON.stringify(existingCredentials));
     
     toast({
       title: "Tenant Invited Successfully",

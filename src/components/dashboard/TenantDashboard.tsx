@@ -26,21 +26,60 @@ interface TenantInfo {
   propertyId?: string;
 }
 
-const TenantDashboard = () => {
+interface TenantDashboardProps {
+  tenantInfo?: {
+    email: string;
+    propertyName: string;
+    roomNumber: string;
+    tenantName: string;
+    dateOfEntry: string;
+  };
+}
+
+const TenantDashboard = ({ tenantInfo: loggedInTenantInfo }: TenantDashboardProps) => {
   const { toast } = useToast();
-  const [tenantInfo, setTenantInfo] = useState<TenantInfo>({
-    name: "Sarah Wanjiku",
-    email: "sarah.w@email.com",
-    phone: "0712345678",
-    room: "White001",
-    apartment: "White House",
-    location: "Kisumu CBD, Kisumu",
-    rentAmount: 12000,
-    dateOfEntry: "2023-10-15",
-    emergencyContact: "0723456789",
-    accessories: ["Bed", "Table", "Chair", "Wardrobe", "Study Desk"],
-    roomId: "mock-room-id",
-    propertyId: "mock-property-id",
+  const [tenantInfo, setTenantInfo] = useState<TenantInfo>(() => {
+    // Use logged-in tenant info if available, otherwise use demo data
+    if (loggedInTenantInfo) {
+      // Map property locations
+      const locationMap: Record<string, string> = {
+        'White House': 'Kisumu CBD, Kisumu',
+        'Yellow House': 'Nyalenda, Kisumu',
+        'Green House': 'Kondele, Kisumu',
+        'Skyline Apartment': 'Tom Mboya Street, Kisumu'
+      };
+      
+      return {
+        name: loggedInTenantInfo.tenantName,
+        email: loggedInTenantInfo.email,
+        phone: "",
+        room: loggedInTenantInfo.roomNumber,
+        apartment: loggedInTenantInfo.propertyName,
+        location: locationMap[loggedInTenantInfo.propertyName] || "Kisumu, Kenya",
+        rentAmount: 12000, // Default rent amount
+        dateOfEntry: loggedInTenantInfo.dateOfEntry,
+        emergencyContact: "",
+        accessories: ["Bed", "Table", "Chair", "Wardrobe", "Study Desk"],
+        roomId: `${loggedInTenantInfo.propertyName}-${loggedInTenantInfo.roomNumber}`,
+        propertyId: loggedInTenantInfo.propertyName.toLowerCase().replace(/\s+/g, '-'),
+      };
+    }
+    
+    // Demo data for non-logged in users
+    return {
+      name: "Sarah Wanjiku",
+      email: "sarah.w@email.com", 
+      phone: "0712345678",
+      room: "White001",
+      apartment: "White House",
+      location: "Kisumu CBD, Kisumu",
+      rentAmount: 12000,
+      dateOfEntry: "2023-10-15",
+      emergencyContact: "0723456789",
+      accessories: ["Bed", "Table", "Chair", "Wardrobe", "Study Desk"],
+      roomId: "mock-room-id",
+      propertyId: "mock-property-id",
+    };
   });
 
   const [maintenanceRequest, setMaintenanceRequest] = useState("");
