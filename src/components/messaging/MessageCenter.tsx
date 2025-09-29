@@ -40,7 +40,7 @@ const MessageCenter = ({
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>(propertyId || "");
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>(propertyId || "all");
   const [selectedRoomId, setSelectedRoomId] = useState<string>(roomId || "");
   const [messageType, setMessageType] = useState<'general' | 'maintenance' | 'announcement'>('general');
   const [loading, setLoading] = useState(false);
@@ -62,7 +62,7 @@ const MessageCenter = ({
       // Filter based on user role and selections
       if (currentUserRole === 'tenant') {
         query = query.eq('tenant_id', currentUserId);
-      } else if (selectedPropertyId) {
+      } else if (selectedPropertyId && selectedPropertyId !== 'all') {
         query = query.eq('property_id', selectedPropertyId);
         if (selectedRoomId) {
           query = query.eq('room_id', selectedRoomId);
@@ -98,7 +98,7 @@ const MessageCenter = ({
       const messageData = {
         message: newMessage,
         sender_id: currentUserId,
-        property_id: selectedPropertyId || null,
+        property_id: selectedPropertyId && selectedPropertyId !== 'all' ? selectedPropertyId : null,
         room_id: selectedRoomId || null,
         tenant_id: currentUserRole === 'tenant' ? currentUserId : null
       };
@@ -165,7 +165,7 @@ const MessageCenter = ({
                     <SelectValue placeholder="Select property" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Properties</SelectItem>
+                    <SelectItem value="all">All Properties</SelectItem>
                     {properties.map(property => (
                       <SelectItem key={property.id} value={property.id}>
                         {property.name}
