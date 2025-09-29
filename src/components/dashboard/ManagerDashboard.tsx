@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Home, Users, DollarSign, MapPin, Eye, Wrench } from "lucide-react";
+import { Building2, Home, Users, DollarSign, MapPin, Eye, MessageSquare } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
+import MessageCenter from "@/components/messaging/MessageCenter";
 import apartmentInterior from "@/assets/apartment-interior.jpg";
 import skylineApartment from "@/assets/skyline-apartment.jpg";
 import yellowHouse from "@/assets/yellow-house.jpg";
@@ -145,29 +146,20 @@ const ManagerDashboard = () => {
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="outline">
-                  <Wrench className="mr-2 h-4 w-4" />
-                  Maintenance
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Message Center
                 </Button>
               </SheetTrigger>
-              <SheetContent>
+              <SheetContent className="w-[600px] sm:max-w-[600px]">
                 <SheetHeader>
-                  <SheetTitle>Maintenance Messages</SheetTitle>
+                  <SheetTitle>Message Center</SheetTitle>
                 </SheetHeader>
-                <div className="mt-6 space-y-4">
-                  {maintenanceMessages.length > 0 ? (
-                    maintenanceMessages.map((msg) => (
-                      <div key={msg.id} className="border rounded-lg p-4 space-y-2">
-                        <div className="flex justify-between text-sm text-muted-foreground">
-                          <span>{msg.property} - {msg.room}</span>
-                          <span>{msg.timestamp}</span>
-                        </div>
-                        <p className="font-medium">{msg.tenant}</p>
-                        <p className="text-sm">{msg.message}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-muted-foreground text-center">No maintenance requests</p>
-                  )}
+                <div className="mt-6">
+                  <MessageCenter
+                    currentUserId="mock-manager-id"
+                    currentUserRole="manager"
+                    properties={properties}
+                  />
                 </div>
               </SheetContent>
             </Sheet>

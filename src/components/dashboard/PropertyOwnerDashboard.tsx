@@ -19,6 +19,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import MessageCenter from "@/components/messaging/MessageCenter";
 import apartmentInterior from "@/assets/apartment-interior.jpg";
 import skylineApartment from "@/assets/skyline-apartment.jpg";
 import yellowHouse from "@/assets/yellow-house.jpg";
@@ -228,41 +229,19 @@ const PropertyOwnerDashboard = () => {
               <SheetTrigger asChild>
                 <Button variant="outline">
                   <MessageSquare className="mr-2 h-4 w-4" />
-                  Message All
+                  Message Center
                 </Button>
               </SheetTrigger>
-              <SheetContent>
+              <SheetContent className="w-[600px] sm:max-w-[600px]">
                 <SheetHeader>
-                  <SheetTitle>Send Message</SheetTitle>
+                  <SheetTitle>Message Center</SheetTitle>
                 </SheetHeader>
-                <div className="mt-6 space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="recipient">Send to:</Label>
-                    <select 
-                      id="recipient"
-                      value={selectedRecipient}
-                      onChange={(e) => setSelectedRecipient(e.target.value)}
-                      className="w-full p-2 border rounded-md"
-                    >
-                      <option value="all">All Tenants</option>
-                      {properties.map(property => (
-                        <option key={property.id} value={property.name}>{property.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="message">Message:</Label>
-                    <Textarea
-                      id="message"
-                      value={messageText}
-                      onChange={(e) => setMessageText(e.target.value)}
-                      placeholder="Type your message here..."
-                      rows={4}
-                    />
-                  </div>
-                  <Button onClick={handleSendMessage} className="w-full">
-                    Send Message
-                  </Button>
+                <div className="mt-6">
+                  <MessageCenter
+                    currentUserId="mock-owner-id"
+                    currentUserRole="owner"
+                    properties={properties}
+                  />
                 </div>
               </SheetContent>
             </Sheet>

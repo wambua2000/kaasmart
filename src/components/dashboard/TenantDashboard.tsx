@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, User, Phone, Mail, MessageSquare, Wrench, FileText, MapPin, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import LeaseUpload from "@/components/property/LeaseUpload";
+import MessageCenter from "@/components/messaging/MessageCenter";
+import MaintenanceRequestForm from "@/components/messaging/MaintenanceRequestForm";
 import beautifulTenantRoom from "@/assets/beautiful-tenant-room.jpg";
 
 interface TenantInfo {
@@ -318,35 +320,11 @@ const TenantDashboard = ({ tenantInfo: loggedInTenantInfo }: TenantDashboardProp
           </TabsContent>
 
           <TabsContent value="maintenance" className="space-y-6">
-            <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Wrench className="h-5 w-5 text-primary" />
-                  Maintenance Request
-                </CardTitle>
-                <CardDescription>
-                  Report maintenance issues in your room
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="maintenance">Describe the issue</Label>
-                  <Textarea
-                    id="maintenance"
-                    value={maintenanceRequest}
-                    onChange={(e) => setMaintenanceRequest(e.target.value)}
-                    placeholder="Please describe the maintenance issue in detail..."
-                    rows={4}
-                  />
-                </div>
-                <Button 
-                  onClick={handleMaintenanceRequest}
-                  className="bg-gradient-hero hover:shadow-glow"
-                >
-                  Submit Request
-                </Button>
-              </CardContent>
-            </Card>
+            <MaintenanceRequestForm
+              tenantId="mock-tenant-id"
+              propertyId={tenantInfo.propertyId}
+              roomId={tenantInfo.roomId}
+            />
 
             {/* Previous Requests */}
             <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
@@ -375,56 +353,12 @@ const TenantDashboard = ({ tenantInfo: loggedInTenantInfo }: TenantDashboardProp
           </TabsContent>
 
           <TabsContent value="messages" className="space-y-6">
-            <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-primary" />
-                  Messages
-                </CardTitle>
-                <CardDescription>
-                  Communicate with property manager and owner
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="message">Send Message</Label>
-                  <Textarea
-                    id="message"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Type your message here..."
-                    className="mt-2"
-                    rows={4}
-                  />
-                  <Button 
-                    onClick={handleSendMessage}
-                    className="mt-2 bg-gradient-hero hover:shadow-glow"
-                  >
-                    Send Message
-                  </Button>
-                </div>
-
-                <div className="border-t pt-4">
-                  <h4 className="font-medium mb-3">Recent Messages</h4>
-                  <div className="space-y-3">
-                    <div className="p-3 bg-muted/50 rounded-lg">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium">Property Manager</span>
-                        <span className="text-xs text-muted-foreground">1 hour ago</span>
-                      </div>
-                      <p className="text-sm">We've received your maintenance request and will send someone to fix the faucet tomorrow.</p>
-                    </div>
-                    <div className="p-3 bg-muted/50 rounded-lg">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium">Property Owner</span>
-                        <span className="text-xs text-muted-foreground">2 days ago</span>
-                      </div>
-                      <p className="text-sm">Thank you for your payment. Your rent for this month has been received.</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <MessageCenter
+              currentUserId="mock-tenant-id"
+              currentUserRole="tenant"
+              roomId={tenantInfo.roomId}
+              propertyId={tenantInfo.propertyId}
+            />
           </TabsContent>
         </Tabs>
       </div>
