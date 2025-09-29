@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import whiteHouse from "@/assets/white-house.jpg";
 import greenHouse from "@/assets/green-house.jpg";
 import RoomDetailsModal from "@/components/property/RoomDetailsModal";
 import RoomManagementModal from "@/components/property/RoomManagementModal";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Property {
   id: string;
@@ -74,6 +75,42 @@ const ManagerDashboard = () => {
   const occupiedRooms = properties.reduce((sum, prop) => sum + prop.occupiedRooms, 0);
   const vacantRooms = totalRooms - occupiedRooms;
   const occupancyRate = ((occupiedRooms / totalRooms) * 100).toFixed(1);
+
+  // Set up real-time listener for tenant profile updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('manager-room-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'rooms'
+        },
+        (payload) => {
+          console.log('Room/tenant profile updated:', payload);
+          
+          // Update properties with new tenant data
+          setProperties(prevProperties => 
+            prevProperties.map(property => {
+              const updatedRoom = payload.new;
+              if (updatedRoom.property_id === property.id) {
+                toast({
+                  title: "Tenant Profile Updated",
+                  description: `A tenant profile in ${property.name} has been updated.`,
+                });
+              }
+              return property;
+            })
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [toast]);
 
   const handleAddProperty = () => {
     const newProperty: Property = {

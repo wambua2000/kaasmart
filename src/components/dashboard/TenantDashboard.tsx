@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, User, Phone, Mail, MessageSquare, Wrench, FileText, MapPin, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import LeaseUpload from "@/components/property/LeaseUpload";
 import MessageCenter from "@/components/messaging/MessageCenter";
 import MaintenanceRequestForm from "@/components/messaging/MaintenanceRequestForm";
@@ -47,45 +48,80 @@ const TenantDashboard = ({ tenantInfo: loggedInTenantInfo }: TenantDashboardProp
       const locationMap: Record<string, string> = {
         'White House': 'Kisumu CBD, Kisumu',
         'Yellow House': 'Nyalenda, Kisumu',
-        'Green House': 'Kondele, Kisumu',
-        'Skyline Apartment': 'Tom Mboya Street, Kisumu'
+        'Green House': 'Nakuru Town, Nakuru',
+        'Skyline Apartment': 'Nairobi West, Nairobi'
       };
-      
+
       return {
         name: loggedInTenantInfo.tenantName,
         email: loggedInTenantInfo.email,
-        phone: "",
+        phone: "+254 712 345 678", // Default value
         room: loggedInTenantInfo.roomNumber,
         apartment: loggedInTenantInfo.propertyName,
-        location: locationMap[loggedInTenantInfo.propertyName] || "Kisumu, Kenya",
-        rentAmount: 12000, // Default rent amount
+        location: locationMap[loggedInTenantInfo.propertyName] || "Location TBD",
+        rentAmount: 15000, // Default value based on property
         dateOfEntry: loggedInTenantInfo.dateOfEntry,
-        emergencyContact: "",
-        accessories: ["Bed", "Table", "Chair", "Wardrobe", "Study Desk"],
-        roomId: `${loggedInTenantInfo.propertyName}-${loggedInTenantInfo.roomNumber}`,
-        propertyId: loggedInTenantInfo.propertyName.toLowerCase().replace(/\s+/g, '-'),
+        emergencyContact: "+254 701 234 567", // Default value
+        accessories: ["Bed", "Table", "Chair"], // Default value
       };
     }
     
-    // Demo data for non-logged in users
+    // Default demo data
     return {
-      name: "Sarah Wanjiku",
-      email: "sarah.w@email.com", 
-      phone: "0712345678",
-      room: "White001",
-      apartment: "White House",
-      location: "Kisumu CBD, Kisumu",
-      rentAmount: 12000,
-      dateOfEntry: "2023-10-15",
-      emergencyContact: "0723456789",
-      accessories: ["Bed", "Table", "Chair", "Wardrobe", "Study Desk"],
-      roomId: "mock-room-id",
-      propertyId: "mock-property-id",
+      name: "John Kamau",
+      email: "john.kamau@email.com",
+      phone: "+254 712 345 678",
+      room: "skyline001",
+      apartment: "Skyline Apartment",
+      location: "Nairobi West, Nairobi",
+      rentAmount: 15000,
+      dateOfEntry: "2024-01-15",
+      emergencyContact: "+254 701 234 567",
+      accessories: ["Bed", "Table", "Chair", "Wardrobe"],
     };
   });
 
+  // Set up real-time listener for tenant profile updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('tenant-profile-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'rooms',
+          filter: `tenant_email=eq.${tenantInfo.email}`
+        },
+        (payload) => {
+          console.log('Tenant profile updated:', payload);
+          // Update local state with new tenant data
+          const updatedRoom = payload.new;
+          setTenantInfo(prev => ({
+            ...prev,
+            name: updatedRoom.tenant_name || prev.name,
+            email: updatedRoom.tenant_email || prev.email,
+            phone: updatedRoom.tenant_phone || prev.phone,
+            accessories: updatedRoom.tenant_accessories || prev.accessories,
+            dateOfEntry: updatedRoom.tenant_date_of_entry || prev.dateOfEntry
+          }));
+          
+          toast({
+            title: "Profile Updated",
+            description: "Your tenant profile has been updated successfully.",
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tenantInfo.email, toast]);
+
   const [maintenanceRequest, setMaintenanceRequest] = useState("");
   const [message, setMessage] = useState("");
+
 
   const handleUpdateInfo = (field: keyof TenantInfo, value: string) => {
     if (field === "name" || field === "email" || field === "phone") {

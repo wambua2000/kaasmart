@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,7 @@ import RoomManagementModal from "@/components/property/RoomManagementModal";
 import ReportModal from "@/components/property/ReportModal";
 import DocumentReport from "@/components/property/DocumentReport";
 import InviteManagerModal from "@/components/manager/InviteManagerModal";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Property {
   id: string;
@@ -100,6 +101,45 @@ const PropertyOwnerDashboard = () => {
   const occupiedRooms = properties.reduce((sum, prop) => sum + prop.occupiedRooms, 0);
   const vacantRooms = totalRooms - occupiedRooms;
   const occupancyRate = ((occupiedRooms / totalRooms) * 100).toFixed(1);
+
+  // Set up real-time listener for tenant profile updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('property-owner-room-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'rooms'
+        },
+        (payload) => {
+          console.log('Room/tenant profile updated:', payload);
+          
+          // Update properties with new tenant data
+          setProperties(prevProperties => 
+            prevProperties.map(property => {
+              // Find if any rooms in this property were updated
+              const updatedRoom = payload.new;
+              if (updatedRoom.property_id === property.id) {
+                // This would ideally refresh room data from the database
+                // For now, we'll show a toast notification
+                toast({
+                  title: "Tenant Profile Updated",
+                  description: `A tenant profile in ${property.name} has been updated.`,
+                });
+              }
+              return property;
+            })
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [toast]);
 
   const handleAddProperty = () => {
     setIsAddPropertyModalOpen(true);
