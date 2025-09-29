@@ -151,15 +151,6 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
               </div>
             </form>
 
-            {/* Demo Credentials */}
-            <div className="mt-6 p-4 bg-muted/50 rounded-lg text-sm">
-              <p className="font-medium mb-2">Demo Credentials:</p>
-              <div className="space-y-1 text-muted-foreground">
-                <p><strong>Owner:</strong> owner@kaasmart.com / admin123</p>
-                <p><strong>Manager:</strong> manager@kaasmart.com / manager123</p>
-                <p><strong>Tenant:</strong> tenant@kaasmart.com / tenant123</p>
-              </div>
-            </div>
           </CardContent>
         </Card>
     </div>
