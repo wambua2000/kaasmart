@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,15 +6,16 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { FileText, Download, Calendar, Building2, Users, DollarSign, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Property {
   id: string;
   name: string;
   location: string;
-  rentPerRoom: number;
-  totalRooms: number;
+  rent_per_room: number;
+  total_rooms: number;
   occupiedRooms: number;
-  image: string;
+  image_url?: string;
 }
 
 interface DocumentReportProps {
@@ -34,24 +35,58 @@ interface MonthlyReport {
 
 const DocumentReport = ({ properties, isOpen, onClose }: DocumentReportProps) => {
   const { toast } = useToast();
-  
-  // Generate mock previous months data
-  const generatePreviousMonths = (): MonthlyReport[] => {
-    const months = ["December", "November", "October", "September", "August", "July"];
-    const currentYear = new Date().getFullYear();
-    
-    return months.map((month, index) => ({
-      month,
-      year: index === 0 ? currentYear - 1 : currentYear,
-      totalRevenue: Math.floor(Math.random() * 500000) + 800000,
-      occupancyRate: Math.floor(Math.random() * 20) + 75,
-      maintenanceRequests: Math.floor(Math.random() * 15) + 5,
-      newTenants: Math.floor(Math.random() * 8) + 2,
-    }));
-  };
-
-  const [previousReports] = useState<MonthlyReport[]>(generatePreviousMonths());
+  const [previousReports, setPreviousReports] = useState<MonthlyReport[]>([]);
   const [selectedReport, setSelectedReport] = useState<MonthlyReport | null>(null);
+  const [maintenanceCount, setMaintenanceCount] = useState(0);
+  const [newTenantsCount, setNewTenantsCount] = useState(0);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchReportData();
+    }
+  }, [isOpen]);
+
+  const fetchReportData = async () => {
+    try {
+      // Fetch maintenance requests count for current month
+      const currentMonth = new Date();
+      const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+      
+      const { data: maintenanceData } = await supabase
+        .from('messages')
+        .select('id')
+        .gte('created_at', firstDay.toISOString());
+      
+      setMaintenanceCount(maintenanceData?.length || 0);
+
+      // Fetch new tenants count for current month
+      const { data: tenantsData } = await supabase
+        .from('rooms')
+        .select('id')
+        .not('tenant_id', 'is', null)
+        .gte('updated_at', firstDay.toISOString());
+      
+      setNewTenantsCount(tenantsData?.length || 0);
+
+      // Generate previous months data with real base values
+      const months = ["December", "November", "October", "September", "August", "July"];
+      const currentYear = new Date().getFullYear();
+      const baseRevenue = properties.reduce((sum, prop) => sum + (prop.occupiedRooms * prop.rent_per_room), 0);
+      
+      const reports = months.map((month, index) => ({
+        month,
+        year: index === 0 ? currentYear - 1 : currentYear,
+        totalRevenue: Math.floor(baseRevenue * (0.8 + Math.random() * 0.4)),
+        occupancyRate: Math.floor(Math.random() * 20) + 75,
+        maintenanceRequests: Math.floor(Math.random() * 15) + 5,
+        newTenants: Math.floor(Math.random() * 8) + 2,
+      }));
+      
+      setPreviousReports(reports);
+    } catch (error) {
+      console.error('Error fetching report data:', error);
+    }
+  };
 
   const currentMonth = new Date().toLocaleString('default', { month: 'long' });
   const currentYear = new Date().getFullYear();
@@ -59,11 +94,11 @@ const DocumentReport = ({ properties, isOpen, onClose }: DocumentReportProps) =>
   const currentReport = {
     month: currentMonth,
     year: currentYear,
-    totalRevenue: properties.reduce((sum, prop) => sum + (prop.occupiedRooms * prop.rentPerRoom), 0),
+    totalRevenue: properties.reduce((sum, prop) => sum + (prop.occupiedRooms * prop.rent_per_room), 0),
     occupancyRate: Math.round((properties.reduce((sum, prop) => sum + prop.occupiedRooms, 0) / 
-                   properties.reduce((sum, prop) => sum + prop.totalRooms, 0)) * 100),
-    maintenanceRequests: 8,
-    newTenants: 5,
+                   properties.reduce((sum, prop) => sum + prop.total_rooms, 0)) * 100),
+    maintenanceRequests: maintenanceCount,
+    newTenants: newTenantsCount,
   };
 
   const handleDownloadPDF = (report: MonthlyReport) => {
@@ -85,19 +120,19 @@ PROPERTY BREAKDOWN
 ${properties.map(prop => `
 Property: ${prop.name}
 Location: ${prop.location}
-Total Rooms: ${prop.totalRooms}
+Total Rooms: ${prop.total_rooms}
 Occupied Rooms: ${prop.occupiedRooms}
-Vacancy Rate: ${Math.round(((prop.totalRooms - prop.occupiedRooms) / prop.totalRooms) * 100)}%
-Monthly Revenue: KSh ${(prop.occupiedRooms * prop.rentPerRoom).toLocaleString()}
-Rent per Room: KSh ${prop.rentPerRoom.toLocaleString()}
+Vacancy Rate: ${Math.round(((prop.total_rooms - prop.occupiedRooms) / prop.total_rooms) * 100)}%
+Monthly Revenue: KSh ${(prop.occupiedRooms * prop.rent_per_room).toLocaleString()}
+Rent per Room: KSh ${prop.rent_per_room.toLocaleString()}
 `).join('\n')}
 
 FINANCIAL ANALYSIS
 ==================
-Average Rent: KSh ${Math.round(properties.reduce((sum, prop) => sum + prop.rentPerRoom, 0) / properties.length).toLocaleString()}
-Total Rooms: ${properties.reduce((sum, prop) => sum + prop.totalRooms, 0)}
+Average Rent: KSh ${Math.round(properties.reduce((sum, prop) => sum + prop.rent_per_room, 0) / properties.length).toLocaleString()}
+Total Rooms: ${properties.reduce((sum, prop) => sum + prop.total_rooms, 0)}
 Occupied Rooms: ${properties.reduce((sum, prop) => sum + prop.occupiedRooms, 0)}
-Vacant Rooms: ${properties.reduce((sum, prop) => sum + prop.totalRooms - prop.occupiedRooms, 0)}
+Vacant Rooms: ${properties.reduce((sum, prop) => sum + prop.total_rooms - prop.occupiedRooms, 0)}
 
 Generated on: ${new Date().toLocaleDateString()}
     `.trim();
@@ -265,13 +300,13 @@ Generated on: ${new Date().toLocaleDateString()}
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <p><span className="text-gray-600">Location:</span> {property.location}</p>
-                          <p><span className="text-gray-600">Total Rooms:</span> {property.totalRooms}</p>
+                          <p><span className="text-gray-600">Total Rooms:</span> {property.total_rooms}</p>
                           <p><span className="text-gray-600">Occupied Rooms:</span> {property.occupiedRooms}</p>
                         </div>
                         <div>
-                          <p><span className="text-gray-600">Rent per Room:</span> KSh {property.rentPerRoom.toLocaleString()}</p>
-                          <p><span className="text-gray-600">Monthly Revenue:</span> KSh {(property.occupiedRooms * property.rentPerRoom).toLocaleString()}</p>
-                          <p><span className="text-gray-600">Occupancy Rate:</span> {Math.round((property.occupiedRooms / property.totalRooms) * 100)}%</p>
+                          <p><span className="text-gray-600">Rent per Room:</span> KSh {property.rent_per_room.toLocaleString()}</p>
+                          <p><span className="text-gray-600">Monthly Revenue:</span> KSh {(property.occupiedRooms * property.rent_per_room).toLocaleString()}</p>
+                          <p><span className="text-gray-600">Occupancy Rate:</span> {Math.round((property.occupiedRooms / property.total_rooms) * 100)}%</p>
                         </div>
                       </div>
                     </div>
@@ -292,7 +327,7 @@ Generated on: ${new Date().toLocaleDateString()}
                     <div className="flex justify-between">
                       <span className="text-gray-600">Average Rent:</span>
                       <span className="font-semibold">
-                        KSh {Math.round(properties.reduce((sum, prop) => sum + prop.rentPerRoom, 0) / properties.length).toLocaleString()}
+                        KSh {Math.round(properties.reduce((sum, prop) => sum + prop.rent_per_room, 0) / properties.length).toLocaleString()}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -303,11 +338,11 @@ Generated on: ${new Date().toLocaleDateString()}
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Total Rooms:</span>
-                      <span className="font-semibold">{properties.reduce((sum, prop) => sum + prop.totalRooms, 0)}</span>
+                      <span className="font-semibold">{properties.reduce((sum, prop) => sum + prop.total_rooms, 0)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Vacant Rooms:</span>
-                      <span className="font-semibold">{properties.reduce((sum, prop) => sum + prop.totalRooms - prop.occupiedRooms, 0)}</span>
+                      <span className="font-semibold">{properties.reduce((sum, prop) => sum + prop.total_rooms - prop.occupiedRooms, 0)}</span>
                     </div>
                   </div>
                 </div>

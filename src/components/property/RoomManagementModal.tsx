@@ -40,10 +40,10 @@ interface Property {
   id: string;
   name: string;
   location: string;
-  rentPerRoom: number;
-  totalRooms: number;
+  rent_per_room: number;
+  total_rooms: number;
   occupiedRooms: number;
-  image: string;
+  image_url?: string;
 }
 
 interface RoomManagementModalProps {
@@ -93,7 +93,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
             id: `${property.id}-${i}`,
             number: `${roomPrefix}${i.toString().padStart(3, '0')}`,
             status: isOccupied ? "occupied" : "vacant",
-            rentAmount: property.rentPerRoom,
+            rentAmount: property.rent_per_room,
           };
 
           if (isOccupied) {
@@ -104,7 +104,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
               email: `${randomTenant.toLowerCase().replace(' ', '.')}@email.com`,
               phone: `+254 7${Math.floor(10000000 + Math.random() * 90000000)}`,
               dateOfEntry: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-              rentAmount: property.rentPerRoom,
+              rentAmount: property.rent_per_room,
               rentStatus: Math.random() > 0.7 ? "not-paid" : "paid",
               accessories: ["Bed", "Table", "Chair"].filter(() => Math.random() > 0.3),
               emergencyContact: globalEmergencyContact,
@@ -117,7 +117,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
         return newRooms;
       };
 
-      setRooms(generateRooms(property.totalRooms, property.occupiedRooms));
+      setRooms(generateRooms(property.total_rooms, property.occupiedRooms));
     }
   }, [property?.id, globalEmergencyContact]);
 
@@ -305,7 +305,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
         <div className="flex gap-6 h-[75vh]">
           {/* Rooms List */}
           <div className="w-1/3 border-r pr-6 overflow-y-auto">
-            <h3 className="font-semibold mb-4">Rooms ({property.totalRooms})</h3>
+            <h3 className="font-semibold mb-4">Rooms ({property.total_rooms})</h3>
             <div className="space-y-2">
               {rooms.map((room) => (
                 <Card 

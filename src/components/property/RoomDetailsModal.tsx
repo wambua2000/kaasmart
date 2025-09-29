@@ -27,10 +27,10 @@ interface Property {
   id: string;
   name: string;
   location: string;
-  rentPerRoom: number;
-  totalRooms: number;
+  rent_per_room: number;
+  total_rooms: number;
   occupiedRooms: number;
-  image: string;
+  image_url?: string;
 }
 
 interface RoomDetailsModalProps {
@@ -56,7 +56,7 @@ const RoomDetailsModal = ({ property, isOpen, onClose }: RoomDetailsModalProps) 
       const room: Room = {
         id: `${property.id}-${i}`,
         number: `R${i.toString().padStart(3, '0')}`,
-        rent: property.rentPerRoom,
+        rent: property.rent_per_room,
         status: isOccupied ? "occupied" : "vacant",
       };
 
@@ -68,7 +68,7 @@ const RoomDetailsModal = ({ property, isOpen, onClose }: RoomDetailsModalProps) 
           phone: `+254 7${Math.floor(10000000 + Math.random() * 90000000)}`,
           email: `${randomTenant.toLowerCase().replace(' ', '.')}@email.com`,
           moveInDate: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          rent: property.rentPerRoom,
+          rent: property.rent_per_room,
           paymentStatus: randomPaymentStatus,
           lastPayment: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         };
@@ -79,7 +79,7 @@ const RoomDetailsModal = ({ property, isOpen, onClose }: RoomDetailsModalProps) 
     return rooms;
   };
 
-  const rooms = generateRooms(property.totalRooms, property.occupiedRooms);
+  const rooms = generateRooms(property.total_rooms, property.occupiedRooms);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -108,7 +108,7 @@ const RoomDetailsModal = ({ property, isOpen, onClose }: RoomDetailsModalProps) 
             {property.name} - Room Details
           </DialogTitle>
           <DialogDescription>
-            {property.location} • {property.totalRooms} Total Rooms • {property.occupiedRooms} Occupied
+            {property.location} • {property.total_rooms} Total Rooms • {property.occupiedRooms} Occupied
           </DialogDescription>
         </DialogHeader>
 
@@ -136,7 +136,7 @@ const RoomDetailsModal = ({ property, isOpen, onClose }: RoomDetailsModalProps) 
               </div>
               <div>
                 <span className="font-medium text-muted-foreground">Rent Per Room:</span>
-                <p className="font-semibold text-primary">KSh {property.rentPerRoom.toLocaleString()}</p>
+                <p className="font-semibold text-primary">KSh {property.rent_per_room.toLocaleString()}</p>
               </div>
             </div>
           </CardContent>
@@ -155,7 +155,7 @@ const RoomDetailsModal = ({ property, isOpen, onClose }: RoomDetailsModalProps) 
               </Badge>
               <Badge variant="outline" className="flex items-center gap-1">
                 <div className="w-2 h-2 rounded-full bg-muted"></div>
-                Vacant ({property.totalRooms - property.occupiedRooms})
+                Vacant ({property.total_rooms - property.occupiedRooms})
               </Badge>
             </div>
           </div>

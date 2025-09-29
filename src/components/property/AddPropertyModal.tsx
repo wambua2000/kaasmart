@@ -11,10 +11,10 @@ interface Property {
   id: string;
   name: string;
   location: string;
-  rentPerRoom: number;
-  totalRooms: number;
+  rent_per_room: number;
+  total_rooms: number;
   occupiedRooms: number;
-  image: string;
+  image_url?: string;
 }
 
 interface AddPropertyModalProps {
@@ -64,10 +64,10 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
         id: Date.now().toString(),
         name: formData.name.trim(),
         location: formData.location.trim(),
-        rentPerRoom: parseInt(formData.rentPerRoom),
-        totalRooms: parseInt(formData.totalRooms),
+        rent_per_room: parseInt(formData.rentPerRoom),
+        total_rooms: parseInt(formData.totalRooms),
         occupiedRooms: 0, // New properties start with 0 occupancy
-        image: formData.imageUrl || "/placeholder.svg", // Default image if none provided
+        image_url: formData.imageUrl || "/placeholder.svg", // Default image if none provided
       };
 
       onAddProperty(newProperty);

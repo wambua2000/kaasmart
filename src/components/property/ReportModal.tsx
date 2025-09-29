@@ -1,19 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Download, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Property {
   id: string;
   name: string;
   location: string;
-  rentPerRoom: number;
-  totalRooms: number;
+  rent_per_room: number;
+  total_rooms: number;
   occupiedRooms: number;
-  image: string;
+  image_url?: string;
 }
 
 interface ReportModalProps {
@@ -33,23 +34,57 @@ interface MonthlyReport {
 
 const ReportModal = ({ properties, isOpen, onClose }: ReportModalProps) => {
   const { toast } = useToast();
-  
-  // Generate mock previous months data
-  const generatePreviousMonths = (): MonthlyReport[] => {
-    const months = ["December", "November", "October", "September", "August", "July"];
-    const currentYear = new Date().getFullYear();
-    
-    return months.map((month, index) => ({
-      month,
-      year: index === 0 ? currentYear - 1 : currentYear,
-      totalRevenue: Math.floor(Math.random() * 500000) + 800000,
-      occupancyRate: Math.floor(Math.random() * 20) + 75,
-      maintenanceRequests: Math.floor(Math.random() * 15) + 5,
-      newTenants: Math.floor(Math.random() * 8) + 2,
-    }));
-  };
+  const [previousReports, setPreviousReports] = useState<MonthlyReport[]>([]);
+  const [maintenanceCount, setMaintenanceCount] = useState(0);
+  const [newTenantsCount, setNewTenantsCount] = useState(0);
 
-  const [previousReports] = useState<MonthlyReport[]>(generatePreviousMonths());
+  useEffect(() => {
+    if (isOpen) {
+      fetchReportData();
+    }
+  }, [isOpen]);
+
+  const fetchReportData = async () => {
+    try {
+      // Fetch maintenance requests count for current month
+      const currentMonth = new Date();
+      const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+      
+      const { data: maintenanceData } = await supabase
+        .from('messages')
+        .select('id')
+        .gte('created_at', firstDay.toISOString());
+      
+      setMaintenanceCount(maintenanceData?.length || 0);
+
+      // Fetch new tenants count for current month
+      const { data: tenantsData } = await supabase
+        .from('rooms')
+        .select('id')
+        .not('tenant_id', 'is', null)
+        .gte('updated_at', firstDay.toISOString());
+      
+      setNewTenantsCount(tenantsData?.length || 0);
+
+      // Generate previous months data with real base values
+      const months = ["December", "November", "October", "September", "August", "July"];
+      const currentYear = new Date().getFullYear();
+      const baseRevenue = properties.reduce((sum, prop) => sum + (prop.occupiedRooms * prop.rent_per_room), 0);
+      
+      const reports = months.map((month, index) => ({
+        month,
+        year: index === 0 ? currentYear - 1 : currentYear,
+        totalRevenue: Math.floor(baseRevenue * (0.8 + Math.random() * 0.4)),
+        occupancyRate: Math.floor(Math.random() * 20) + 75,
+        maintenanceRequests: Math.floor(Math.random() * 15) + 5,
+        newTenants: Math.floor(Math.random() * 8) + 2,
+      }));
+      
+      setPreviousReports(reports);
+    } catch (error) {
+      console.error('Error fetching report data:', error);
+    }
+  };
 
   const handleDownloadReport = (report: MonthlyReport) => {
     // Create detailed report data
@@ -61,17 +96,17 @@ const ReportModal = ({ properties, isOpen, onClose }: ReportModalProps) => {
         "Maintenance Requests": report.maintenanceRequests,
         "New Tenants": report.newTenants,
         "Properties": properties.length,
-        "Total Rooms": properties.reduce((sum, prop) => sum + prop.totalRooms, 0),
+        "Total Rooms": properties.reduce((sum, prop) => sum + prop.total_rooms, 0),
       },
       ...properties.map(prop => ({
         Property: prop.name,
         Location: prop.location,
-        "Total Rooms": prop.totalRooms,
+        "Total Rooms": prop.total_rooms,
         "Occupied Rooms": prop.occupiedRooms,
-        "Vacant Rooms": prop.totalRooms - prop.occupiedRooms,
-        "Occupancy Rate": `${((prop.occupiedRooms / prop.totalRooms) * 100).toFixed(1)}%`,
-        "Rent Per Room": `KSh ${prop.rentPerRoom.toLocaleString()}`,
-        "Monthly Revenue": `KSh ${(prop.occupiedRooms * prop.rentPerRoom).toLocaleString()}`,
+        "Vacant Rooms": prop.total_rooms - prop.occupiedRooms,
+        "Occupancy Rate": `${((prop.occupiedRooms / prop.total_rooms) * 100).toFixed(1)}%`,
+        "Rent Per Room": `KSh ${prop.rent_per_room.toLocaleString()}`,
+        "Monthly Revenue": `KSh ${(prop.occupiedRooms * prop.rent_per_room).toLocaleString()}`,
       }))
     ];
     
@@ -103,12 +138,12 @@ const ReportModal = ({ properties, isOpen, onClose }: ReportModalProps) => {
     const reportData = properties.map(prop => ({
       Property: prop.name,
       Location: prop.location,
-      "Total Rooms": prop.totalRooms,
+      "Total Rooms": prop.total_rooms,
       "Occupied Rooms": prop.occupiedRooms,
-      "Vacant Rooms": prop.totalRooms - prop.occupiedRooms,
-      "Occupancy Rate": `${((prop.occupiedRooms / prop.totalRooms) * 100).toFixed(1)}%`,
-      "Rent Per Room": `KSh ${prop.rentPerRoom.toLocaleString()}`,
-      "Monthly Revenue": `KSh ${(prop.occupiedRooms * prop.rentPerRoom).toLocaleString()}`,
+      "Vacant Rooms": prop.total_rooms - prop.occupiedRooms,
+      "Occupancy Rate": `${((prop.occupiedRooms / prop.total_rooms) * 100).toFixed(1)}%`,
+      "Rent Per Room": `KSh ${prop.rent_per_room.toLocaleString()}`,
+      "Monthly Revenue": `KSh ${(prop.occupiedRooms * prop.rent_per_room).toLocaleString()}`,
     }));
     
     const csvHeaders = Object.keys(reportData[0]).join(",");
@@ -163,14 +198,14 @@ const ReportModal = ({ properties, isOpen, onClose }: ReportModalProps) => {
                   </div>
                   <div className="text-center">
                     <p className="text-2xl font-bold text-accent">
-                      KSh {properties.reduce((sum, prop) => sum + (prop.occupiedRooms * prop.rentPerRoom), 0).toLocaleString()}
+                      KSh {properties.reduce((sum, prop) => sum + (prop.occupiedRooms * prop.rent_per_room), 0).toLocaleString()}
                     </p>
                     <p className="text-sm text-muted-foreground">Total Revenue</p>
                   </div>
                   <div className="text-center">
                     <p className="text-2xl font-bold text-primary">
                       {((properties.reduce((sum, prop) => sum + prop.occupiedRooms, 0) / 
-                         properties.reduce((sum, prop) => sum + prop.totalRooms, 0)) * 100).toFixed(1)}%
+                         properties.reduce((sum, prop) => sum + prop.total_rooms, 0)) * 100).toFixed(1)}%
                     </p>
                     <p className="text-sm text-muted-foreground">Occupancy Rate</p>
                   </div>

@@ -36,10 +36,10 @@ interface Property {
   id: string;
   name: string;
   location: string;
-  rentPerRoom: number;
-  totalRooms: number;
+  rent_per_room: number;
+  total_rooms: number;
   occupiedRooms: number;
-  image: string;
+  image_url?: string;
 }
 
 const PropertyOwnerDashboard = () => {
@@ -61,42 +61,42 @@ const PropertyOwnerDashboard = () => {
       id: "1",
       name: "Skyline Apartment",
       location: "Nairobi West, Nairobi",
-      rentPerRoom: 15000,
-      totalRooms: 50,
+      rent_per_room: 15000,
+      total_rooms: 50,
       occupiedRooms: 42,
-      image: skylineApartment,
+      image_url: skylineApartment,
     },
     {
       id: "2",
       name: "Yellow House",
       location: "Mombasa Road, Nairobi", 
-      rentPerRoom: 18000,
-      totalRooms: 20,
+      rent_per_room: 18000,
+      total_rooms: 20,
       occupiedRooms: 18,
-      image: yellowHouse,
+      image_url: yellowHouse,
     },
     {
       id: "3",
       name: "White House",
       location: "Kisumu CBD, Kisumu",
-      rentPerRoom: 12000,
-      totalRooms: 20,
+      rent_per_room: 12000,
+      total_rooms: 20,
       occupiedRooms: 16,
-      image: whiteHouse,
+      image_url: whiteHouse,
     },
     {
       id: "4",
       name: "Green House",
       location: "Nakuru Town, Nakuru",
-      rentPerRoom: 14000,
-      totalRooms: 20,
+      rent_per_room: 14000,
+      total_rooms: 20,
       occupiedRooms: 17,
-      image: greenHouse,
+      image_url: greenHouse,
     },
   ]);
 
   const totalProperties = properties.length;
-  const totalRooms = properties.reduce((sum, prop) => sum + prop.totalRooms, 0);
+  const totalRooms = properties.reduce((sum, prop) => sum + prop.total_rooms, 0);
   const occupiedRooms = properties.reduce((sum, prop) => sum + prop.occupiedRooms, 0);
   const vacantRooms = totalRooms - occupiedRooms;
   const occupancyRate = ((occupiedRooms / totalRooms) * 100).toFixed(1);
@@ -333,13 +333,13 @@ const PropertyOwnerDashboard = () => {
               <Card key={property.id} className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card hover:shadow-warm transition-all duration-300 overflow-hidden group">
                 <div className="relative">
                   <img
-                    src={property.image}
+                    src={property.image_url}
                     alt={property.name}
                     className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                   <div className="absolute top-4 right-4">
                     <Badge className="bg-primary/90 text-primary-foreground">
-                      {property.occupiedRooms}/{property.totalRooms} Occupied
+                      {property.occupiedRooms}/{property.total_rooms} Occupied
                     </Badge>
                   </div>
                 </div>
@@ -356,20 +356,20 @@ const PropertyOwnerDashboard = () => {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Total rooms</span>
-                      <span className="text-sm font-medium">{property.totalRooms}</span>
+                      <span className="text-sm font-medium">{property.total_rooms}</span>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Rent per room</span>
                       <span className="text-lg font-bold text-primary">
-                        KSh {property.rentPerRoom.toLocaleString()}
+                        KSh {property.rent_per_room.toLocaleString()}
                       </span>
                     </div>
                     
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Occupancy</span>
                       <span className="text-sm font-medium">
-                        {((property.occupiedRooms / property.totalRooms) * 100).toFixed(0)}%
+                        {((property.occupiedRooms / property.total_rooms) * 100).toFixed(0)}%
                       </span>
                     </div>
 
@@ -377,7 +377,7 @@ const PropertyOwnerDashboard = () => {
                       <div
                         className="bg-gradient-hero h-2 rounded-full transition-all duration-300"
                         style={{
-                          width: `${(property.occupiedRooms / property.totalRooms) * 100}%`,
+                          width: `${(property.occupiedRooms / property.total_rooms) * 100}%`,
                         }}
                       />
                      </div>
