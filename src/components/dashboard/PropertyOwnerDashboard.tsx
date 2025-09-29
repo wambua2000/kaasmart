@@ -58,114 +58,52 @@ const PropertyOwnerDashboard = () => {
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
 
-  // Fetch properties from Supabase
+  // Fetch properties data from Supabase
   useEffect(() => {
     const fetchProperties = async () => {
-      const { data, error } = await supabase
-        .from('properties')
-        .select(`
-          *,
-          rooms (
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: propertiesData, error } = await supabase
+          .from('properties')
+          .select(`
             id,
-            is_occupied
-          )
-        `);
+            name,
+            location,
+            rent_per_room,
+            total_rooms,
+            image_url,
+            rooms (
+              id,
+              is_occupied
+            )
+          `)
+          .eq('owner_id', user.id);
 
-      if (error) {
-        console.error('Error fetching properties:', error);
-        // Fallback to demo data
-        setProperties([
-          {
-            id: "1",
-            name: "Skyline Apartment",
-            location: "Nairobi West, Nairobi",
-            rentPerRoom: 15000,
-            totalRooms: 50,
-            occupiedRooms: 42,
-            image: skylineApartment,
-          },
-          {
-            id: "2", 
-            name: "Yellow House",
-            location: "Mombasa Road, Nairobi",
-            rentPerRoom: 18000,
-            totalRooms: 20,
-            occupiedRooms: 18,
-            image: yellowHouse,
-          },
-          {
-            id: "3",
-            name: "White House",
-            location: "Kisumu CBD, Kisumu",
-            rentPerRoom: 12000,
-            totalRooms: 20,
-            occupiedRooms: 16,
-            image: whiteHouse,
-          },
-          {
-            id: "4",
-            name: "Green House",
-            location: "Nakuru Town, Nakuru",
-            rentPerRoom: 14000,
-            totalRooms: 20,
-            occupiedRooms: 17,
-            image: greenHouse,
-          },
-        ]);
-        return;
-      }
+        if (error) {
+          console.error('Error fetching properties:', error);
+          return;
+        }
 
-      if (data) {
-        const processedProperties = data.map(property => {
-          const occupiedRooms = property.rooms?.filter(room => room.is_occupied).length || 0;
-          
-          // Map property names to images
-          const getImageForProperty = (name: string) => {
-            switch (name) {
-              case 'Skyline Apartment': return skylineApartment;
-              case 'Yellow House': return yellowHouse;
-              case 'White House': return whiteHouse;
-              case 'Green House': return greenHouse;
-              default: return apartmentInterior;
-            }
-          };
+        // Process data and calculate occupancy
+        const processedProperties = propertiesData?.map(property => ({
+          id: property.id,
+          name: property.name,
+          location: property.location,
+          rentPerRoom: property.rent_per_room,
+          totalRooms: property.total_rooms,
+          occupiedRooms: property.rooms?.filter(room => room.is_occupied).length || 0,
+          image: property.image_url || skylineApartment, // fallback to default image
+        })) || [];
 
-          return {
-            id: property.id,
-            name: property.name,
-            location: property.location,
-            rentPerRoom: Number(property.rent_per_room),
-            totalRooms: property.total_rooms,
-            occupiedRooms,
-            image: property.image_url || getImageForProperty(property.name),
-          };
-        });
-        
         setProperties(processedProperties);
+      } catch (error) {
+        console.error('Unexpected error fetching properties:', error);
       }
     };
 
     fetchProperties();
-
-    // Set up real-time subscription for room changes
-    const roomsSubscription = supabase
-      .channel('schema-db-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'rooms'
-        },
-        () => {
-          fetchProperties(); // Refetch properties when rooms change
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(roomsSubscription);
-    };
   }, []);
 
   const totalProperties = properties.length;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,150 +34,140 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
     }
 
     try {
-      // Owner demo credentials (only owner remains as demo)
-      if (role === 'owner' && email === "owner@kaasmart.com" && password === "admin123") {
-        toast({
-          title: "Welcome to KaaSmart!",
-          description: `Logged in as Property Owner`,
-        });
-        onLogin(email, role);
-        return;
-      }
-
-      // For tenants and managers, try Supabase authentication
-      if (role === 'tenant') {
-        // First check if there's an invitation for this email
+      // Check if this is an invitation-based login (tenant or manager)
+      if (role === 'tenant' || role === 'manager') {
+        // Check for invitation credentials first
         const { data: invitation } = await supabase
           .from('invitations')
           .select('*')
           .eq('email', email)
-          .eq('role', 'tenant')
+          .eq('role', role)
           .eq('is_used', false)
-          .single();
+          .maybeSingle();
 
-        if (!invitation) {
-          toast({
-            title: "Invalid Credentials", 
-            description: "No invitation found for this email. Please contact the property owner.",
-            variant: "destructive",
+        if (invitation && invitation.temporary_password === password) {
+          // Valid invitation login - create Supabase user account
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: `${window.location.origin}/`,
+              data: {
+                role: role,
+                full_name: email.split('@')[0], // Use email prefix as name for now
+              }
+            }
           });
-          return;
-        }
 
-        // Check if password matches temporary password
-        if (invitation.temporary_password !== password) {
-          toast({
-            title: "Invalid Credentials",
-            description: "Invalid password. Please check your credentials.",
-            variant: "destructive",
-          });
-          return;
-        }
+          if (signUpError) {
+            // User might already exist, try signing in instead
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email,
+              password
+            });
 
-        // Sign up the user with Supabase
-        const { data: authData, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: {
-              role: 'tenant',
-              full_name: email.split('@')[0]
+            if (signInError) {
+              toast({
+                title: "Authentication Error",
+                description: "Invalid credentials or account creation failed.",
+                variant: "destructive",
+              });
+              return;
             }
           }
+
+          // Update invitation as used and get property/room info
+          await supabase
+            .from('invitations')
+            .update({ is_used: true })
+            .eq('id', invitation.id);
+
+          // If tenant, update room information
+          if (role === 'tenant' && invitation.room_id) {
+            const { data: userData } = await supabase.auth.getUser();
+            if (userData.user) {
+              await supabase
+                .from('rooms')
+                .update({
+                  tenant_id: userData.user.id,
+                  tenant_email: email,
+                  tenant_name: email.split('@')[0], // Use email prefix for now
+                  is_occupied: true,
+                  tenant_date_of_entry: new Date().toISOString().split('T')[0]
+                })
+                .eq('id', invitation.room_id);
+
+              // Get property and room info for display
+              const { data: roomData } = await supabase
+                .from('rooms')
+                .select(`
+                  room_number,
+                  properties!inner(name)
+                `)
+                .eq('id', invitation.room_id)
+                .single();
+
+              toast({
+                title: "Welcome to KaaSmart!",
+                description: `Logged in as Tenant - ${roomData?.properties?.name}, Room ${roomData?.room_number}`,
+              });
+            }
+          } else {
+            toast({
+              title: "Welcome to KaaSmart!",
+              description: `Logged in as ${role.charAt(0).toUpperCase() + role.slice(1)}`,
+            });
+          }
+
+          onLogin(email, role);
+          return;
+        }
+
+        // If no valid invitation found, check if user exists and try normal login
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password
         });
 
-        if (signUpError) {
-          // If user already exists, try to sign in
-          const { error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password
+        if (signInError) {
+          toast({
+            title: "Invalid Credentials",
+            description: `${role.charAt(0).toUpperCase() + role.slice(1)} credentials not found. Please contact the property owner for access.`,
+            variant: "destructive",
           });
-
-          if (signInError) {
-            toast({
-              title: "Authentication Error",
-              description: "Failed to authenticate. Please try again.",
-              variant: "destructive",
-            });
-            return;
-          }
+          return;
         }
 
-        // Update room information when tenant logs in
-        if (invitation.room_id) {
-          const { error: updateError } = await supabase
-            .from('rooms')
-            .update({
-              tenant_id: authData?.user?.id,
-              tenant_name: email.split('@')[0],
-              tenant_email: email,
-              is_occupied: true,
-              tenant_date_of_entry: new Date().toISOString().split('T')[0]
-            })
-            .eq('id', invitation.room_id);
-
-          if (updateError) {
-            console.error('Error updating room:', updateError);
-          }
-        }
-
-        // Mark invitation as used
-        await supabase
-          .from('invitations')
-          .update({ is_used: true })
-          .eq('id', invitation.id);
-
-        // Get property and room info for display
-        const { data: room } = await supabase
-          .from('rooms')
-          .select(`
-            room_number,
-            properties (
-              name
-            )
-          `)
-          .eq('id', invitation.room_id)
-          .single();
-
+        // Successful login for existing user
         toast({
           title: "Welcome to KaaSmart!",
-          description: `Logged in as Tenant - ${room?.properties?.name}, Room ${room?.room_number}`,
+          description: `Logged in as ${role.charAt(0).toUpperCase() + role.slice(1)}`,
         });
-        
         onLogin(email, role);
-      } else if (role === 'manager') {
-        // For managers, check localStorage for now
-        const storedManagerCredentials = JSON.parse(localStorage.getItem('managerCredentials') || '[]');
-        const managerMatch = storedManagerCredentials.find((cred: any) => 
-          cred.email === email && cred.password === password
-        );
+
+      } else if (role === 'owner') {
+        // For owner, use demo credentials for now
+        const validCredentials = { email: "owner@kaasmart.com", password: "admin123" };
         
-        if (managerMatch) {
+        if (email === validCredentials.email && password === validCredentials.password) {
           toast({
             title: "Welcome to KaaSmart!",
-            description: `Logged in as Manager`,
+            description: "Logged in as Property Owner",
           });
           onLogin(email, role);
         } else {
           toast({
             title: "Invalid Credentials",
-            description: "Manager credentials not found. Please contact the property owner for access.",
+            description: "Please check your email and password.",
             variant: "destructive",
           });
         }
-      } else {
-        toast({
-          title: "Invalid Credentials",
-          description: "Please check your email, password, and role selection.",
-          variant: "destructive",
-        });
       }
     } catch (error) {
       console.error('Login error:', error);
       toast({
         title: "Login Error",
-        description: "An error occurred during login. Please try again.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     }
