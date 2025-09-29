@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Building2, User, Lock, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import kaasmartLogo from "@/assets/kaasmart-logo.png";
-import { supabase } from "@/integrations/supabase/client";
 
 export type UserRole = "owner" | "manager" | "tenant";
 
@@ -21,7 +20,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
   const [role, setRole] = useState<UserRole>("owner");
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!email || !password) {
@@ -33,59 +32,51 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
       return;
     }
 
-    // Demo credentials for owner
+    // Get stored manager and tenant credentials
+    const storedManagerCredentials = JSON.parse(localStorage.getItem('managerCredentials') || '[]');
+    const storedTenantCredentials = JSON.parse(localStorage.getItem('tenantCredentials') || '[]');
+    
+    // Demo credentials (only owner remains as demo)
     const validCredentials = {
       owner: { email: "owner@kaasmart.com", password: "admin123" },
     };
 
     // Check credentials based on role
-    if (role === 'manager' || role === 'tenant') {
-      try {
-        // Check against database invitations
-        const { data, error } = await supabase.rpc('verify_invitation_login', {
-          login_email: email,
-          login_password: password
-        });
-
-        if (error) {
-          console.error('Login error:', error);
-          toast({
-            title: "Login Error",
-            description: "Please check your credentials and try again.",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        if (data && data.length > 0) {
-          const invitationData = data[0];
-          
-          // Verify the role matches
-          if (invitationData.user_role === role) {
-            toast({
-              title: "Welcome to KaaSmart!",
-              description: `Logged in as ${role === 'manager' ? 'Manager' : 'Tenant'}`,
-            });
-            onLogin(email, role);
-          } else {
-            toast({
-              title: "Invalid Role",
-              description: `This account is registered as ${invitationData.user_role}, not ${role}.`,
-              variant: "destructive",
-            });
-          }
-        } else {
-          toast({
-            title: "Invalid Credentials",
-            description: `${role === 'manager' ? 'Manager' : 'Tenant'} credentials not found. Please contact the property owner for access.`,
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error('Login error:', error);
+    if (role === 'manager') {
+      // Check against stored manager credentials
+      const managerMatch = storedManagerCredentials.find((cred: any) => 
+        cred.email === email && cred.password === password
+      );
+      
+      if (managerMatch) {
         toast({
-          title: "Login Error",
-          description: "An error occurred. Please try again.",
+          title: "Welcome to KaaSmart!",
+          description: `Logged in as Manager`,
+        });
+        onLogin(email, role);
+      } else {
+        toast({
+          title: "Invalid Credentials",
+          description: "Manager credentials not found. Please contact the property owner for access.",
+          variant: "destructive",
+        });
+      }
+    } else if (role === 'tenant') {
+      // Check against stored tenant credentials
+      const tenantMatch = storedTenantCredentials.find((cred: any) => 
+        cred.email === email && cred.password === password
+      );
+      
+      if (tenantMatch) {
+        toast({
+          title: "Welcome to KaaSmart!",
+          description: `Logged in as Tenant - ${tenantMatch.propertyName}, Room ${tenantMatch.roomNumber}`,
+        });
+        onLogin(email, role);
+      } else {
+        toast({
+          title: "Invalid Credentials",
+          description: "Tenant credentials not found. Please contact the property owner for access.",
           variant: "destructive",
         });
       }

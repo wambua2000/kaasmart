@@ -341,30 +341,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      generate_invitation_credentials: {
-        Args: {
-          invitation_email: string
-          invitation_role: Database["public"]["Enums"]["app_role"]
-          invite_property_id?: string
-          invite_room_id?: string
-          invited_by_user?: string
-        }
-        Returns: {
-          email: string
-          expires_at: string
-          invitation_id: string
-          temporary_password: string
-        }[]
-      }
-      generate_rooms_for_property: {
-        Args: {
-          property_id_param: string
-          property_name_param: string
-          rent_amount_param: number
-          total_rooms_param: number
-        }
-        Returns: undefined
-      }
       get_invitation_credentials: {
         Args: { invitation_email: string }
         Returns: {
@@ -394,19 +370,6 @@ export type Database = {
       hash_password: {
         Args: { password: string }
         Returns: string
-      }
-      use_invitation: {
-        Args: { invitation_id: string }
-        Returns: boolean
-      }
-      verify_invitation_login: {
-        Args: { login_email: string; login_password: string }
-        Returns: {
-          invitation_id: string
-          property_id: string
-          room_id: string
-          user_role: Database["public"]["Enums"]["app_role"]
-        }[]
       }
       verify_password: {
         Args: { hash: string; password: string }
