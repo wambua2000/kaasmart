@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, User, Lock, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import kaasmartLogo from "@/assets/kaasmart-logo.png";
 
 export type UserRole = "owner" | "manager" | "tenant";
@@ -20,27 +19,6 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("owner");
   const { toast } = useToast();
-
-  const updateTenantInDatabase = async (tenantMatch: any, email: string) => {
-    try {
-      // Update room with tenant details and mark as occupied
-      const { error: roomError } = await supabase
-        .from('rooms')
-        .update({
-          tenant_email: email,
-          tenant_name: email, // Using email as name for now
-          is_occupied: true,
-          tenant_date_of_entry: new Date().toISOString().split('T')[0]
-        })
-        .eq('id', tenantMatch.roomId);
-
-      if (roomError) {
-        console.error('Error updating room:', roomError);
-      }
-    } catch (error) {
-      console.error('Error updating tenant in database:', error);
-    }
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,9 +68,6 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
       );
       
       if (tenantMatch) {
-        // Update tenant details in database on first login
-        updateTenantInDatabase(tenantMatch, email);
-        
         toast({
           title: "Welcome to KaaSmart!",
           description: `Logged in as Tenant - ${tenantMatch.propertyName}, Room ${tenantMatch.roomNumber}`,

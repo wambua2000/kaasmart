@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
 import apartmentInterior from "@/assets/apartment-interior.jpg";
 import skylineApartment from "@/assets/skyline-apartment.jpg";
 import yellowHouse from "@/assets/yellow-house.jpg";
@@ -56,76 +55,50 @@ const PropertyOwnerDashboard = () => {
   const [selectedRecipient, setSelectedRecipient] = useState("all");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Fetch properties and rooms from database
-  useEffect(() => {
-    fetchProperties();
-  }, []);
-
-  const fetchProperties = async () => {
-    try {
-      setLoading(true);
-      const { data: propertiesData, error: propError } = await supabase
-        .from('properties')
-        .select('*');
-
-      if (propError) throw propError;
-
-      if (propertiesData) {
-        // For each property, get room count and occupancy
-        const propertiesWithRooms = await Promise.all(
-          propertiesData.map(async (property) => {
-            const { data: roomsData, error: roomsError } = await supabase
-              .from('rooms')
-              .select('*')
-              .eq('property_id', property.id);
-
-            if (roomsError) throw roomsError;
-
-            const totalRooms = roomsData?.length || 0;
-            const occupiedRooms = roomsData?.filter(room => room.is_occupied).length || 0;
-
-            // Map to Property interface with image fallback
-            const imageMap: { [key: string]: string } = {
-              'Skyline Apartment': skylineApartment,
-              'Yellow House': yellowHouse,
-              'White House': whiteHouse,
-              'Green House': greenHouse,
-            };
-
-            return {
-              id: property.id,
-              name: property.name,
-              location: property.location,
-              rentPerRoom: Number(property.rent_per_room),
-              totalRooms,
-              occupiedRooms,
-              image: imageMap[property.name] || apartmentInterior,
-            };
-          })
-        );
-
-        setProperties(propertiesWithRooms);
-      }
-    } catch (error) {
-      console.error('Error fetching properties:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load properties. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [properties, setProperties] = useState<Property[]>([
+    {
+      id: "1",
+      name: "Skyline Apartment",
+      location: "Nairobi West, Nairobi",
+      rentPerRoom: 15000,
+      totalRooms: 50,
+      occupiedRooms: 42,
+      image: skylineApartment,
+    },
+    {
+      id: "2",
+      name: "Yellow House",
+      location: "Mombasa Road, Nairobi", 
+      rentPerRoom: 18000,
+      totalRooms: 20,
+      occupiedRooms: 18,
+      image: yellowHouse,
+    },
+    {
+      id: "3",
+      name: "White House",
+      location: "Kisumu CBD, Kisumu",
+      rentPerRoom: 12000,
+      totalRooms: 20,
+      occupiedRooms: 16,
+      image: whiteHouse,
+    },
+    {
+      id: "4",
+      name: "Green House",
+      location: "Nakuru Town, Nakuru",
+      rentPerRoom: 14000,
+      totalRooms: 20,
+      occupiedRooms: 17,
+      image: greenHouse,
+    },
+  ]);
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.totalRooms, 0);
   const occupiedRooms = properties.reduce((sum, prop) => sum + prop.occupiedRooms, 0);
   const vacantRooms = totalRooms - occupiedRooms;
-  const occupancyRate = totalRooms > 0 ? ((occupiedRooms / totalRooms) * 100).toFixed(1) : "0";
+  const occupancyRate = ((occupiedRooms / totalRooms) * 100).toFixed(1);
 
   const handleAddProperty = () => {
     setIsAddPropertyModalOpen(true);
@@ -133,7 +106,6 @@ const PropertyOwnerDashboard = () => {
 
   const handleAddPropertySubmit = (newProperty: Property) => {
     setProperties([...properties, newProperty]);
-    fetchProperties(); // Refresh to get accurate data
   };
 
   const handleOpenSheet = () => {
@@ -200,24 +172,6 @@ const PropertyOwnerDashboard = () => {
       setIsRoomManagementOpen(true);
     }
   };
-
-  // Refresh data when room management modal closes (to update occupancy)
-  const handleRoomManagementClose = () => {
-    setIsRoomManagementOpen(false);
-    setSelectedProperty(null);
-    fetchProperties(); // Refresh to get updated occupancy data
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-earth flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-          <p className="mt-4 text-muted-foreground">Loading properties...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen">
@@ -436,7 +390,7 @@ const PropertyOwnerDashboard = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Occupancy</span>
                       <span className="text-sm font-medium">
-                        {property.totalRooms > 0 ? ((property.occupiedRooms / property.totalRooms) * 100).toFixed(0) : 0}%
+                        {((property.occupiedRooms / property.totalRooms) * 100).toFixed(0)}%
                       </span>
                     </div>
 
@@ -444,7 +398,7 @@ const PropertyOwnerDashboard = () => {
                       <div
                         className="bg-gradient-hero h-2 rounded-full transition-all duration-300"
                         style={{
-                          width: `${property.totalRooms > 0 ? (property.occupiedRooms / property.totalRooms) * 100 : 0}%`,
+                          width: `${(property.occupiedRooms / property.totalRooms) * 100}%`,
                         }}
                       />
                      </div>
@@ -482,50 +436,54 @@ const PropertyOwnerDashboard = () => {
           }}
         />
 
+        <RoomManagementModal
+          property={selectedProperty}
+          isOpen={isRoomManagementOpen}
+          onClose={() => {
+            setIsRoomManagementOpen(false);
+            setSelectedProperty(null);
+          }}
+          userRole="owner"
+        />
+
         <AddPropertyModal
           isOpen={isAddPropertyModalOpen}
           onClose={() => setIsAddPropertyModalOpen(false)}
           onAddProperty={handleAddPropertySubmit}
         />
 
-        <RoomManagementModal
-          property={selectedProperty}
-          isOpen={isRoomManagementOpen}
-          onClose={handleRoomManagementClose}
-          userRole="owner"
-        />
-
         <ReportModal
+          properties={properties}
           isOpen={isReportModalOpen}
           onClose={() => setIsReportModalOpen(false)}
-          properties={properties}
         />
 
         <DocumentReport
+          properties={properties}
           isOpen={isDocumentReportOpen}
           onClose={() => setIsDocumentReportOpen(false)}
-          properties={properties}
         />
 
         <InviteManagerModal
           isOpen={isInviteManagerOpen}
           onClose={() => setIsInviteManagerOpen(false)}
+          properties={properties.map(p => ({ id: p.id, name: p.name }))}
           onManagerInvited={handleManagerInvited}
-          properties={properties}
         />
 
         <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogTitle>Delete Property</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the property
-                and remove all its data from our servers.
+                Are you sure you want to delete this property? This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDeleteProperty}>Delete</AlertDialogAction>
+              <AlertDialogAction onClick={confirmDeleteProperty} className="bg-destructive hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
