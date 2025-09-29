@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings, ExternalLink, Wrench, MessageSquare, Eye, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -56,55 +55,44 @@ const PropertyOwnerDashboard = () => {
   const [selectedRecipient, setSelectedRecipient] = useState("all");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
-  const [properties, setProperties] = useState<Property[]>([]);
-
-  // Fetch properties data from Supabase
-  useEffect(() => {
-    const fetchProperties = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data: propertiesData, error } = await supabase
-          .from('properties')
-          .select(`
-            id,
-            name,
-            location,
-            rent_per_room,
-            total_rooms,
-            image_url,
-            rooms (
-              id,
-              is_occupied
-            )
-          `)
-          .eq('owner_id', user.id);
-
-        if (error) {
-          console.error('Error fetching properties:', error);
-          return;
-        }
-
-        // Process data and calculate occupancy
-        const processedProperties = propertiesData?.map(property => ({
-          id: property.id,
-          name: property.name,
-          location: property.location,
-          rentPerRoom: property.rent_per_room,
-          totalRooms: property.total_rooms,
-          occupiedRooms: property.rooms?.filter(room => room.is_occupied).length || 0,
-          image: property.image_url || skylineApartment, // fallback to default image
-        })) || [];
-
-        setProperties(processedProperties);
-      } catch (error) {
-        console.error('Unexpected error fetching properties:', error);
-      }
-    };
-
-    fetchProperties();
-  }, []);
+  const [properties, setProperties] = useState<Property[]>([
+    {
+      id: "1",
+      name: "Skyline Apartment",
+      location: "Nairobi West, Nairobi",
+      rentPerRoom: 15000,
+      totalRooms: 50,
+      occupiedRooms: 42,
+      image: skylineApartment,
+    },
+    {
+      id: "2",
+      name: "Yellow House",
+      location: "Mombasa Road, Nairobi", 
+      rentPerRoom: 18000,
+      totalRooms: 20,
+      occupiedRooms: 18,
+      image: yellowHouse,
+    },
+    {
+      id: "3",
+      name: "White House",
+      location: "Kisumu CBD, Kisumu",
+      rentPerRoom: 12000,
+      totalRooms: 20,
+      occupiedRooms: 16,
+      image: whiteHouse,
+    },
+    {
+      id: "4",
+      name: "Green House",
+      location: "Nakuru Town, Nakuru",
+      rentPerRoom: 14000,
+      totalRooms: 20,
+      occupiedRooms: 17,
+      image: greenHouse,
+    },
+  ]);
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.totalRooms, 0);
