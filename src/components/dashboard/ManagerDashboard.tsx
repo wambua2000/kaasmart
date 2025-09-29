@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Home, Users, DollarSign, MapPin, Eye, Wrench } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import apartmentInterior from "@/assets/apartment-interior.jpg";
 import skylineApartment from "@/assets/skyline-apartment.jpg";
 import yellowHouse from "@/assets/yellow-house.jpg";
@@ -29,94 +30,76 @@ const ManagerDashboard = () => {
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [isRoomManagementOpen, setIsRoomManagementOpen] = useState(false);
   const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
-  const [properties, setProperties] = useState<Property[]>([
-    {
-      id: "1",
-      name: "Skyline Apartment",
-      location: "Nairobi West, Nairobi",
-      rentPerRoom: 15000,
-      totalRooms: 50,
-      occupiedRooms: 42,
-      image: skylineApartment,
-    },
-    {
-      id: "2",
-      name: "Yellow House",
-      location: "Mombasa Road, Nairobi", 
-      rentPerRoom: 18000,
-      totalRooms: 20,
-      occupiedRooms: 18,
-      image: yellowHouse,
-    },
-    {
-      id: "3",
-      name: "White House",
-      location: "Kisumu CBD, Kisumu",
-      rentPerRoom: 12000,
-      totalRooms: 20,
-      occupiedRooms: 16,
-      image: whiteHouse,
-    },
-    {
-      id: "4",
-      name: "Green House",
-      location: "Nakuru Town, Nakuru",
-      rentPerRoom: 14000,
-      totalRooms: 20,
-      occupiedRooms: 17,
-      image: greenHouse,
-    },
-  ]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch properties and rooms from database
+  useEffect(() => {
+    fetchProperties();
+  }, []);
+
+  const fetchProperties = async () => {
+    try {
+      setLoading(true);
+      const { data: propertiesData, error: propError } = await supabase
+        .from('properties')
+        .select('*');
+
+      if (propError) throw propError;
+
+      if (propertiesData) {
+        // For each property, get room count and occupancy
+        const propertiesWithRooms = await Promise.all(
+          propertiesData.map(async (property) => {
+            const { data: roomsData, error: roomsError } = await supabase
+              .from('rooms')
+              .select('*')
+              .eq('property_id', property.id);
+
+            if (roomsError) throw roomsError;
+
+            const totalRooms = roomsData?.length || 0;
+            const occupiedRooms = roomsData?.filter(room => room.is_occupied).length || 0;
+
+            // Map to Property interface with image fallback
+            const imageMap: { [key: string]: string } = {
+              'Skyline Apartment': skylineApartment,
+              'Yellow House': yellowHouse,
+              'White House': whiteHouse,
+              'Green House': greenHouse,
+            };
+
+            return {
+              id: property.id,
+              name: property.name,
+              location: property.location,
+              rentPerRoom: Number(property.rent_per_room),
+              totalRooms,
+              occupiedRooms,
+              image: imageMap[property.name] || apartmentInterior,
+            };
+          })
+        );
+
+        setProperties(propertiesWithRooms);
+      }
+    } catch (error) {
+      console.error('Error fetching properties:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load properties. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.totalRooms, 0);
   const occupiedRooms = properties.reduce((sum, prop) => sum + prop.occupiedRooms, 0);
   const vacantRooms = totalRooms - occupiedRooms;
-  const occupancyRate = ((occupiedRooms / totalRooms) * 100).toFixed(1);
-
-  const handleAddProperty = () => {
-    const newProperty: Property = {
-      id: (properties.length + 1).toString(),
-      name: "New Property",
-      location: "Location TBD",
-      rentPerRoom: 0,
-      totalRooms: 0,
-      occupiedRooms: 0,
-      image: apartmentInterior,
-    };
-    setProperties([...properties, newProperty]);
-    toast({
-      title: "Property Added",
-      description: "New property has been added successfully.",
-    });
-  };
-
-  const handleInviteManager = () => {
-    toast({
-      title: "Manager Invited",
-      description: "Invitation email sent to manager successfully.",
-    });
-  };
-
-  const handleGenerateReport = () => {
-    // Generate CSV report
-    const reportData = properties.map(prop => ({
-      Property: prop.name,
-      Location: prop.location,
-      "Total Rooms": prop.totalRooms,
-      "Occupied Rooms": prop.occupiedRooms,
-      "Vacant Rooms": prop.totalRooms - prop.occupiedRooms,
-      "Occupancy Rate": `${((prop.occupiedRooms / prop.totalRooms) * 100).toFixed(1)}%`,
-      "Rent Per Room": `KSh ${prop.rentPerRoom.toLocaleString()}`,
-      "Monthly Revenue": `KSh ${(prop.occupiedRooms * prop.rentPerRoom).toLocaleString()}`,
-    }));
-    
-    console.log("Property Report:", reportData);
-    toast({
-      title: "Report Generated",
-      description: "Property report has been generated and downloaded.",
-    });
-  };
+  const occupancyRate = totalRooms > 0 ? ((occupiedRooms / totalRooms) * 100).toFixed(1) : "0";
 
   const handleViewRooms = (propertyId: string) => {
     const property = properties.find(p => p.id === propertyId);
@@ -125,6 +108,24 @@ const ManagerDashboard = () => {
       setIsRoomManagementOpen(true);
     }
   };
+
+  // Refresh data when room management modal closes (to update occupancy)
+  const handleRoomManagementClose = () => {
+    setIsRoomManagementOpen(false);
+    setSelectedProperty(null);
+    fetchProperties(); // Refresh to get updated occupancy data
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-earth flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+          <p className="mt-4 text-muted-foreground">Loading properties...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -282,7 +283,7 @@ const ManagerDashboard = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Occupancy</span>
                       <span className="text-sm font-medium">
-                        {((property.occupiedRooms / property.totalRooms) * 100).toFixed(0)}%
+                        {property.totalRooms > 0 ? ((property.occupiedRooms / property.totalRooms) * 100).toFixed(0) : 0}%
                       </span>
                     </div>
 
@@ -290,7 +291,7 @@ const ManagerDashboard = () => {
                       <div
                         className="bg-gradient-hero h-2 rounded-full transition-all duration-300"
                         style={{
-                          width: `${(property.occupiedRooms / property.totalRooms) * 100}%`,
+                          width: `${property.totalRooms > 0 ? (property.occupiedRooms / property.totalRooms) * 100 : 0}%`,
                         }}
                       />
                     </div>
@@ -324,13 +325,9 @@ const ManagerDashboard = () => {
         <RoomManagementModal
           property={selectedProperty}
           isOpen={isRoomManagementOpen}
-          onClose={() => {
-            setIsRoomManagementOpen(false);
-            setSelectedProperty(null);
-          }}
+          onClose={handleRoomManagementClose}
           userRole="manager"
         />
-
 
         </div>
       </div>
