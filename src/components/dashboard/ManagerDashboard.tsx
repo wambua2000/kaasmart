@@ -31,44 +31,59 @@ const ManagerDashboard = () => {
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [isRoomManagementOpen, setIsRoomManagementOpen] = useState(false);
   const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
-  const [properties, setProperties] = useState<Property[]>([
-    {
-      id: "1",
-      name: "Skyline Apartment",
-      location: "Nairobi West, Nairobi",
-      rent_per_room: 15000,
-      total_rooms: 50,
-      occupiedRooms: 42,
-      image_url: skylineApartment,
-    },
-    {
-      id: "2",
-      name: "Yellow House",
-      location: "Mombasa Road, Nairobi", 
-      rent_per_room: 18000,
-      total_rooms: 20,
-      occupiedRooms: 18,
-      image_url: yellowHouse,
-    },
-    {
-      id: "3",
-      name: "White House",
-      location: "Kisumu CBD, Kisumu",
-      rent_per_room: 12000,
-      total_rooms: 20,
-      occupiedRooms: 16,
-      image_url: whiteHouse,
-    },
-    {
-      id: "4",
-      name: "Green House",
-      location: "Nakuru Town, Nakuru",
-      rent_per_room: 14000,
-      total_rooms: 20,
-      occupiedRooms: 17,
-      image_url: greenHouse,
-    },
-  ]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch properties from Supabase
+  useEffect(() => {
+    const fetchProperties = async () => {
+      setLoading(true);
+      try {
+        const { data: propertiesData, error: propertiesError } = await supabase
+          .from('properties')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (propertiesError) throw propertiesError;
+
+        // For each property, get the room count and occupancy
+        const propertiesWithRooms = await Promise.all(
+          (propertiesData || []).map(async (property) => {
+            const { data: roomsData } = await supabase
+              .from('rooms')
+              .select('id, is_occupied')
+              .eq('property_id', property.id);
+
+            const totalRooms = property.total_rooms;
+            const occupiedRooms = roomsData?.filter(r => r.is_occupied).length || 0;
+
+            return {
+              id: property.id,
+              name: property.name,
+              location: property.location,
+              rent_per_room: Number(property.rent_per_room),
+              total_rooms: totalRooms,
+              occupiedRooms: occupiedRooms,
+              image_url: property.image_url || undefined,
+            };
+          })
+        );
+
+        setProperties(propertiesWithRooms);
+      } catch (error) {
+        console.error('Error fetching properties:', error);
+        toast({
+          title: "Error Loading Properties",
+          description: "Failed to load property data.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProperties();
+  }, [toast]);
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.total_rooms, 0);
