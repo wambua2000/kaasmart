@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Building2, User, Lock, Mail, Eye, EyeOff, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import kaasmartLogo from "@/assets/kaasmart-logo.png";
+import ForgotPasswordDialog from "./ForgotPasswordDialog";
 
 export type UserRole = "owner" | "manager" | "tenant" | "developer";
 
@@ -19,6 +20,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("owner");
   const [showPassword, setShowPassword] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const { toast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -210,7 +212,12 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
               </Button>
 
               <div className="text-center">
-                <Button variant="link" className="text-primary hover:text-primary-glow">
+                <Button 
+                  type="button"
+                  variant="link" 
+                  className="text-primary hover:text-primary-glow"
+                  onClick={() => setIsForgotPasswordOpen(true)}
+                >
                   Forgot Password?
                 </Button>
               </div>
@@ -218,6 +225,11 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
 
           </CardContent>
         </Card>
+
+        <ForgotPasswordDialog 
+          open={isForgotPasswordOpen} 
+          onOpenChange={setIsForgotPasswordOpen}
+        />
     </div>
   );
 };

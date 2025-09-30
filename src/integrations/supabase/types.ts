@@ -193,6 +193,39 @@ export type Database = {
           },
         ]
       }
+      password_reset_requests: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          email: string
+          id: string
+          new_password: string | null
+          notes: string | null
+          status: string
+          user_role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          new_password?: string | null
+          notes?: string | null
+          status?: string
+          user_role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          new_password?: string | null
+          notes?: string | null
+          status?: string
+          user_role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null

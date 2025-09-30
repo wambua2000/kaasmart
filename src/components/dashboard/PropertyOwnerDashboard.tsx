@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings, ExternalLink, Wrench, MessageSquare, Eye, Trash2, Pencil } from "lucide-react";
+import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings, ExternalLink, Wrench, MessageSquare, Eye, Trash2, Pencil, KeyRound } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
   AlertDialog, 
@@ -32,6 +32,7 @@ import RoomManagementModal from "@/components/property/RoomManagementModal";
 import ReportModal from "@/components/property/ReportModal";
 import DocumentReport from "@/components/property/DocumentReport";
 import InviteManagerModal from "@/components/manager/InviteManagerModal";
+import PasswordResetRequestsSheet from "@/components/property/PasswordResetRequestsSheet";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Property {
@@ -54,6 +55,7 @@ const PropertyOwnerDashboard = () => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isDocumentReportOpen, setIsDocumentReportOpen] = useState(false);
   const [isInviteManagerOpen, setIsInviteManagerOpen] = useState(false);
+  const [isPasswordResetOpen, setIsPasswordResetOpen] = useState(false);
   const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
   const [messageText, setMessageText] = useState("");
   const [selectedRecipient, setSelectedRecipient] = useState("all");
@@ -303,6 +305,10 @@ const PropertyOwnerDashboard = () => {
               <FileText className="mr-2 h-4 w-4" />
               Generate Report
             </Button>
+            <Button onClick={() => setIsPasswordResetOpen(true)} variant="outline">
+              <KeyRound className="mr-2 h-4 w-4" />
+              Password Resets
+            </Button>
             <Button onClick={handleInviteManager} variant="outline">
               <Mail className="mr-2 h-4 w-4" />
               Invite Manager
@@ -515,6 +521,11 @@ const PropertyOwnerDashboard = () => {
           onClose={() => setIsInviteManagerOpen(false)}
           properties={properties.map(p => ({ id: p.id, name: p.name }))}
           onManagerInvited={handleManagerInvited}
+        />
+
+        <PasswordResetRequestsSheet
+          open={isPasswordResetOpen}
+          onOpenChange={setIsPasswordResetOpen}
         />
 
         <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
