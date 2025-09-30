@@ -4,11 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, User, Lock, Mail, Eye, EyeOff } from "lucide-react";
+import { Building2, User, Lock, Mail, Eye, EyeOff, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import kaasmartLogo from "@/assets/kaasmart-logo.png";
 
-export type UserRole = "owner" | "manager" | "tenant";
+export type UserRole = "owner" | "manager" | "tenant" | "developer";
 
 interface LoginFormProps {
   onLogin: (email: string, role: UserRole) => void;
@@ -37,9 +37,10 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
     const storedManagerCredentials = JSON.parse(localStorage.getItem('managerCredentials') || '[]');
     const storedTenantCredentials = JSON.parse(localStorage.getItem('tenantCredentials') || '[]');
     
-    // Demo credentials (only owner remains as demo)
+    // Demo credentials
     const validCredentials = {
       owner: { email: "owner@kaasmart.com", password: "admin123" },
+      developer: { email: "dev@kaasmart.com", password: "dev123" },
     };
 
     // Check credentials based on role
@@ -82,12 +83,13 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
         });
       }
     } else {
-      // Check owner credentials
-      const creds = validCredentials[role];
-      if (email === creds.email && password === creds.password) {
+      // Check owner or developer credentials
+      const creds = validCredentials[role as 'owner' | 'developer'];
+      if (email === creds?.email && password === creds?.password) {
+        const roleName = role === 'developer' ? 'Developer/Admin' : 'Property Owner';
         toast({
           title: "Welcome to KaaSmart!",
-          description: `Logged in as Property Owner`,
+          description: `Logged in as ${roleName}`,
         });
         onLogin(email, role);
       } else {
@@ -130,6 +132,12 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="developer">
+                      <div className="flex items-center gap-2">
+                        <Settings className="h-4 w-4" />
+                        Developer/Admin
+                      </div>
+                    </SelectItem>
                     <SelectItem value="owner">
                       <div className="flex items-center gap-2">
                         <Building2 className="h-4 w-4" />
