@@ -113,25 +113,37 @@ const PropertyOwnerDashboard = () => {
           schema: 'public',
           table: 'rooms'
         },
-        (payload) => {
+        async (payload) => {
           console.log('Room/tenant profile updated:', payload);
+          const updatedRoom = payload.new;
           
-          // Update properties with new tenant data
-          setProperties(prevProperties => 
-            prevProperties.map(property => {
-              // Find if any rooms in this property were updated
-              const updatedRoom = payload.new;
-              if (updatedRoom.property_id === property.id) {
-                // This would ideally refresh room data from the database
-                // For now, we'll show a toast notification
-                toast({
-                  title: "Tenant Profile Updated",
-                  description: `A tenant profile in ${property.name} has been updated.`,
-                });
-              }
-              return property;
-            })
-          );
+          // Find which property this room belongs to
+          const affectedProperty = properties.find(p => p.id === updatedRoom.property_id);
+          
+          if (affectedProperty) {
+            // Refresh occupied rooms count from database
+            const { data: roomsData } = await supabase
+              .from('rooms')
+              .select('id, is_occupied')
+              .eq('property_id', affectedProperty.id);
+
+            if (roomsData) {
+              const occupiedCount = roomsData.filter(r => r.is_occupied).length;
+              
+              setProperties(prevProperties =>
+                prevProperties.map(property =>
+                  property.id === affectedProperty.id
+                    ? { ...property, occupiedRooms: occupiedCount }
+                    : property
+                )
+              );
+            }
+
+            toast({
+              title: "Tenant Profile Updated",
+              description: `A tenant profile in ${affectedProperty.name} has been synced.`,
+            });
+          }
         }
       )
       .subscribe();
@@ -139,7 +151,7 @@ const PropertyOwnerDashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [toast]);
+  }, [properties, toast]);
 
   const handleAddProperty = () => {
     setIsAddPropertyModalOpen(true);
