@@ -87,15 +87,51 @@ const EditPropertyModal = ({ isOpen, onClose, property, onUpdateProperty }: Edit
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!property) return;
+    if (!property) {
+      console.error('No property selected for editing');
+      return;
+    }
     
     setIsSubmitting(true);
 
-    // Validate form
-    if (!formData.name.trim() || !formData.location.trim() || !formData.rentPerRoom || !formData.totalRooms) {
+    // Validate form with better checks
+    const rentValue = parseFloat(formData.rentPerRoom);
+    const roomsValue = parseInt(formData.totalRooms);
+    
+    if (!formData.name.trim()) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields.",
+        description: "Property name is required.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (!formData.location.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Location is required.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (isNaN(rentValue) || rentValue <= 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid rent amount.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (isNaN(roomsValue) || roomsValue <= 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid number of rooms.",
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -107,9 +143,11 @@ const EditPropertyModal = ({ isOpen, onClose, property, onUpdateProperty }: Edit
 
       // Upload new image if selected
       if (imageFile) {
+        console.log('Uploading new image...');
         const uploadedUrl = await uploadImage(imageFile);
         if (uploadedUrl) {
           imageUrl = uploadedUrl;
+          console.log('Image uploaded successfully:', uploadedUrl);
         } else {
           toast({
             title: "Image Upload Failed",
@@ -119,27 +157,41 @@ const EditPropertyModal = ({ isOpen, onClose, property, onUpdateProperty }: Edit
         }
       }
 
+      console.log('Updating property in database...', {
+        id: property.id,
+        name: formData.name.trim(),
+        location: formData.location.trim(),
+        rent_per_room: rentValue,
+        total_rooms: roomsValue,
+      });
+
       // Update property in database
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('properties')
         .update({
           name: formData.name.trim(),
           location: formData.location.trim(),
-          rent_per_room: parseFloat(formData.rentPerRoom),
-          total_rooms: parseInt(formData.totalRooms),
+          rent_per_room: rentValue,
+          total_rooms: roomsValue,
           image_url: imageUrl,
-          updated_at: new Date().toISOString(),
         })
-        .eq('id', property.id);
+        .eq('id', property.id)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase update error:', error);
+        throw error;
+      }
+
+      console.log('Property updated successfully:', data);
 
       const updatedProperty: Property = {
         ...property,
         name: formData.name.trim(),
         location: formData.location.trim(),
-        rent_per_room: parseFloat(formData.rentPerRoom),
-        total_rooms: parseInt(formData.totalRooms),
+        rent_per_room: rentValue,
+        total_rooms: roomsValue,
         image_url: imageUrl,
       };
 
@@ -152,11 +204,11 @@ const EditPropertyModal = ({ isOpen, onClose, property, onUpdateProperty }: Edit
 
       setImageFile(null);
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating property:', error);
       toast({
         title: "Error",
-        description: "Failed to update property. Please try again.",
+        description: error?.message || "Failed to update property. Please try again.",
         variant: "destructive",
       });
     } finally {
