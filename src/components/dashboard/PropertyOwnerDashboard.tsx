@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings, ExternalLink, Wrench, MessageSquare, Eye, Trash2, Pencil, UserPlus } from "lucide-react";
+import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings, ExternalLink, Wrench, MessageSquare, Eye, Trash2, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
   AlertDialog, 
@@ -20,6 +20,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import MessageCenter from "@/components/messaging/MessageCenter";
+import apartmentInterior from "@/assets/apartment-interior.jpg";
+import skylineApartment from "@/assets/skyline-apartment.jpg";
+import yellowHouse from "@/assets/yellow-house.jpg";
+import whiteHouse from "@/assets/white-house.jpg";
+import greenHouse from "@/assets/green-house.jpg";
 import RoomDetailsModal from "@/components/property/RoomDetailsModal";
 import AddPropertyModal from "@/components/property/AddPropertyModal";
 import EditPropertyModal from "@/components/property/EditPropertyModal";
@@ -27,7 +32,6 @@ import RoomManagementModal from "@/components/property/RoomManagementModal";
 import ReportModal from "@/components/property/ReportModal";
 import DocumentReport from "@/components/property/DocumentReport";
 import InviteManagerModal from "@/components/manager/InviteManagerModal";
-import InviteOwnerModal from "@/components/property/InviteOwnerModal";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Property {
@@ -50,93 +54,55 @@ const PropertyOwnerDashboard = () => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isDocumentReportOpen, setIsDocumentReportOpen] = useState(false);
   const [isInviteManagerOpen, setIsInviteManagerOpen] = useState(false);
-  const [isInviteOwnerOpen, setIsInviteOwnerOpen] = useState(false);
   const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
   const [messageText, setMessageText] = useState("");
   const [selectedRecipient, setSelectedRecipient] = useState("all");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [isLoadingProperties, setIsLoadingProperties] = useState(true);
+  const [properties, setProperties] = useState<Property[]>([
+    {
+      id: "1",
+      name: "Skyline Apartment",
+      location: "Nairobi West, Nairobi",
+      rent_per_room: 15000,
+      total_rooms: 50,
+      occupiedRooms: 42,
+      image_url: skylineApartment,
+    },
+    {
+      id: "2",
+      name: "Yellow House",
+      location: "Mombasa Road, Nairobi", 
+      rent_per_room: 18000,
+      total_rooms: 20,
+      occupiedRooms: 18,
+      image_url: yellowHouse,
+    },
+    {
+      id: "3",
+      name: "White House",
+      location: "Kisumu CBD, Kisumu",
+      rent_per_room: 12000,
+      total_rooms: 20,
+      occupiedRooms: 16,
+      image_url: whiteHouse,
+    },
+    {
+      id: "4",
+      name: "Green House",
+      location: "Nakuru Town, Nakuru",
+      rent_per_room: 14000,
+      total_rooms: 20,
+      occupiedRooms: 17,
+      image_url: greenHouse,
+    },
+  ]);
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.total_rooms, 0);
   const occupiedRooms = properties.reduce((sum, prop) => sum + prop.occupiedRooms, 0);
   const vacantRooms = totalRooms - occupiedRooms;
-  const occupancyRate = totalRooms > 0 ? ((occupiedRooms / totalRooms) * 100).toFixed(1) : '0';
-
-  // Fetch properties from Supabase
-  useEffect(() => {
-    const fetchProperties = async () => {
-      setIsLoadingProperties(true);
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          console.error('No authenticated user');
-          setIsLoadingProperties(false);
-          return;
-        }
-
-        // Fetch properties owned by this user
-        const { data: propertiesData, error: propertiesError } = await supabase
-          .from('properties')
-          .select('*')
-          .eq('owner_id', user.id);
-
-        if (propertiesError) {
-          console.error('Error fetching properties:', propertiesError);
-          toast({
-            title: "Error",
-            description: "Failed to load properties",
-            variant: "destructive",
-          });
-          setIsLoadingProperties(false);
-          return;
-        }
-
-        if (propertiesData) {
-          // Fetch room occupancy data for each property
-          const propertiesWithOccupancy = await Promise.all(
-            propertiesData.map(async (property) => {
-              const { data: roomsData, error: roomsError } = await supabase
-                .from('rooms')
-                .select('is_occupied')
-                .eq('property_id', property.id);
-
-              if (roomsError) {
-                console.error('Error fetching rooms:', roomsError);
-                return {
-                  ...property,
-                  occupiedRooms: 0,
-                };
-              }
-
-              const occupiedCount = roomsData?.filter(room => room.is_occupied).length || 0;
-
-              return {
-                id: property.id,
-                name: property.name,
-                location: property.location,
-                rent_per_room: property.rent_per_room,
-                total_rooms: property.total_rooms,
-                occupiedRooms: occupiedCount,
-                image_url: property.image_url,
-              };
-            })
-          );
-
-          setProperties(propertiesWithOccupancy);
-        }
-      } catch (error) {
-        console.error('Error in fetchProperties:', error);
-      } finally {
-        setIsLoadingProperties(false);
-      }
-    };
-
-    fetchProperties();
-  }, [toast]);
+  const occupancyRate = ((occupiedRooms / totalRooms) * 100).toFixed(1);
 
   // Set up real-time listener for tenant profile updates
   useEffect(() => {
@@ -183,10 +149,6 @@ const PropertyOwnerDashboard = () => {
 
   const handleAddPropertySubmit = (newProperty: Property) => {
     setProperties([...properties, newProperty]);
-    toast({
-      title: "Property Added",
-      description: "Your property has been added successfully.",
-    });
   };
 
   const handleEditProperty = (property: Property) => {
@@ -216,10 +178,6 @@ const PropertyOwnerDashboard = () => {
 
   const handleInviteManager = () => {
     setIsInviteManagerOpen(true);
-  };
-
-  const handleInviteOwner = () => {
-    setIsInviteOwnerOpen(true);
   };
 
   const handleManagerInvited = (managerData: {
@@ -345,10 +303,6 @@ const PropertyOwnerDashboard = () => {
               <FileText className="mr-2 h-4 w-4" />
               Generate Report
             </Button>
-            <Button onClick={handleInviteOwner} variant="outline">
-              <UserPlus className="mr-2 h-4 w-4" />
-              Invite Owner
-            </Button>
             <Button onClick={handleInviteManager} variant="outline">
               <Mail className="mr-2 h-4 w-4" />
               Invite Manager
@@ -422,36 +376,13 @@ const PropertyOwnerDashboard = () => {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-foreground">Your Properties</h2>
-            {properties.length > 0 && (
-              <Badge variant="secondary" className="text-sm">
-                {properties.length} Properties
-              </Badge>
-            )}
+            <Badge variant="secondary" className="text-sm">
+              {properties.length} Properties
+            </Badge>
           </div>
 
-          {isLoadingProperties ? (
-            <div className="flex items-center justify-center h-64">
-              <p className="text-muted-foreground">Loading properties...</p>
-            </div>
-          ) : properties.length === 0 ? (
-            <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
-              <CardContent className="flex flex-col items-center justify-center py-16 space-y-4">
-                <Building2 className="h-16 w-16 text-muted-foreground" />
-                <div className="text-center space-y-2">
-                  <h3 className="text-xl font-semibold text-foreground">No Properties Yet</h3>
-                  <p className="text-muted-foreground max-w-md">
-                    Get started by adding your first property. Once you add properties, you'll have access to all management features.
-                  </p>
-                </div>
-                <Button onClick={handleAddProperty} size="lg" className="bg-gradient-hero hover:shadow-glow">
-                  <Plus className="mr-2 h-5 w-5" />
-                  Add Your First Property
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {properties.map((property) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {properties.map((property) => (
               <Card key={property.id} className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card hover:shadow-warm transition-all duration-300 overflow-hidden group">
                 <div className="relative">
                   <img
@@ -532,14 +463,10 @@ const PropertyOwnerDashboard = () => {
                 </CardContent>
               </Card>
             ))}
-            </div>
-          )}
+          </div>
         </div>
-      </div>
-    </div>
 
-      {/* Modals */}
-      <RoomDetailsModal
+        <RoomDetailsModal
           property={selectedProperty}
           isOpen={isRoomModalOpen}
           onClose={() => {
@@ -590,11 +517,6 @@ const PropertyOwnerDashboard = () => {
           onManagerInvited={handleManagerInvited}
         />
 
-        <InviteOwnerModal
-          isOpen={isInviteOwnerOpen}
-          onClose={() => setIsInviteOwnerOpen(false)}
-        />
-
         <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -611,6 +533,9 @@ const PropertyOwnerDashboard = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        </div>
+      </div>
     </div>
   );
 };
