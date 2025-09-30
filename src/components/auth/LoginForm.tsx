@@ -134,12 +134,6 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="developer">
-                      <div className="flex items-center gap-2">
-                        <Settings className="h-4 w-4" />
-                        Developer/Admin
-                      </div>
-                    </SelectItem>
                     <SelectItem value="owner">
                       <div className="flex items-center gap-2">
                         <Building2 className="h-4 w-4" />
