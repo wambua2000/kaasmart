@@ -59,44 +59,68 @@ const PropertyOwnerDashboard = () => {
   const [selectedRecipient, setSelectedRecipient] = useState("all");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
-  const [properties, setProperties] = useState<Property[]>([
-    {
-      id: "1",
-      name: "Skyline Apartment",
-      location: "Nairobi West, Nairobi",
-      rent_per_room: 15000,
-      total_rooms: 50,
-      occupiedRooms: 42,
-      image_url: skylineApartment,
-    },
-    {
-      id: "2",
-      name: "Yellow House",
-      location: "Mombasa Road, Nairobi", 
-      rent_per_room: 18000,
-      total_rooms: 20,
-      occupiedRooms: 18,
-      image_url: yellowHouse,
-    },
-    {
-      id: "3",
-      name: "White House",
-      location: "Kisumu CBD, Kisumu",
-      rent_per_room: 12000,
-      total_rooms: 20,
-      occupiedRooms: 16,
-      image_url: whiteHouse,
-    },
-    {
-      id: "4",
-      name: "Green House",
-      location: "Nakuru Town, Nakuru",
-      rent_per_room: 14000,
-      total_rooms: 20,
-      occupiedRooms: 17,
-      image_url: greenHouse,
-    },
-  ]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [isLoadingProperties, setIsLoadingProperties] = useState(true);
+
+  // Fetch properties from Supabase
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        setIsLoadingProperties(true);
+        
+        // Fetch properties
+        const { data: propertiesData, error: propertiesError } = await supabase
+          .from('properties')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (propertiesError) throw propertiesError;
+
+        // Fetch room occupancy for each property
+        const propertiesWithOccupancy = await Promise.all(
+          (propertiesData || []).map(async (property) => {
+            const { data: roomsData, error: roomsError } = await supabase
+              .from('rooms')
+              .select('is_occupied')
+              .eq('property_id', property.id);
+
+            if (roomsError) {
+              console.error('Error fetching rooms:', roomsError);
+              return {
+                ...property,
+                occupiedRooms: 0,
+              };
+            }
+
+            const occupiedRooms = roomsData?.filter(room => room.is_occupied).length || 0;
+
+            return {
+              id: property.id,
+              name: property.name,
+              location: property.location,
+              rent_per_room: property.rent_per_room,
+              total_rooms: property.total_rooms,
+              occupiedRooms,
+              image_url: property.image_url,
+            };
+          })
+        );
+
+        setProperties(propertiesWithOccupancy);
+      } catch (error) {
+        console.error('Error fetching properties:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load properties. Please refresh the page.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingProperties(false);
+      }
+    };
+
+    fetchProperties();
+  }, [toast]);
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.total_rooms, 0);
@@ -382,7 +406,20 @@ const PropertyOwnerDashboard = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {properties.map((property) => (
+            {isLoadingProperties ? (
+              <div className="col-span-full text-center py-12 text-muted-foreground">
+                Loading properties...
+              </div>
+            ) : properties.length === 0 ? (
+              <div className="col-span-full text-center py-12">
+                <p className="text-muted-foreground mb-4">No properties found</p>
+                <Button onClick={handleAddProperty}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Your First Property
+                </Button>
+              </div>
+            ) : (
+              properties.map((property) => (
               <Card key={property.id} className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card hover:shadow-warm transition-all duration-300 overflow-hidden group">
                 <div className="relative">
                   <img
@@ -462,7 +499,8 @@ const PropertyOwnerDashboard = () => {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            ))
+            )}
           </div>
         </div>
 
