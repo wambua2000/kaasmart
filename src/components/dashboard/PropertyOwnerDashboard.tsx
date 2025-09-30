@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings, ExternalLink, Wrench, MessageSquare, Eye, Trash2 } from "lucide-react";
+import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings, ExternalLink, Wrench, MessageSquare, Eye, Trash2, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
   AlertDialog, 
@@ -27,6 +27,7 @@ import whiteHouse from "@/assets/white-house.jpg";
 import greenHouse from "@/assets/green-house.jpg";
 import RoomDetailsModal from "@/components/property/RoomDetailsModal";
 import AddPropertyModal from "@/components/property/AddPropertyModal";
+import EditPropertyModal from "@/components/property/EditPropertyModal";
 import RoomManagementModal from "@/components/property/RoomManagementModal";
 import ReportModal from "@/components/property/ReportModal";
 import DocumentReport from "@/components/property/DocumentReport";
@@ -48,6 +49,7 @@ const PropertyOwnerDashboard = () => {
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [isAddPropertyModalOpen, setIsAddPropertyModalOpen] = useState(false);
+  const [isEditPropertyModalOpen, setIsEditPropertyModalOpen] = useState(false);
   const [isRoomManagementOpen, setIsRoomManagementOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isDocumentReportOpen, setIsDocumentReportOpen] = useState(false);
@@ -147,6 +149,17 @@ const PropertyOwnerDashboard = () => {
 
   const handleAddPropertySubmit = (newProperty: Property) => {
     setProperties([...properties, newProperty]);
+  };
+
+  const handleEditProperty = (property: Property) => {
+    setSelectedProperty(property);
+    setIsEditPropertyModalOpen(true);
+  };
+
+  const handleUpdateProperty = (updatedProperty: Property) => {
+    setProperties(properties.map(p => 
+      p.id === updatedProperty.id ? updatedProperty : p
+    ));
   };
 
   const handleOpenSheet = () => {
@@ -422,7 +435,7 @@ const PropertyOwnerDashboard = () => {
                       />
                      </div>
                      
-                      <div className="flex gap-2 pt-2">
+                     <div className="flex gap-2 pt-2">
                       <Button 
                         size="sm" 
                         className="flex-1 bg-gradient-hero hover:shadow-glow"
@@ -430,6 +443,13 @@ const PropertyOwnerDashboard = () => {
                       >
                         <Eye className="mr-2 h-4 w-4" />
                         View Rooms
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleEditProperty(property)}
+                      >
+                        <Pencil className="h-4 w-4" />
                       </Button>
                       <Button 
                         size="sm" 
@@ -465,11 +485,18 @@ const PropertyOwnerDashboard = () => {
           userRole="owner"
         />
 
-        <AddPropertyModal
-          isOpen={isAddPropertyModalOpen}
-          onClose={() => setIsAddPropertyModalOpen(false)}
-          onAddProperty={handleAddPropertySubmit}
-        />
+      <AddPropertyModal 
+        isOpen={isAddPropertyModalOpen}
+        onClose={() => setIsAddPropertyModalOpen(false)}
+        onAddProperty={handleAddPropertySubmit}
+      />
+
+      <EditPropertyModal
+        isOpen={isEditPropertyModalOpen}
+        onClose={() => setIsEditPropertyModalOpen(false)}
+        property={selectedProperty}
+        onUpdateProperty={handleUpdateProperty}
+      />
 
         <ReportModal
           properties={properties}
