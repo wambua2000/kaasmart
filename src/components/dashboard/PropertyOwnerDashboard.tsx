@@ -59,44 +59,77 @@ const PropertyOwnerDashboard = () => {
   const [selectedRecipient, setSelectedRecipient] = useState("all");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
-  const [properties, setProperties] = useState<Property[]>([
-    {
-      id: "1",
-      name: "Skyline Apartment",
-      location: "Nairobi West, Nairobi",
-      rent_per_room: 15000,
-      total_rooms: 50,
-      occupiedRooms: 42,
-      image_url: skylineApartment,
-    },
-    {
-      id: "2",
-      name: "Yellow House",
-      location: "Mombasa Road, Nairobi", 
-      rent_per_room: 18000,
-      total_rooms: 20,
-      occupiedRooms: 18,
-      image_url: yellowHouse,
-    },
-    {
-      id: "3",
-      name: "White House",
-      location: "Kisumu CBD, Kisumu",
-      rent_per_room: 12000,
-      total_rooms: 20,
-      occupiedRooms: 16,
-      image_url: whiteHouse,
-    },
-    {
-      id: "4",
-      name: "Green House",
-      location: "Nakuru Town, Nakuru",
-      rent_per_room: 14000,
-      total_rooms: 20,
-      occupiedRooms: 17,
-      image_url: greenHouse,
-    },
-  ]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch properties from Supabase
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        setIsLoading(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          toast({
+            title: "Authentication Required",
+            description: "Please log in to view your properties.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Fetch properties
+        const { data: propertiesData, error: propertiesError } = await supabase
+          .from('properties')
+          .select('*')
+          .eq('owner_id', user.id);
+
+        if (propertiesError) throw propertiesError;
+
+        if (!propertiesData || propertiesData.length === 0) {
+          setProperties([]);
+          setIsLoading(false);
+          return;
+        }
+
+        // Fetch rooms to calculate occupancy
+        const { data: roomsData, error: roomsError } = await supabase
+          .from('rooms')
+          .select('property_id, is_occupied');
+
+        if (roomsError) throw roomsError;
+
+        // Map properties with occupancy data
+        const propertiesWithOccupancy = propertiesData.map(property => {
+          const propertyRooms = roomsData?.filter(room => room.property_id === property.id) || [];
+          const occupiedRooms = propertyRooms.filter(room => room.is_occupied).length;
+
+          return {
+            id: property.id,
+            name: property.name,
+            location: property.location,
+            rent_per_room: property.rent_per_room,
+            total_rooms: property.total_rooms,
+            occupiedRooms: occupiedRooms,
+            image_url: property.image_url || skylineApartment,
+          };
+        });
+
+        setProperties(propertiesWithOccupancy);
+      } catch (error) {
+        console.error('Error fetching properties:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load properties. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProperties();
+  }, [toast]);
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.total_rooms, 0);
@@ -147,8 +180,16 @@ const PropertyOwnerDashboard = () => {
     setIsAddPropertyModalOpen(true);
   };
 
-  const handleAddPropertySubmit = (newProperty: Property) => {
-    setProperties([...properties, newProperty]);
+  const handleAddPropertySubmit = async (newProperty: Property) => {
+    // Fetch updated property with occupancy data
+    const { data: roomsData } = await supabase
+      .from('rooms')
+      .select('property_id, is_occupied')
+      .eq('property_id', newProperty.id);
+
+    const occupiedRooms = roomsData?.filter(room => room.is_occupied).length || 0;
+    
+    setProperties([...properties, { ...newProperty, occupiedRooms }]);
   };
 
   const handleEditProperty = (property: Property) => {
@@ -156,10 +197,23 @@ const PropertyOwnerDashboard = () => {
     setIsEditPropertyModalOpen(true);
   };
 
-  const handleUpdateProperty = (updatedProperty: Property) => {
+  const handleUpdateProperty = async (updatedProperty: Property) => {
+    // Fetch updated occupancy data
+    const { data: roomsData } = await supabase
+      .from('rooms')
+      .select('property_id, is_occupied')
+      .eq('property_id', updatedProperty.id);
+
+    const occupiedRooms = roomsData?.filter(room => room.is_occupied).length || 0;
+    
     setProperties(properties.map(p => 
-      p.id === updatedProperty.id ? updatedProperty : p
+      p.id === updatedProperty.id ? { ...updatedProperty, occupiedRooms } : p
     ));
+    
+    toast({
+      title: "Property Updated",
+      description: "Property details have been updated successfully.",
+    });
   };
 
   const handleOpenSheet = () => {
@@ -381,8 +435,27 @@ const PropertyOwnerDashboard = () => {
             </Badge>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {properties.map((property) => (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <p className="text-muted-foreground">Loading properties...</p>
+            </div>
+          ) : properties.length === 0 ? (
+            <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No properties yet</h3>
+                <p className="text-muted-foreground text-center mb-4">
+                  Get started by adding your first property
+                </p>
+                <Button onClick={handleAddProperty} className="bg-gradient-hero hover:shadow-glow">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Property
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {properties.map((property) => (
               <Card key={property.id} className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card hover:shadow-warm transition-all duration-300 overflow-hidden group">
                 <div className="relative">
                   <img
@@ -460,11 +533,12 @@ const PropertyOwnerDashboard = () => {
                       </Button>
                      </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
+                 </CardContent>
+               </Card>
+             ))}
+           </div>
+          )}
+         </div>
 
         <RoomDetailsModal
           property={selectedProperty}
