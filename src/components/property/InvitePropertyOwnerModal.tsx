@@ -19,7 +19,6 @@ const InvitePropertyOwnerModal = ({
   onOwnerInvited,
 }: InvitePropertyOwnerModalProps) => {
   const { toast } = useToast();
-  const [ownerEmail, setOwnerEmail] = useState("");
   const [generatedCredentials, setGeneratedCredentials] = useState<{
     email: string;
     password: string;
@@ -36,20 +35,23 @@ const InvitePropertyOwnerModal = ({
     return password;
   };
 
-  const generateCredentials = async () => {
-    if (!ownerEmail) {
-      toast({
-        title: "Error",
-        description: "Please enter an email address",
-        variant: "destructive",
-      });
-      return;
-    }
+  const generateNextOwnerEmail = async () => {
+    // Fetch all existing property owners to determine the next number
+    const { count } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('role', 'owner');
+    
+    const nextNumber = (count || 0) + 1;
+    return `owner${String(nextNumber).padStart(3, '0')}@kaasmart.com`;
+  };
 
+  const generateCredentials = async () => {
     setIsGenerating(true);
 
     try {
-      const password = generatePassword();
+      // Generate the next owner email automatically
+      const ownerEmail = await generateNextOwnerEmail();
 
       // Call Supabase RPC to generate invitation
       const { data, error } = await supabase.rpc('generate_invitation_credentials', {
@@ -91,7 +93,6 @@ const InvitePropertyOwnerModal = ({
   };
 
   const resetModal = () => {
-    setOwnerEmail("");
     setGeneratedCredentials(null);
     setShowPassword(false);
   };
@@ -113,18 +114,10 @@ const InvitePropertyOwnerModal = ({
 
         <div className="space-y-4 py-4">
           {!generatedCredentials ? (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="ownerEmail">Property Owner Email</Label>
-                <Input
-                  id="ownerEmail"
-                  type="email"
-                  placeholder="owner@example.com"
-                  value={ownerEmail}
-                  onChange={(e) => setOwnerEmail(e.target.value)}
-                />
-              </div>
-
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Click the button below to automatically generate unique login credentials for a new property owner.
+              </p>
               <Button
                 onClick={generateCredentials}
                 disabled={isGenerating}
@@ -133,7 +126,7 @@ const InvitePropertyOwnerModal = ({
                 <UserPlus className="mr-2 h-4 w-4" />
                 {isGenerating ? "Generating..." : "Generate Credentials"}
               </Button>
-            </>
+            </div>
           ) : (
             <>
               <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
