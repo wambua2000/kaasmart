@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { 
   User, Phone, Mail, Calendar, CreditCard, MapPin, 
   Upload, MessageSquare, UserPlus, Edit, Save, 
@@ -64,135 +63,63 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
   const [tempEmergencyContact, setTempEmergencyContact] = useState(globalEmergencyContact);
   const [rooms, setRooms] = useState<Room[]>([]);
 
-  // Fetch rooms from Supabase when property changes
+  // Initialize rooms when property changes - MUST be before early return
   React.useEffect(() => {
-    if (!property) return;
+    if (property) {
+      const generateRooms = (totalRooms: number, occupiedRooms: number): Room[] => {
+        const tenantNames = [
+          "John Kamau", "Mary Wanjiku", "Peter Ochieng", "Grace Akinyi", "David Mwangi",
+          "Sarah Njeri", "James Kiprotich", "Lucy Wambui", "Samuel Otieno", "Rose Wairimu",
+          "Michael Kiplagat", "Faith Nyambura", "Joseph Muturi", "Alice Wanjiru", "Daniel Kimani"
+        ];
 
-    const fetchRooms = async () => {
-      const { data: roomsData, error } = await supabase
-        .from('rooms')
-        .select('*')
-        .eq('property_id', property.id)
-        .order('room_number');
+        // Generate room prefix based on property name
+        const getRoomPrefix = (propertyName: string): string => {
+          const nameMap: Record<string, string> = {
+            "White House": "white",
+            "Yellow House": "yellow", 
+            "Green House": "green",
+            "Skyline Apartment": "skyline"
+          };
+          return nameMap[propertyName] || "room";
+        };
 
-      if (error) {
-        console.error('Error fetching rooms:', error);
-        toast({
-          title: "Error Loading Rooms",
-          description: "Failed to load room data.",
-          variant: "destructive"
-        });
-        return;
-      }
+        const roomPrefix = getRoomPrefix(property.name);
+        const newRooms: Room[] = [];
 
-      // Map Supabase data to Room format
-      const mappedRooms: Room[] = (roomsData || []).map(room => ({
-        id: room.id,
-        number: room.room_number,
-        status: room.is_occupied ? "occupied" : "vacant",
-        rentAmount: Number(room.rent_amount),
-        tenant: room.is_occupied && room.tenant_name ? {
-          id: room.tenant_id || room.id,
-          name: room.tenant_name,
-          email: room.tenant_email || '',
-          phone: room.tenant_phone || '',
-          dateOfEntry: room.tenant_date_of_entry || new Date().toISOString().split('T')[0],
-          rentAmount: Number(room.rent_amount),
-          rentStatus: room.rent_status === 'paid' ? 'paid' : 'not-paid',
-          accessories: room.tenant_accessories || [],
-          emergencyContact: globalEmergencyContact,
-          notes: room.tenant_notes || undefined
-        } : undefined
-      }));
+        for (let i = 1; i <= totalRooms; i++) {
+          const isOccupied = i <= occupiedRooms;
+          const room: Room = {
+            id: `${property.id}-${i}`,
+            number: `${roomPrefix}${i.toString().padStart(3, '0')}`,
+            status: isOccupied ? "occupied" : "vacant",
+            rentAmount: property.rent_per_room,
+          };
 
-      setRooms(mappedRooms);
-    };
+          if (isOccupied) {
+            const randomTenant = tenantNames[Math.floor(Math.random() * tenantNames.length)];
+            room.tenant = {
+              id: `tenant-${i}`,
+              name: randomTenant,
+              email: `${randomTenant.toLowerCase().replace(' ', '.')}@email.com`,
+              phone: `+254 7${Math.floor(10000000 + Math.random() * 90000000)}`,
+              dateOfEntry: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              rentAmount: property.rent_per_room,
+              rentStatus: Math.random() > 0.7 ? "not-paid" : "paid",
+              accessories: ["Bed", "Table", "Chair"].filter(() => Math.random() > 0.3),
+              emergencyContact: globalEmergencyContact,
+              notes: Math.random() > 0.5 ? "Good tenant, pays on time" : undefined,
+            };
+          }
 
-    fetchRooms();
-  }, [property?.id, globalEmergencyContact, toast]);
-
-  // Set up real-time listener for room/tenant updates
-  React.useEffect(() => {
-    if (!property) return;
-
-    const channel = supabase
-      .channel(`room-updates-${property.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'rooms',
-          filter: `property_id=eq.${property.id}`
-        },
-        (payload) => {
-          console.log('Room updated in real-time:', payload);
-          const updatedRoom = payload.new;
-          
-          // Update the specific room in state
-          setRooms(prevRooms => 
-            prevRooms.map(room => {
-              if (room.id === updatedRoom.id) {
-                return {
-                  ...room,
-                  number: updatedRoom.room_number,
-                  status: updatedRoom.is_occupied ? "occupied" : "vacant",
-                  rentAmount: Number(updatedRoom.rent_amount),
-                  tenant: updatedRoom.is_occupied && updatedRoom.tenant_name ? {
-                    id: updatedRoom.tenant_id || updatedRoom.id,
-                    name: updatedRoom.tenant_name,
-                    email: updatedRoom.tenant_email || '',
-                    phone: updatedRoom.tenant_phone || '',
-                    dateOfEntry: updatedRoom.tenant_date_of_entry || new Date().toISOString().split('T')[0],
-                    rentAmount: Number(updatedRoom.rent_amount),
-                    rentStatus: updatedRoom.rent_status === 'paid' ? 'paid' : 'not-paid',
-                    accessories: updatedRoom.tenant_accessories || [],
-                    emergencyContact: globalEmergencyContact,
-                    notes: updatedRoom.tenant_notes || undefined
-                  } : undefined
-                };
-              }
-              return room;
-            })
-          );
-
-          // Update selected room if it matches
-          setSelectedRoom(prev => {
-            if (prev && prev.id === updatedRoom.id) {
-              return {
-                ...prev,
-                number: updatedRoom.room_number,
-                status: updatedRoom.is_occupied ? "occupied" : "vacant",
-                rentAmount: Number(updatedRoom.rent_amount),
-                tenant: updatedRoom.is_occupied && updatedRoom.tenant_name ? {
-                  id: updatedRoom.tenant_id || updatedRoom.id,
-                  name: updatedRoom.tenant_name,
-                  email: updatedRoom.tenant_email || '',
-                  phone: updatedRoom.tenant_phone || '',
-                  dateOfEntry: updatedRoom.tenant_date_of_entry || new Date().toISOString().split('T')[0],
-                  rentAmount: Number(updatedRoom.rent_amount),
-                  rentStatus: updatedRoom.rent_status === 'paid' ? 'paid' : 'not-paid',
-                  accessories: updatedRoom.tenant_accessories || [],
-                  emergencyContact: globalEmergencyContact,
-                  notes: updatedRoom.tenant_notes || undefined
-                } : undefined
-              };
-            }
-            return prev;
-          });
-
-          toast({
-            title: "Room Updated",
-            description: "Tenant profile has been synced automatically.",
-          });
+          newRooms.push(room);
         }
-      )
-      .subscribe();
+        return newRooms;
+      };
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [property?.id, globalEmergencyContact, toast]);
+      setRooms(generateRooms(property.total_rooms, property.occupiedRooms));
+    }
+  }, [property?.id, globalEmergencyContact]);
 
   if (!property) return null;
 
