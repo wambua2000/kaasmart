@@ -192,42 +192,58 @@ const MessageCenter = ({
         </Card>
       )}
 
-      {/* Send Message */}
-      <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Send className="h-5 w-5 text-primary" />
-            Send Message
-          </CardTitle>
-          <CardDescription>
-            {currentUserRole === 'tenant' 
-              ? "Send a message to property management"
-              : "Send a message to tenants or staff"
-            }
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="message">Message</Label>
-            <Textarea
-              id="message"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Type your message here..."
-              rows={4}
-              className="resize-none"
-            />
-          </div>
-          <Button 
-            onClick={sendMessage}
-            disabled={!newMessage.trim() || loading}
-            className="bg-gradient-hero hover:shadow-glow"
-          >
-            <Send className="mr-2 h-4 w-4" />
-            {loading ? 'Sending...' : 'Send Message'}
-          </Button>
-        </CardContent>
-      </Card>
+      {/* Send Message - Only for owners and tenants */}
+      {currentUserRole !== 'manager' && (
+        <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5 text-primary" />
+              Send Message
+            </CardTitle>
+            <CardDescription>
+              {currentUserRole === 'tenant' 
+                ? "Send a message to property management"
+                : "Send a message to tenants or staff"
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="message">Message</Label>
+              <Textarea
+                id="message"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Type your message here..."
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+            <Button 
+              onClick={sendMessage}
+              disabled={!newMessage.trim() || loading}
+              className="bg-gradient-hero hover:shadow-glow"
+            >
+              <Send className="mr-2 h-4 w-4" />
+              {loading ? 'Sending...' : 'Send Message'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* View-only notice for managers */}
+      {currentUserRole === 'manager' && (
+        <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
+          <CardContent className="py-6">
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <AlertCircle className="h-5 w-5" />
+              <p className="text-sm">
+                You have view-only access to messages. You can see messages from property owners and maintenance requests from tenants.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Messages List */}
       <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
