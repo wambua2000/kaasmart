@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,42 @@ const InvitePropertyOwnerModal = ({
   } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [nextOwnerNumber, setNextOwnerNumber] = useState<number>(1);
+
+  // Fetch next available owner number when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchNextOwnerNumber();
+    }
+  }, [isOpen]);
+
+  const fetchNextOwnerNumber = async () => {
+    try {
+      // Get all existing owners to determine the next number
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('role', 'owner')
+        .like('email', 'owner%@kaasmart.com');
+
+      if (error) throw error;
+
+      // Extract numbers from existing owner emails
+      const existingNumbers = (profiles || [])
+        .map(p => {
+          const match = p.email.match(/owner(\d+)@kaasmart\.com/);
+          return match ? parseInt(match[1]) : 0;
+        })
+        .filter(n => n > 0);
+
+      // Find the next available number
+      const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
+      setNextOwnerNumber(maxNumber + 1);
+    } catch (error) {
+      console.error('Error fetching owner count:', error);
+      setNextOwnerNumber(1);
+    }
+  };
 
   const generatePassword = () => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
@@ -35,23 +71,12 @@ const InvitePropertyOwnerModal = ({
     return password;
   };
 
-  const generateNextOwnerEmail = async () => {
-    // Fetch all existing property owners to determine the next number
-    const { count } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .eq('role', 'owner');
-    
-    const nextNumber = (count || 0) + 1;
-    return `owner${String(nextNumber).padStart(3, '0')}@kaasmart.com`;
-  };
-
   const generateCredentials = async () => {
     setIsGenerating(true);
 
     try {
-      // Generate the next owner email automatically
-      const ownerEmail = await generateNextOwnerEmail();
+      // Generate email in format owner001@kaasmart.com
+      const ownerEmail = `owner${String(nextOwnerNumber).padStart(3, '0')}@kaasmart.com`;
 
       // Call Supabase RPC to generate invitation
       const { data, error } = await supabase.rpc('generate_invitation_credentials', {
@@ -95,6 +120,7 @@ const InvitePropertyOwnerModal = ({
   const resetModal = () => {
     setGeneratedCredentials(null);
     setShowPassword(false);
+    fetchNextOwnerNumber();
   };
 
   const handleClose = () => {
@@ -114,10 +140,19 @@ const InvitePropertyOwnerModal = ({
 
         <div className="space-y-4 py-4">
           {!generatedCredentials ? (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Click the button below to automatically generate unique login credentials for a new property owner.
-              </p>
+            <>
+              <div className="space-y-2">
+                <Label>Next Property Owner Email</Label>
+                <div className="p-3 bg-muted/50 rounded-lg border border-border/50">
+                  <p className="text-sm font-mono">
+                    owner{String(nextOwnerNumber).padStart(3, '0')}@kaasmart.com
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  This email will be automatically generated for the new property owner
+                </p>
+              </div>
+
               <Button
                 onClick={generateCredentials}
                 disabled={isGenerating}
@@ -126,7 +161,7 @@ const InvitePropertyOwnerModal = ({
                 <UserPlus className="mr-2 h-4 w-4" />
                 {isGenerating ? "Generating..." : "Generate Credentials"}
               </Button>
-            </div>
+            </>
           ) : (
             <>
               <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
