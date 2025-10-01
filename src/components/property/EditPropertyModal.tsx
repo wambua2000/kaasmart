@@ -102,6 +102,30 @@ const EditPropertyModal = ({ isOpen, onClose, property, onUpdateProperty }: Edit
       return;
     }
 
+    // Validate numeric values
+    const rentValue = parseFloat(formData.rentPerRoom);
+    const roomsValue = parseInt(formData.totalRooms);
+
+    if (isNaN(rentValue) || rentValue <= 0) {
+      toast({
+        title: "Validation Error",
+        description: "Rent per room must be a valid positive number.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (isNaN(roomsValue) || roomsValue <= 0) {
+      toast({
+        title: "Validation Error",
+        description: "Total rooms must be a valid positive number.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       let imageUrl = formData.imageUrl;
 
@@ -120,43 +144,48 @@ const EditPropertyModal = ({ isOpen, onClose, property, onUpdateProperty }: Edit
       }
 
       // Update property in database
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('properties')
         .update({
           name: formData.name.trim(),
           location: formData.location.trim(),
-          rent_per_room: parseFloat(formData.rentPerRoom),
-          total_rooms: parseInt(formData.totalRooms),
+          rent_per_room: rentValue,
+          total_rooms: roomsValue,
           image_url: imageUrl,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', property.id);
+        .eq('id', property.id)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase update error:', error);
+        throw new Error(error.message || 'Failed to update property');
+      }
 
       const updatedProperty: Property = {
         ...property,
         name: formData.name.trim(),
         location: formData.location.trim(),
-        rent_per_room: parseFloat(formData.rentPerRoom),
-        total_rooms: parseInt(formData.totalRooms),
+        rent_per_room: rentValue,
+        total_rooms: roomsValue,
         image_url: imageUrl,
       };
 
       onUpdateProperty(updatedProperty);
 
       toast({
-        title: "Property Updated",
+        title: "Success!",
         description: `${updatedProperty.name} has been updated successfully.`,
       });
 
       setImageFile(null);
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating property:', error);
       toast({
-        title: "Error",
-        description: "Failed to update property. Please try again.",
+        title: "Update Failed",
+        description: error?.message || "Failed to update property. Please try again.",
         variant: "destructive",
       });
     } finally {
