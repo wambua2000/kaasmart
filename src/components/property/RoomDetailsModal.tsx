@@ -168,7 +168,7 @@ const RoomDetailsModal = ({ property, isOpen, onClose }: RoomDetailsModalProps) 
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base">{room.number}</CardTitle>
                       <Badge className={getStatusColor(room.status)}>
-                        {room.status}
+                        {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
                       </Badge>
                     </div>
                   </CardHeader>

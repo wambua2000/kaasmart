@@ -76,12 +76,12 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
         // Generate room prefix based on property name
         const getRoomPrefix = (propertyName: string): string => {
           const nameMap: Record<string, string> = {
-            "White House": "white",
-            "Yellow House": "yellow", 
-            "Green House": "green",
-            "Skyline Apartment": "skyline"
+            "White House": "White",
+            "Yellow House": "Yellow", 
+            "Green House": "Green",
+            "Skyline Apartment": "Skyline"
           };
-          return nameMap[propertyName] || "room";
+          return nameMap[propertyName] || "Room";
         };
 
         const roomPrefix = getRoomPrefix(property.name);
@@ -319,7 +319,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                      <div className="flex items-center justify-between">
                        <span className="font-medium">{room.number}</span>
                        <Badge variant={room.status === "occupied" ? "default" : "secondary"}>
-                         {room.status}
+                         {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
                        </Badge>
                      </div>
                      {room.tenant && (
@@ -353,7 +353,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                     variant={selectedRoom.status === "occupied" ? "default" : "secondary"}
                     className="text-base px-3 py-1"
                   >
-                    {selectedRoom.status}
+                    {selectedRoom.status.charAt(0).toUpperCase() + selectedRoom.status.slice(1)}
                   </Badge>
                 </div>
 
