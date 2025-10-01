@@ -8,6 +8,7 @@ import { Building2, User, Lock, Mail, Eye, EyeOff, Settings } from "lucide-react
 import { useToast } from "@/hooks/use-toast";
 import kaasmartLogo from "@/assets/kaasmart-logo.png";
 import ForgotPasswordDialog from "./ForgotPasswordDialog";
+import { supabase } from "@/integrations/supabase/client";
 
 export type UserRole = "owner" | "manager" | "tenant" | "developer";
 
@@ -23,7 +24,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!email || !password) {
@@ -84,20 +85,60 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
           variant: "destructive",
         });
       }
-    } else {
-      // Check owner or developer credentials
-      const creds = validCredentials[role as 'owner' | 'developer'];
-      if (email === creds?.email && password === creds?.password) {
-        const roleName = role === 'developer' ? 'Developer/Admin' : 'Property Owner';
+    } else if (role === 'owner') {
+      // Check demo owner first
+      if (email === validCredentials.owner.email && password === validCredentials.owner.password) {
         toast({
           title: "Welcome to KaaSmart!",
-          description: `Logged in as ${roleName}`,
+          description: `Logged in as Property Owner`,
+        });
+        onLogin(email, role);
+        return;
+      }
+
+      // Check invitations table for generated owner credentials
+      try {
+        const { data, error } = await supabase.rpc('verify_invitation_login', {
+          login_email: email,
+          login_password: password
+        });
+
+        if (error) throw error;
+
+        if (data && data.length > 0 && data[0].user_role === 'owner') {
+          toast({
+            title: "Welcome to KaaSmart!",
+            description: `Logged in as Property Owner`,
+          });
+          onLogin(email, role);
+        } else {
+          toast({
+            title: "Invalid Credentials",
+            description: "Please check your email and password.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        toast({
+          title: "Invalid Credentials",
+          description: "Please check your email and password.",
+          variant: "destructive",
+        });
+      }
+    } else if (role === 'developer') {
+      // Check developer credentials
+      const creds = validCredentials.developer;
+      if (email === creds.email && password === creds.password) {
+        toast({
+          title: "Welcome to KaaSmart!",
+          description: `Logged in as Developer/Admin`,
         });
         onLogin(email, role);
       } else {
         toast({
           title: "Invalid Credentials",
-          description: "Please check your email, password, and role selection.",
+          description: "Please check your email and password.",
           variant: "destructive",
         });
       }
