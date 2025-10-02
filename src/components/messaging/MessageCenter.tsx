@@ -12,11 +12,12 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   id: string;
-  message: string;
+  content: string;
   sender_id: string;
+  receiver_id?: string;
   property_id?: string;
   room_id?: string;
-  tenant_id?: string;
+  type: string;
   created_at: string;
   sender_name?: string;
   sender_role?: string;
@@ -55,14 +56,13 @@ const MessageCenter = ({
         .from('messages')
         .select(`
           *,
-          sender:profiles(full_name, role)
+          sender:profiles!messages_sender_id_fkey(full_name, role)
         `)
+        .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`)
         .order('created_at', { ascending: false });
 
-      // Filter based on user role and selections
-      if (currentUserRole === 'tenant') {
-        query = query.eq('tenant_id', currentUserId);
-      } else if (selectedPropertyId && selectedPropertyId !== 'all') {
+      // Additional filters based on selections
+      if (selectedPropertyId && selectedPropertyId !== 'all') {
         query = query.eq('property_id', selectedPropertyId);
         if (selectedRoomId) {
           query = query.eq('room_id', selectedRoomId);
@@ -95,12 +95,38 @@ const MessageCenter = ({
 
     setLoading(true);
     try {
+      // Determine receiver based on role
+      let receiverId = null;
+      if (currentUserRole === 'tenant') {
+        // Tenant sending to owner - get property owner
+        if (selectedPropertyId && selectedPropertyId !== 'all') {
+          const { data: property } = await supabase
+            .from('properties')
+            .select('owner_id')
+            .eq('id', selectedPropertyId)
+            .single();
+          receiverId = property?.owner_id;
+        }
+      } else if (currentUserRole === 'owner') {
+        // Owner sending to tenant - get tenant from room
+        if (selectedRoomId) {
+          const { data: room } = await supabase
+            .from('rooms')
+            .select('tenant_id')
+            .eq('id', selectedRoomId)
+            .single();
+          receiverId = room?.tenant_id;
+        }
+      }
+
       const messageData = {
-        message: newMessage,
+        content: newMessage,
+        message: newMessage, // Keep for backward compatibility
         sender_id: currentUserId,
+        receiver_id: receiverId,
         property_id: selectedPropertyId && selectedPropertyId !== 'all' ? selectedPropertyId : null,
         room_id: selectedRoomId || null,
-        tenant_id: currentUserRole === 'tenant' ? currentUserId : null
+        type: messageType
       };
 
       const { error } = await supabase
@@ -274,7 +300,13 @@ const MessageCenter = ({
                       {new Date(message.created_at).toLocaleDateString()} {new Date(message.created_at).toLocaleTimeString()}
                     </span>
                   </div>
-                  <p className="text-sm leading-relaxed">{message.message}</p>
+                  <div className="flex items-center gap-2 mb-2">
+                    {getMessageTypeIcon(message.type)}
+                    <Badge variant="outline" className="text-xs">
+                      {message.type}
+                    </Badge>
+                  </div>
+                  <p className="text-sm leading-relaxed">{message.content}</p>
                 </div>
               ))
             ) : (

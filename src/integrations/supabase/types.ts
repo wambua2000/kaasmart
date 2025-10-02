@@ -140,33 +140,42 @@ export type Database = {
       }
       messages: {
         Row: {
+          content: string
           created_at: string
           id: string
           message: string
           property_id: string | null
+          receiver_id: string | null
           room_id: string | null
           sender_id: string | null
           tenant_id: string | null
+          type: string | null
           updated_at: string
         }
         Insert: {
+          content: string
           created_at?: string
           id?: string
           message: string
           property_id?: string | null
+          receiver_id?: string | null
           room_id?: string | null
           sender_id?: string | null
           tenant_id?: string | null
+          type?: string | null
           updated_at?: string
         }
         Update: {
+          content?: string
           created_at?: string
           id?: string
           message?: string
           property_id?: string | null
+          receiver_id?: string | null
           room_id?: string | null
           sender_id?: string | null
           tenant_id?: string | null
+          type?: string | null
           updated_at?: string
         }
         Relationships: [

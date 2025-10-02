@@ -46,14 +46,27 @@ ${description}
 
 Status: Pending Review`;
 
+      // Get property owner to send maintenance request to
+      let receiverId = null;
+      if (propertyId) {
+        const { data: property } = await supabase
+          .from('properties')
+          .select('owner_id')
+          .eq('id', propertyId)
+          .single();
+        receiverId = property?.owner_id;
+      }
+
       const { error } = await supabase
         .from('messages')
         .insert([{
-          message: messageText,
+          content: messageText,
+          message: messageText, // Keep for backward compatibility
           sender_id: tenantId,
+          receiver_id: receiverId,
           property_id: propertyId || null,
           room_id: roomId || null,
-          tenant_id: tenantId
+          type: 'maintenance'
         }]);
 
       if (error) throw error;
