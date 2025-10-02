@@ -95,6 +95,12 @@ const MessageCenter = ({
 
     setLoading(true);
     try {
+      // Get authenticated user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        throw new Error("User not authenticated");
+      }
+
       // Determine receiver based on role
       let receiverId = null;
       if (currentUserRole === 'tenant') {
@@ -119,22 +125,23 @@ const MessageCenter = ({
         }
       }
 
-      const messageData = {
-        content: newMessage,
-        message: newMessage, // Keep for backward compatibility
-        sender_id: currentUserId,
-        receiver_id: receiverId,
-        property_id: selectedPropertyId && selectedPropertyId !== 'all' ? selectedPropertyId : null,
-        room_id: selectedRoomId || null,
-        type: messageType
-      };
-
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('messages')
-        .insert([messageData]);
+        .insert([{
+          sender_id: user.id,
+          receiver_id: receiverId,
+          property_id: selectedPropertyId && selectedPropertyId !== 'all' ? selectedPropertyId : null,
+          content: newMessage,
+          message: newMessage, // Temporary for type compatibility
+          type: messageType === 'maintenance' ? 'maintenance' : 'chat'
+        }]);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Message send error:", error);
+        throw error;
+      }
 
+      console.log("Message sent:", data);
       setNewMessage("");
       loadMessages();
 
@@ -146,7 +153,7 @@ const MessageCenter = ({
       console.error('Error sending message:', error);
       toast({
         title: "Error",
-        description: "Failed to send message",
+        description: error instanceof Error ? error.message : "Failed to send message",
         variant: "destructive"
       });
     } finally {
