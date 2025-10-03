@@ -8,6 +8,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 interface AppSidebarProps {
@@ -31,8 +32,10 @@ export function AppSidebar({
   onAddProperty,
   userRole,
 }: AppSidebarProps) {
+  const { state } = useSidebar();
+  
   return (
-    <Sidebar className="border-r border-border/50 bg-card/80 backdrop-blur-sm">
+    <Sidebar collapsible="offcanvas" className="border-r border-border/50 bg-card/80 backdrop-blur-sm">
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Actions</SidebarGroupLabel>
