@@ -15,10 +15,13 @@ import {
   AlertDialogTitle, 
   AlertDialogTrigger 
 } from "@/components/ui/alert-dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/layout/AppSidebar";
+import { AppFooter } from "@/components/layout/AppFooter";
 import MessageCenter from "@/components/messaging/MessageCenter";
 import apartmentInterior from "@/assets/apartment-interior.jpg";
 import skylineApartment from "@/assets/skyline-apartment.jpg";
@@ -61,6 +64,8 @@ const PropertyOwnerDashboard = () => {
   const [selectedRecipient, setSelectedRecipient] = useState("all");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
+  const [isMaintenanceOpen, setIsMaintenanceOpen] = useState(false);
+  const [isMessageCenterOpen, setIsMessageCenterOpen] = useState(false);
   const [properties, setProperties] = useState<Property[]>([
     {
       id: "1",
@@ -230,95 +235,35 @@ const PropertyOwnerDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen">
-      {/* Blue Header Bar covering full width */}
-      <div className="w-full h-16 bg-blue-600 flex items-center px-6">
-        <h1 className="text-white text-2xl font-bold">KaaSmart Property Management</h1>
-      </div>
-      <div className="bg-gradient-earth p-6">
-        <div className="max-w-7xl mx-auto">
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full">
+        <AppSidebar
+          onOpenSheet={handleOpenSheet}
+          onOpenMaintenance={() => setIsMaintenanceOpen(true)}
+          onOpenMessageCenter={() => setIsMessageCenterOpen(true)}
+          onGenerateReport={handleGenerateReport}
+          onPasswordReset={() => setIsPasswordResetOpen(true)}
+          onInviteManager={handleInviteManager}
+          onAddProperty={handleAddProperty}
+          userRole="owner"
+        />
         
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Property Owner Dashboard</h1>
-              <p className="text-muted-foreground">Manage your properties with ease</p>
-            </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <Button onClick={handleOpenSheet} variant="outline">
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Open Sheet
-            </Button>
-            
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline">
-                  <Wrench className="mr-2 h-4 w-4" />
-                  Maintenance
-                </Button>
-              </SheetTrigger>
-              <SheetContent>
-                <SheetHeader>
-                  <SheetTitle>Maintenance Messages</SheetTitle>
-                </SheetHeader>
-                <div className="mt-6 space-y-4">
-                  {maintenanceMessages.length > 0 ? (
-                    maintenanceMessages.map((msg) => (
-                      <div key={msg.id} className="border rounded-lg p-4 space-y-2">
-                        <div className="flex justify-between text-sm text-muted-foreground">
-                          <span>{msg.property} - {msg.room}</span>
-                          <span>{msg.timestamp}</span>
-                        </div>
-                        <p className="font-medium">{msg.tenant}</p>
-                        <p className="text-sm">{msg.message}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-muted-foreground text-center">No maintenance requests</p>
-                  )}
-                </div>
-              </SheetContent>
-            </Sheet>
-
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline">
-                  <MessageSquare className="mr-2 h-4 w-4" />
-                  Message Center
-                </Button>
-              </SheetTrigger>
-              <SheetContent className="w-[600px] sm:max-w-[600px]">
-                <SheetHeader>
-                  <SheetTitle>Message Center</SheetTitle>
-                </SheetHeader>
-                <div className="mt-6">
-                  <MessageCenter
-                    currentUserId="mock-owner-id"
-                    currentUserRole="owner"
-                    properties={properties}
-                  />
-                </div>
-              </SheetContent>
-            </Sheet>
-
-            <Button onClick={handleGenerateReport} variant="outline">
-              <FileText className="mr-2 h-4 w-4" />
-              Generate Report
-            </Button>
-            <Button onClick={() => setIsPasswordResetOpen(true)} variant="outline">
-              <KeyRound className="mr-2 h-4 w-4" />
-              Password Resets
-            </Button>
-            <Button onClick={handleInviteManager} variant="outline">
-              <Mail className="mr-2 h-4 w-4" />
-              Invite Manager
-            </Button>
-            <Button onClick={handleAddProperty} className="bg-gradient-hero hover:shadow-glow">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Property
-            </Button>
+        <div className="flex-1 flex flex-col">
+          {/* Blue Header Bar */}
+          <div className="w-full h-16 bg-blue-600 flex items-center px-6">
+            <SidebarTrigger className="mr-4 text-white hover:bg-blue-700" />
+            <h1 className="text-white text-2xl font-bold">KaaSmart Property Management</h1>
           </div>
-        </div>
+
+          <div className="flex-1 bg-gradient-earth p-6">
+            <div className="max-w-7xl mx-auto">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h1 className="text-3xl font-bold text-foreground">Property Owner Dashboard</h1>
+                  <p className="text-muted-foreground">Manage your properties with ease</p>
+                </div>
+              </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
@@ -545,9 +490,54 @@ const PropertyOwnerDashboard = () => {
           </AlertDialogContent>
         </AlertDialog>
 
+            </div>
+          </div>
+
+          <AppFooter />
         </div>
+
+        {/* Maintenance Sheet */}
+        <Sheet open={isMaintenanceOpen} onOpenChange={setIsMaintenanceOpen}>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>Maintenance Messages</SheetTitle>
+            </SheetHeader>
+            <div className="mt-6 space-y-4">
+              {maintenanceMessages.length > 0 ? (
+                maintenanceMessages.map((msg) => (
+                  <div key={msg.id} className="border rounded-lg p-4 space-y-2">
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>{msg.property} - {msg.room}</span>
+                      <span>{msg.timestamp}</span>
+                    </div>
+                    <p className="font-medium">{msg.tenant}</p>
+                    <p className="text-sm">{msg.message}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-muted-foreground text-center">No maintenance requests</p>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        {/* Message Center Sheet */}
+        <Sheet open={isMessageCenterOpen} onOpenChange={setIsMessageCenterOpen}>
+          <SheetContent className="w-[600px] sm:max-w-[600px]">
+            <SheetHeader>
+              <SheetTitle>Message Center</SheetTitle>
+            </SheetHeader>
+            <div className="mt-6">
+              <MessageCenter
+                currentUserId="mock-owner-id"
+                currentUserRole="owner"
+                properties={properties}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
 

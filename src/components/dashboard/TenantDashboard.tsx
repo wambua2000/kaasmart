@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, User, Phone, Mail, MessageSquare, Wrench, FileText, MapPin, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { AppFooter } from "@/components/layout/AppFooter";
 import LeaseUpload from "@/components/property/LeaseUpload";
 import MessageCenter from "@/components/messaging/MessageCenter";
 import MaintenanceRequestForm from "@/components/messaging/MaintenanceRequestForm";
@@ -398,6 +399,8 @@ const TenantDashboard = ({ tenantInfo: loggedInTenantInfo }: TenantDashboardProp
           </TabsContent>
         </Tabs>
       </div>
+      
+      <AppFooter />
     </div>
   );
 };

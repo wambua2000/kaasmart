@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Building2, Users, UserPlus, Mail, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { AppFooter } from "@/components/layout/AppFooter";
 import InvitePropertyOwnerModal from "@/components/property/InvitePropertyOwnerModal";
 
 interface PropertyOwner {
@@ -215,6 +216,8 @@ const DeveloperDashboard = () => {
           </div>
         </div>
       </div>
+
+      <AppFooter />
 
       <InvitePropertyOwnerModal
         isOpen={isInviteModalOpen}
