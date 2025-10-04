@@ -46,10 +46,12 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Form submitted with data:", formData);
     setIsSubmitting(true);
 
     // Validate form
     if (!formData.name.trim() || !formData.location.trim() || !formData.rentPerRoom || !formData.totalRooms) {
+      console.log("Validation failed:", { name: formData.name, location: formData.location, rent: formData.rentPerRoom, rooms: formData.totalRooms });
       toast({
         title: "Validation Error",
         description: "Please fill in all required fields.",
@@ -60,14 +62,19 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
     }
 
     try {
+      console.log("Validation passed, proceeding to save...");
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
+        console.error("No authenticated user found");
         throw new Error("No authenticated user found");
       }
+      
+      console.log("User authenticated:", user.id);
 
       // Insert property into database
+      console.log("Inserting property into database...");
       const { data: insertedProperty, error: insertError } = await supabase
         .from('properties')
         .insert({
@@ -81,7 +88,12 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
         .select()
         .single();
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error("Database insert error:", insertError);
+        throw insertError;
+      }
+      
+      console.log("Property inserted successfully:", insertedProperty);
 
       // Notify parent component
       onAddProperty({
