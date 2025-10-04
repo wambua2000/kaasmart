@@ -68,50 +68,59 @@ const PropertyOwnerDashboard = () => {
   const [isMaintenanceOpen, setIsMaintenanceOpen] = useState(false);
   const [isMessageCenterOpen, setIsMessageCenterOpen] = useState(false);
   const [isLeaseAgreementsOpen, setIsLeaseAgreementsOpen] = useState(false);
-  const [properties, setProperties] = useState<Property[]>([
-    {
-      id: "1",
-      name: "Skyline Apartment",
-      location: "Nairobi West, Nairobi",
-      rent_per_room: 15000,
-      total_rooms: 50,
-      occupiedRooms: 42,
-      image_url: skylineApartment,
-    },
-    {
-      id: "2",
-      name: "Yellow House",
-      location: "Mombasa Road, Nairobi", 
-      rent_per_room: 18000,
-      total_rooms: 20,
-      occupiedRooms: 18,
-      image_url: yellowHouse,
-    },
-    {
-      id: "3",
-      name: "White House",
-      location: "Kisumu CBD, Kisumu",
-      rent_per_room: 12000,
-      total_rooms: 20,
-      occupiedRooms: 16,
-      image_url: whiteHouse,
-    },
-    {
-      id: "4",
-      name: "Green House",
-      location: "Nakuru Town, Nakuru",
-      rent_per_room: 14000,
-      total_rooms: 20,
-      occupiedRooms: 17,
-      image_url: greenHouse,
-    },
-  ]);
+  const [properties, setProperties] = useState<Property[]>([]);
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.total_rooms, 0);
   const occupiedRooms = properties.reduce((sum, prop) => sum + prop.occupiedRooms, 0);
   const vacantRooms = totalRooms - occupiedRooms;
-  const occupancyRate = ((occupiedRooms / totalRooms) * 100).toFixed(1);
+  const occupancyRate = totalRooms > 0 ? ((occupiedRooms / totalRooms) * 100).toFixed(1) : "0";
+
+  // Fetch properties from database
+  useEffect(() => {
+    const fetchProperties = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: propertiesData, error } = await supabase
+        .from('properties')
+        .select(`
+          id,
+          name,
+          location,
+          rent_per_room,
+          total_rooms,
+          image_url,
+          rooms(id, is_occupied)
+        `)
+        .eq('owner_id', user.id);
+
+      if (error) {
+        console.error("Error fetching properties:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load properties.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (propertiesData) {
+        const formattedProperties: Property[] = propertiesData.map((prop: any) => ({
+          id: prop.id,
+          name: prop.name,
+          location: prop.location,
+          rent_per_room: prop.rent_per_room,
+          total_rooms: prop.total_rooms,
+          occupiedRooms: prop.rooms?.filter((r: any) => r.is_occupied).length || 0,
+          image_url: prop.image_url || undefined,
+        }));
+        setProperties(formattedProperties);
+      }
+    };
+
+    fetchProperties();
+  }, [toast]);
 
   // Set up real-time listener for tenant profile updates
   useEffect(() => {
@@ -216,13 +225,26 @@ const PropertyOwnerDashboard = () => {
     setDeleteConfirmOpen(true);
   };
 
-  const confirmDeleteProperty = () => {
+  const confirmDeleteProperty = async () => {
     if (propertyToDelete) {
-      setProperties(properties.filter(p => p.id !== propertyToDelete));
-      toast({
-        title: "Property Deleted",
-        description: "Property has been removed successfully.",
-      });
+      const { error } = await supabase
+        .from('properties')
+        .delete()
+        .eq('id', propertyToDelete);
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete property.",
+          variant: "destructive",
+        });
+      } else {
+        setProperties(properties.filter(p => p.id !== propertyToDelete));
+        toast({
+          title: "Property Deleted",
+          description: "Property has been removed successfully.",
+        });
+      }
     }
     setDeleteConfirmOpen(false);
     setPropertyToDelete(null);
