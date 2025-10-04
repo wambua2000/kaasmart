@@ -36,6 +36,7 @@ import ReportModal from "@/components/property/ReportModal";
 import DocumentReport from "@/components/property/DocumentReport";
 import InviteManagerModal from "@/components/manager/InviteManagerModal";
 import PasswordResetRequestsSheet from "@/components/property/PasswordResetRequestsSheet";
+import AllLeaseDocumentsViewer from "@/components/property/AllLeaseDocumentsViewer";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Property {
@@ -415,6 +416,11 @@ const PropertyOwnerDashboard = () => {
               </Card>
             ))}
           </div>
+        </div>
+
+        {/* Lease Agreements Section */}
+        <div className="mt-8">
+          <AllLeaseDocumentsViewer />
         </div>
 
         <RoomDetailsModal
