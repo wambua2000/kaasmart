@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { FileText, Upload, CheckCircle, AlertCircle, Download, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +25,53 @@ const LeaseUpload = ({ roomId, propertyId }: LeaseUploadProps = {}) => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [leaseDocuments, setLeaseDocuments] = useState<LeaseDocument[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch existing lease documents on mount
+  useEffect(() => {
+    fetchLeaseDocuments();
+  }, [roomId, propertyId]);
+
+  const fetchLeaseDocuments = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      let query = supabase
+        .from('lease_documents')
+        .select('*')
+        .eq('tenant_id', user.id)
+        .order('upload_date', { ascending: false });
+
+      if (roomId) {
+        query = query.eq('room_id', roomId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      const transformedData: LeaseDocument[] = (data || []).map(doc => ({
+        id: doc.id,
+        file_name: doc.file_name,
+        file_path: doc.file_path,
+        file_size: doc.file_size,
+        upload_date: doc.upload_date,
+        status: doc.status as "pending" | "approved" | "rejected",
+        notes: doc.notes,
+      }));
+
+      setLeaseDocuments(transformedData);
+    } catch (error) {
+      console.error('Error fetching lease documents:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleFileSelect = () => {
     fileInputRef.current?.click();
@@ -231,6 +278,14 @@ const LeaseUpload = ({ roomId, propertyId }: LeaseUploadProps = {}) => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="text-sm text-muted-foreground">Loading lease documents...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Upload Section - Compact */}
@@ -241,28 +296,33 @@ const LeaseUpload = ({ roomId, propertyId }: LeaseUploadProps = {}) => {
           accept=".pdf,.doc,.docx"
           onChange={handleFileUpload}
           className="hidden"
+          disabled={uploading}
         />
         
         {uploading ? (
-          <div className="text-center">
-            <div className="text-sm text-muted-foreground">Uploading...</div>
+          <div className="text-center space-y-2">
+            <div className="text-sm text-muted-foreground">Uploading lease document...</div>
+            <div className="w-full bg-muted rounded-full h-2">
+              <div className="bg-primary h-2 rounded-full transition-all duration-300 animate-pulse" style={{ width: '60%' }} />
+            </div>
           </div>
         ) : (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="text-sm font-medium">Upload Lease</p>
+                <p className="text-sm font-medium">Upload Lease Agreement</p>
                 <p className="text-xs text-muted-foreground">PDF, DOC, DOCX (max 10MB)</p>
               </div>
             </div>
             <Button 
               onClick={handleFileSelect}
               size="sm"
-              variant="outline"
+              className="bg-gradient-hero hover:shadow-glow"
+              disabled={uploading}
             >
               <Upload className="h-3 w-3 mr-1" />
-              Select
+              Upload
             </Button>
           </div>
         )}
