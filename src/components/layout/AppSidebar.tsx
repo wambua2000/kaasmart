@@ -1,4 +1,4 @@
-import { ExternalLink, Wrench, MessageSquare, FileText, KeyRound, Mail, Plus } from "lucide-react";
+import { ExternalLink, Wrench, MessageSquare, FileText, KeyRound, Mail, Plus, FileCheck } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -18,6 +18,7 @@ interface AppSidebarProps {
   onGenerateReport: () => void;
   onPasswordReset?: () => void;
   onInviteManager?: () => void;
+  onViewLeaseAgreements?: () => void;
   onAddProperty?: () => void;
   userRole: "owner" | "manager";
 }
@@ -29,6 +30,7 @@ export function AppSidebar({
   onGenerateReport,
   onPasswordReset,
   onInviteManager,
+  onViewLeaseAgreements,
   onAddProperty,
   userRole,
 }: AppSidebarProps) {
@@ -68,6 +70,15 @@ export function AppSidebar({
                   <span>Generate Report</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+
+              {onViewLeaseAgreements && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton onClick={onViewLeaseAgreements}>
+                    <FileCheck className="h-4 w-4" />
+                    <span>Lease Agreements</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
 
               {userRole === "owner" && (
                 <>

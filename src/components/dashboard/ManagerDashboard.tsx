@@ -9,6 +9,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppFooter } from "@/components/layout/AppFooter";
 import MessageCenter from "@/components/messaging/MessageCenter";
+import AllLeaseDocumentsViewer from "@/components/property/AllLeaseDocumentsViewer";
 import apartmentInterior from "@/assets/apartment-interior.jpg";
 import skylineApartment from "@/assets/skyline-apartment.jpg";
 import yellowHouse from "@/assets/yellow-house.jpg";
@@ -35,6 +36,7 @@ const ManagerDashboard = () => {
   const [isRoomManagementOpen, setIsRoomManagementOpen] = useState(false);
   const [isMaintenanceOpen, setIsMaintenanceOpen] = useState(false);
   const [isMessageCenterOpen, setIsMessageCenterOpen] = useState(false);
+  const [isLeaseAgreementsOpen, setIsLeaseAgreementsOpen] = useState(false);
   const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
   const [properties, setProperties] = useState<Property[]>([
     {
@@ -181,6 +183,7 @@ const ManagerDashboard = () => {
           onOpenMaintenance={() => setIsMaintenanceOpen(true)}
           onOpenMessageCenter={() => setIsMessageCenterOpen(true)}
           onGenerateReport={handleGenerateReport}
+          onViewLeaseAgreements={() => setIsLeaseAgreementsOpen(true)}
           userRole="manager"
         />
         
@@ -402,6 +405,18 @@ const ManagerDashboard = () => {
                 currentUserRole="manager"
                 properties={properties}
               />
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        {/* Lease Agreements Sheet */}
+        <Sheet open={isLeaseAgreementsOpen} onOpenChange={setIsLeaseAgreementsOpen}>
+          <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Lease Agreements</SheetTitle>
+            </SheetHeader>
+            <div className="mt-6">
+              <AllLeaseDocumentsViewer />
             </div>
           </SheetContent>
         </Sheet>

@@ -67,6 +67,7 @@ const PropertyOwnerDashboard = () => {
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
   const [isMaintenanceOpen, setIsMaintenanceOpen] = useState(false);
   const [isMessageCenterOpen, setIsMessageCenterOpen] = useState(false);
+  const [isLeaseAgreementsOpen, setIsLeaseAgreementsOpen] = useState(false);
   const [properties, setProperties] = useState<Property[]>([
     {
       id: "1",
@@ -245,6 +246,7 @@ const PropertyOwnerDashboard = () => {
           onGenerateReport={handleGenerateReport}
           onPasswordReset={() => setIsPasswordResetOpen(true)}
           onInviteManager={handleInviteManager}
+          onViewLeaseAgreements={() => setIsLeaseAgreementsOpen(true)}
           onAddProperty={handleAddProperty}
           userRole="owner"
         />
@@ -418,11 +420,6 @@ const PropertyOwnerDashboard = () => {
           </div>
         </div>
 
-        {/* Lease Agreements Section */}
-        <div className="mt-8">
-          <AllLeaseDocumentsViewer />
-        </div>
-
         <RoomDetailsModal
           property={selectedProperty}
           isOpen={isRoomModalOpen}
@@ -539,6 +536,18 @@ const PropertyOwnerDashboard = () => {
                 currentUserRole="owner"
                 properties={properties}
               />
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        {/* Lease Agreements Sheet */}
+        <Sheet open={isLeaseAgreementsOpen} onOpenChange={setIsLeaseAgreementsOpen}>
+          <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Lease Agreements</SheetTitle>
+            </SheetHeader>
+            <div className="mt-6">
+              <AllLeaseDocumentsViewer />
             </div>
           </SheetContent>
         </Sheet>
