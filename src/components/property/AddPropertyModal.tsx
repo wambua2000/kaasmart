@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, MapPin, DollarSign, Home, ImageIcon } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 interface Property {
   id: string;
@@ -60,65 +59,15 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
     }
 
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error("User not authenticated");
-      }
-
-      // Insert property into database
-      const { data: insertedProperty, error } = await supabase
-        .from('properties')
-        .insert({
-          name: formData.name.trim(),
-          location: formData.location.trim(),
-          rent_per_room: parseInt(formData.rentPerRoom),
-          total_rooms: parseInt(formData.totalRooms),
-          owner_id: user.id,
-          image_url: formData.imageUrl || "/placeholder.svg",
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Generate rooms for the property
-      const { error: roomsError } = await supabase.rpc('generate_rooms_for_property', {
-        property_id_param: insertedProperty.id,
-        property_name_param: insertedProperty.name,
-        total_rooms_param: insertedProperty.total_rooms,
-        rent_amount_param: insertedProperty.rent_per_room,
-      });
-
-      if (roomsError) {
-        console.error("Error generating rooms:", roomsError);
-      }
-
-      // Fetch the property with room counts
-      const { data: propertyWithRooms } = await supabase
-        .from('properties')
-        .select(`
-          id,
-          name,
-          location,
-          rent_per_room,
-          total_rooms,
-          image_url,
-          rooms(id, is_occupied)
-        `)
-        .eq('id', insertedProperty.id)
-        .single();
-
-      // Create new property object with occupiedRooms for local state
+      // Create new property
       const newProperty: Property = {
-        id: insertedProperty.id,
-        name: insertedProperty.name,
-        location: insertedProperty.location,
-        rent_per_room: insertedProperty.rent_per_room,
-        total_rooms: insertedProperty.total_rooms,
-        occupiedRooms: propertyWithRooms?.rooms?.filter((r: any) => r.is_occupied).length || 0,
-        image_url: insertedProperty.image_url || undefined,
+        id: Date.now().toString(),
+        name: formData.name.trim(),
+        location: formData.location.trim(),
+        rent_per_room: parseInt(formData.rentPerRoom),
+        total_rooms: parseInt(formData.totalRooms),
+        occupiedRooms: 0, // New properties start with 0 occupancy
+        image_url: formData.imageUrl || "/placeholder.svg", // Default image if none provided
       };
 
       onAddProperty(newProperty);
@@ -140,7 +89,6 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
 
       onClose();
     } catch (error) {
-      console.error("Error adding property:", error);
       toast({
         title: "Error",
         description: "Failed to add property. Please try again.",
