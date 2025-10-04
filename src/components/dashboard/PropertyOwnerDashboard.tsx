@@ -68,50 +68,66 @@ const PropertyOwnerDashboard = () => {
   const [isMaintenanceOpen, setIsMaintenanceOpen] = useState(false);
   const [isMessageCenterOpen, setIsMessageCenterOpen] = useState(false);
   const [isLeaseAgreementsOpen, setIsLeaseAgreementsOpen] = useState(false);
-  const [properties, setProperties] = useState<Property[]>([
-    {
-      id: "1",
-      name: "Skyline Apartment",
-      location: "Nairobi West, Nairobi",
-      rent_per_room: 15000,
-      total_rooms: 50,
-      occupiedRooms: 42,
-      image_url: skylineApartment,
-    },
-    {
-      id: "2",
-      name: "Yellow House",
-      location: "Mombasa Road, Nairobi", 
-      rent_per_room: 18000,
-      total_rooms: 20,
-      occupiedRooms: 18,
-      image_url: yellowHouse,
-    },
-    {
-      id: "3",
-      name: "White House",
-      location: "Kisumu CBD, Kisumu",
-      rent_per_room: 12000,
-      total_rooms: 20,
-      occupiedRooms: 16,
-      image_url: whiteHouse,
-    },
-    {
-      id: "4",
-      name: "Green House",
-      location: "Nakuru Town, Nakuru",
-      rent_per_room: 14000,
-      total_rooms: 20,
-      occupiedRooms: 17,
-      image_url: greenHouse,
-    },
-  ]);
+  const [properties, setProperties] = useState<Property[]>([]);
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.total_rooms, 0);
   const occupiedRooms = properties.reduce((sum, prop) => sum + prop.occupiedRooms, 0);
   const vacantRooms = totalRooms - occupiedRooms;
-  const occupancyRate = ((occupiedRooms / totalRooms) * 100).toFixed(1);
+  const occupancyRate = totalRooms > 0 ? ((occupiedRooms / totalRooms) * 100).toFixed(1) : "0.0";
+
+  // Fetch properties from database
+  const fetchProperties = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      // Fetch properties with room counts
+      const { data: propertiesData, error } = await supabase
+        .from('properties')
+        .select(`
+          id,
+          name,
+          location,
+          rent_per_room,
+          total_rooms,
+          image_url,
+          rooms (
+            id,
+            is_occupied
+          )
+        `)
+        .eq('owner_id', user.id);
+
+      if (error) throw error;
+
+      // Transform data to include occupiedRooms count
+      const transformedProperties = propertiesData?.map(property => ({
+        id: property.id,
+        name: property.name,
+        location: property.location,
+        rent_per_room: property.rent_per_room,
+        total_rooms: property.total_rooms,
+        occupiedRooms: property.rooms?.filter(room => room.is_occupied).length || 0,
+        image_url: property.image_url || undefined,
+      })) || [];
+
+      setProperties(transformedProperties);
+    } catch (error) {
+      console.error("Error fetching properties:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load properties. Please refresh the page.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Fetch properties on mount
+  useEffect(() => {
+    fetchProperties();
+  }, []);
 
   // Set up real-time listener for tenant profile updates
   useEffect(() => {
@@ -156,8 +172,9 @@ const PropertyOwnerDashboard = () => {
     setIsAddPropertyModalOpen(true);
   };
 
-  const handleAddPropertySubmit = (newProperty: Property) => {
-    setProperties([...properties, newProperty]);
+  const handleAddPropertySubmit = async (newProperty: Property) => {
+    // Refresh properties list to get accurate data from database
+    await fetchProperties();
   };
 
   const handleEditProperty = (property: Property) => {
@@ -216,13 +233,29 @@ const PropertyOwnerDashboard = () => {
     setDeleteConfirmOpen(true);
   };
 
-  const confirmDeleteProperty = () => {
+  const confirmDeleteProperty = async () => {
     if (propertyToDelete) {
-      setProperties(properties.filter(p => p.id !== propertyToDelete));
-      toast({
-        title: "Property Deleted",
-        description: "Property has been removed successfully.",
-      });
+      try {
+        const { error } = await supabase
+          .from('properties')
+          .delete()
+          .eq('id', propertyToDelete);
+
+        if (error) throw error;
+
+        setProperties(properties.filter(p => p.id !== propertyToDelete));
+        toast({
+          title: "Property Deleted",
+          description: "Property has been removed successfully.",
+        });
+      } catch (error) {
+        console.error("Error deleting property:", error);
+        toast({
+          title: "Error",
+          description: "Failed to delete property. Please try again.",
+          variant: "destructive",
+        });
+      }
     }
     setDeleteConfirmOpen(false);
     setPropertyToDelete(null);

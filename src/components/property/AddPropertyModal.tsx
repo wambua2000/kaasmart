@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, MapPin, DollarSign, Home, ImageIcon } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Property {
   id: string;
@@ -59,18 +60,39 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
     }
 
     try {
-      // Create new property
-      const newProperty: Property = {
-        id: Date.now().toString(),
-        name: formData.name.trim(),
-        location: formData.location.trim(),
-        rent_per_room: parseInt(formData.rentPerRoom),
-        total_rooms: parseInt(formData.totalRooms),
-        occupiedRooms: 0, // New properties start with 0 occupancy
-        image_url: formData.imageUrl || "/placeholder.svg", // Default image if none provided
-      };
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error("No authenticated user found");
+      }
 
-      onAddProperty(newProperty);
+      // Insert property into database
+      const { data: insertedProperty, error: insertError } = await supabase
+        .from('properties')
+        .insert({
+          name: formData.name.trim(),
+          location: formData.location.trim(),
+          rent_per_room: parseInt(formData.rentPerRoom),
+          total_rooms: parseInt(formData.totalRooms),
+          owner_id: user.id,
+          image_url: formData.imageUrl || "/placeholder.svg",
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      // Notify parent component
+      onAddProperty({
+        id: insertedProperty.id,
+        name: insertedProperty.name,
+        location: insertedProperty.location,
+        rent_per_room: insertedProperty.rent_per_room,
+        total_rooms: insertedProperty.total_rooms,
+        occupiedRooms: 0,
+        image_url: insertedProperty.image_url || undefined,
+      });
 
       // Reset form
       setFormData({
@@ -84,11 +106,12 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
 
       toast({
         title: "Property Added Successfully",
-        description: `${newProperty.name} has been added to your portfolio.`,
+        description: `${insertedProperty.name} has been added to your portfolio.`,
       });
 
       onClose();
     } catch (error) {
+      console.error("Error adding property:", error);
       toast({
         title: "Error",
         description: "Failed to add property. Please try again.",
