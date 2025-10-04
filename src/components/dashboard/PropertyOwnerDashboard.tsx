@@ -68,7 +68,44 @@ const PropertyOwnerDashboard = () => {
   const [isMaintenanceOpen, setIsMaintenanceOpen] = useState(false);
   const [isMessageCenterOpen, setIsMessageCenterOpen] = useState(false);
   const [isLeaseAgreementsOpen, setIsLeaseAgreementsOpen] = useState(false);
-  const [properties, setProperties] = useState<Property[]>([]);
+  const [properties, setProperties] = useState<Property[]>([
+    {
+      id: "1",
+      name: "Skyline Apartment",
+      location: "Nairobi West, Nairobi",
+      rent_per_room: 15000,
+      total_rooms: 50,
+      occupiedRooms: 42,
+      image_url: skylineApartment,
+    },
+    {
+      id: "2",
+      name: "Yellow House",
+      location: "Mombasa Road, Nairobi", 
+      rent_per_room: 18000,
+      total_rooms: 20,
+      occupiedRooms: 18,
+      image_url: yellowHouse,
+    },
+    {
+      id: "3",
+      name: "White House",
+      location: "Kisumu CBD, Kisumu",
+      rent_per_room: 12000,
+      total_rooms: 20,
+      occupiedRooms: 16,
+      image_url: whiteHouse,
+    },
+    {
+      id: "4",
+      name: "Green House",
+      location: "Nakuru Town, Nakuru",
+      rent_per_room: 14000,
+      total_rooms: 20,
+      occupiedRooms: 17,
+      image_url: greenHouse,
+    },
+  ]);
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.total_rooms, 0);
@@ -76,7 +113,7 @@ const PropertyOwnerDashboard = () => {
   const vacantRooms = totalRooms - occupiedRooms;
   const occupancyRate = totalRooms > 0 ? ((occupiedRooms / totalRooms) * 100).toFixed(1) : "0.0";
 
-  // Fetch properties from database
+  // Fetch properties from database and merge with existing
   const fetchProperties = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -113,14 +150,14 @@ const PropertyOwnerDashboard = () => {
         image_url: property.image_url || undefined,
       })) || [];
 
-      setProperties(transformedProperties);
+      // Merge with existing properties (keep sample properties and add new ones)
+      setProperties(prev => {
+        const sampleIds = ["1", "2", "3", "4"];
+        const sampleProperties = prev.filter(p => sampleIds.includes(p.id));
+        return [...sampleProperties, ...transformedProperties];
+      });
     } catch (error) {
       console.error("Error fetching properties:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load properties. Please refresh the page.",
-        variant: "destructive",
-      });
     }
   };
 
