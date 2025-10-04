@@ -83,6 +83,33 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
 
       if (error) throw error;
 
+      // Generate rooms for the property
+      const { error: roomsError } = await supabase.rpc('generate_rooms_for_property', {
+        property_id_param: insertedProperty.id,
+        property_name_param: insertedProperty.name,
+        total_rooms_param: insertedProperty.total_rooms,
+        rent_amount_param: insertedProperty.rent_per_room,
+      });
+
+      if (roomsError) {
+        console.error("Error generating rooms:", roomsError);
+      }
+
+      // Fetch the property with room counts
+      const { data: propertyWithRooms } = await supabase
+        .from('properties')
+        .select(`
+          id,
+          name,
+          location,
+          rent_per_room,
+          total_rooms,
+          image_url,
+          rooms(id, is_occupied)
+        `)
+        .eq('id', insertedProperty.id)
+        .single();
+
       // Create new property object with occupiedRooms for local state
       const newProperty: Property = {
         id: insertedProperty.id,
@@ -90,7 +117,7 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
         location: insertedProperty.location,
         rent_per_room: insertedProperty.rent_per_room,
         total_rooms: insertedProperty.total_rooms,
-        occupiedRooms: 0,
+        occupiedRooms: propertyWithRooms?.rooms?.filter((r: any) => r.is_occupied).length || 0,
         image_url: insertedProperty.image_url || undefined,
       };
 

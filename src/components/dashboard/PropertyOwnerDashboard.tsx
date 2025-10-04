@@ -77,48 +77,48 @@ const PropertyOwnerDashboard = () => {
   const occupancyRate = totalRooms > 0 ? ((occupiedRooms / totalRooms) * 100).toFixed(1) : "0";
 
   // Fetch properties from database
+  const fetchProperties = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: propertiesData, error } = await supabase
+      .from('properties')
+      .select(`
+        id,
+        name,
+        location,
+        rent_per_room,
+        total_rooms,
+        image_url,
+        rooms(id, is_occupied)
+      `)
+      .eq('owner_id', user.id);
+
+    if (error) {
+      console.error("Error fetching properties:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load properties.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (propertiesData) {
+      const formattedProperties: Property[] = propertiesData.map((prop: any) => ({
+        id: prop.id,
+        name: prop.name,
+        location: prop.location,
+        rent_per_room: prop.rent_per_room,
+        total_rooms: prop.total_rooms,
+        occupiedRooms: prop.rooms?.filter((r: any) => r.is_occupied).length || 0,
+        image_url: prop.image_url || undefined,
+      }));
+      setProperties(formattedProperties);
+    }
+  };
+
   useEffect(() => {
-    const fetchProperties = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: propertiesData, error } = await supabase
-        .from('properties')
-        .select(`
-          id,
-          name,
-          location,
-          rent_per_room,
-          total_rooms,
-          image_url,
-          rooms(id, is_occupied)
-        `)
-        .eq('owner_id', user.id);
-
-      if (error) {
-        console.error("Error fetching properties:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load properties.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (propertiesData) {
-        const formattedProperties: Property[] = propertiesData.map((prop: any) => ({
-          id: prop.id,
-          name: prop.name,
-          location: prop.location,
-          rent_per_room: prop.rent_per_room,
-          total_rooms: prop.total_rooms,
-          occupiedRooms: prop.rooms?.filter((r: any) => r.is_occupied).length || 0,
-          image_url: prop.image_url || undefined,
-        }));
-        setProperties(formattedProperties);
-      }
-    };
-
     fetchProperties();
   }, [toast]);
 
@@ -165,8 +165,9 @@ const PropertyOwnerDashboard = () => {
     setIsAddPropertyModalOpen(true);
   };
 
-  const handleAddPropertySubmit = (newProperty: Property) => {
-    setProperties([...properties, newProperty]);
+  const handleAddPropertySubmit = async (newProperty: Property) => {
+    // Refetch all properties to ensure stats are accurate
+    await fetchProperties();
   };
 
   const handleEditProperty = (property: Property) => {
