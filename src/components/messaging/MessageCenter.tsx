@@ -48,7 +48,42 @@ const MessageCenter = ({
 
   useEffect(() => {
     loadMessages();
-  }, [selectedPropertyId, selectedRoomId]);
+
+    // Set up real-time subscription for new messages
+    const channel = supabase
+      .channel('messages-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'messages',
+          filter: `sender_id=eq.${currentUserId}`,
+        },
+        () => {
+          console.log('Message change detected - reloading messages');
+          loadMessages();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'messages',
+          filter: `receiver_id=eq.${currentUserId}`,
+        },
+        () => {
+          console.log('Message received - reloading messages');
+          loadMessages();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedPropertyId, selectedRoomId, currentUserId]);
 
   const loadMessages = async () => {
     try {
@@ -125,25 +160,31 @@ const MessageCenter = ({
         }
       }
 
+      const messagePayload = {
+        sender_id: user.id,
+        receiver_id: receiverId,
+        property_id: selectedPropertyId && selectedPropertyId !== 'all' ? selectedPropertyId : null,
+        room_id: selectedRoomId || null,
+        content: newMessage,
+        message: newMessage, // Temporary for type compatibility
+        type: messageType === 'maintenance' ? 'maintenance' : 'chat'
+      };
+
+      console.log("Sending message with payload:", messagePayload);
+
       const { data, error } = await supabase
         .from('messages')
-        .insert([{
-          sender_id: user.id,
-          receiver_id: receiverId,
-          property_id: selectedPropertyId && selectedPropertyId !== 'all' ? selectedPropertyId : null,
-          content: newMessage,
-          message: newMessage, // Temporary for type compatibility
-          type: messageType === 'maintenance' ? 'maintenance' : 'chat'
-        }]);
+        .insert([messagePayload])
+        .select();
 
       if (error) {
         console.error("Message send error:", error);
         throw error;
       }
 
-      console.log("Message sent:", data);
+      console.log("Message sent successfully:", data);
       setNewMessage("");
-      loadMessages();
+      // Don't manually reload - real-time subscription will handle it
 
       toast({
         title: "Message Sent",

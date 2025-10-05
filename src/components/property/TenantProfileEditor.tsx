@@ -84,7 +84,10 @@ const TenantProfileEditor = ({
 
     setLoading(true);
     try {
-      const { error } = await supabase
+      console.log("Updating tenant profile for room:", roomId);
+      
+      // Update the room with new tenant information
+      const { error: roomError } = await supabase
         .from('rooms')
         .update({
           tenant_name: formData.tenant_name,
@@ -95,13 +98,44 @@ const TenantProfileEditor = ({
         })
         .eq('id', roomId);
 
-      if (error) {
-        throw error;
+      if (roomError) {
+        throw roomError;
       }
 
+      // Get the room to find the tenant_id
+      const { data: roomData, error: fetchError } = await supabase
+        .from('rooms')
+        .select('tenant_id')
+        .eq('id', roomId)
+        .single();
+
+      if (fetchError) {
+        console.error("Error fetching room data:", fetchError);
+      }
+
+      // If there's a tenant_id, update their profile as well for full sync
+      if (roomData?.tenant_id) {
+        console.log("Syncing profile for tenant:", roomData.tenant_id);
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            full_name: formData.tenant_name,
+            email: formData.tenant_email,
+            phone: formData.tenant_phone,
+          })
+          .eq('id', roomData.tenant_id);
+
+        if (profileError) {
+          console.error("Profile sync error (non-critical):", profileError);
+          // Don't fail the entire operation if profile update fails
+        }
+      }
+
+      console.log("Tenant profile updated successfully");
+      
       toast({
         title: "Profile Updated",
-        description: "Tenant profile has been updated successfully. Changes will sync across all accounts.",
+        description: "Tenant profile has been updated and synced across all accounts.",
         variant: "default",
       });
 

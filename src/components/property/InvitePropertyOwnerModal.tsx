@@ -78,13 +78,24 @@ const InvitePropertyOwnerModal = ({
       // Generate email in format owner001@kaasmart.com
       const ownerEmail = `owner${String(nextOwnerNumber).padStart(3, '0')}@kaasmart.com`;
 
+      console.log("Generating credentials for:", ownerEmail);
+
       // Call Supabase RPC to generate invitation
       const { data, error } = await supabase.rpc('generate_invitation_credentials', {
         invitation_email: ownerEmail,
         invitation_role: 'owner',
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("RPC error:", error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error("No credentials returned from server");
+      }
+
+      console.log("Credentials generated successfully");
 
       setGeneratedCredentials({
         email: ownerEmail,
@@ -92,16 +103,16 @@ const InvitePropertyOwnerModal = ({
       });
 
       toast({
-        title: "Credentials Generated",
-        description: "Property owner credentials have been created",
+        title: "✅ Credentials Generated",
+        description: `Owner account created successfully. Share these credentials securely with ${ownerEmail}`,
       });
 
       onOwnerInvited();
     } catch (error: any) {
       console.error('Error generating credentials:', error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to generate credentials",
+        title: "❌ Generation Failed",
+        description: error.message || "Failed to generate credentials. Please try again.",
         variant: "destructive",
       });
     } finally {
