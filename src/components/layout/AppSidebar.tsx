@@ -43,12 +43,14 @@ export function AppSidebar({
           <SidebarGroupLabel>Actions</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton onClick={onOpenSheet}>
-                  <ExternalLink className="h-4 w-4" />
-                  <span>Open Sheet</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {userRole === "owner" && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton onClick={onOpenSheet}>
+                    <ExternalLink className="h-4 w-4" />
+                    <span>Open Sheet</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
 
               <SidebarMenuItem>
                 <SidebarMenuButton onClick={onOpenMaintenance}>
@@ -64,12 +66,14 @@ export function AppSidebar({
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              <SidebarMenuItem>
-                <SidebarMenuButton onClick={onGenerateReport}>
-                  <FileText className="h-4 w-4" />
-                  <span>Generate Report</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {userRole === "owner" && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton onClick={onGenerateReport}>
+                    <FileText className="h-4 w-4" />
+                    <span>Generate Report</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
 
               {onViewLeaseAgreements && (
                 <SidebarMenuItem>
