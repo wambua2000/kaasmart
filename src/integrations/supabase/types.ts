@@ -143,11 +143,15 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          is_read: boolean | null
           message: string
           property_id: string | null
           receiver_id: string | null
           room_id: string | null
           sender_id: string | null
+          sender_role: string | null
+          subject: string | null
+          target_role: string | null
           tenant_id: string | null
           type: string | null
           updated_at: string
@@ -156,11 +160,15 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          is_read?: boolean | null
           message: string
           property_id?: string | null
           receiver_id?: string | null
           room_id?: string | null
           sender_id?: string | null
+          sender_role?: string | null
+          subject?: string | null
+          target_role?: string | null
           tenant_id?: string | null
           type?: string | null
           updated_at?: string
@@ -169,11 +177,15 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          is_read?: boolean | null
           message?: string
           property_id?: string | null
           receiver_id?: string | null
           room_id?: string | null
           sender_id?: string | null
+          sender_role?: string | null
+          subject?: string | null
+          target_role?: string | null
           tenant_id?: string | null
           type?: string | null
           updated_at?: string
@@ -271,6 +283,7 @@ export type Database = {
           id: string
           image_url: string | null
           location: string
+          manager_id: string | null
           name: string
           owner_id: string | null
           rent_per_room: number
@@ -282,6 +295,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           location: string
+          manager_id?: string | null
           name: string
           owner_id?: string | null
           rent_per_room: number
@@ -293,6 +307,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           location?: string
+          manager_id?: string | null
           name?: string
           owner_id?: string | null
           rent_per_room?: number
@@ -300,6 +315,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "properties_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "properties_owner_id_fkey"
             columns: ["owner_id"]
