@@ -140,55 +140,37 @@ export type Database = {
       }
       messages: {
         Row: {
-          content: string
-          created_at: string
-          id: string
           is_read: boolean | null
-          message: string
+          message_id: string
+          message_text: string
           property_id: string | null
-          receiver_id: string | null
+          recipient_tenant_id: string | null
           room_id: string | null
-          sender_id: string | null
-          sender_role: string | null
-          subject: string | null
-          target_role: string | null
-          tenant_id: string | null
+          sender_id: string
+          timestamp: string
           type: string | null
-          updated_at: string
         }
         Insert: {
-          content: string
-          created_at?: string
-          id?: string
           is_read?: boolean | null
-          message: string
+          message_id?: string
+          message_text: string
           property_id?: string | null
-          receiver_id?: string | null
+          recipient_tenant_id?: string | null
           room_id?: string | null
-          sender_id?: string | null
-          sender_role?: string | null
-          subject?: string | null
-          target_role?: string | null
-          tenant_id?: string | null
+          sender_id: string
+          timestamp?: string
           type?: string | null
-          updated_at?: string
         }
         Update: {
-          content?: string
-          created_at?: string
-          id?: string
           is_read?: boolean | null
-          message?: string
+          message_id?: string
+          message_text?: string
           property_id?: string | null
-          receiver_id?: string | null
+          recipient_tenant_id?: string | null
           room_id?: string | null
-          sender_id?: string | null
-          sender_role?: string | null
-          subject?: string | null
-          target_role?: string | null
-          tenant_id?: string | null
+          sender_id?: string
+          timestamp?: string
           type?: string | null
-          updated_at?: string
         }
         Relationships: [
           {
