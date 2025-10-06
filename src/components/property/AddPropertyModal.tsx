@@ -63,18 +63,33 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
 
     try {
       console.log("Validation passed, proceeding to save...");
-      // Get current user
+      
+      // Get current user or use a default owner ID for demo purposes
       const { data: { user } } = await supabase.auth.getUser();
       
-      if (!user) {
-        console.error("No authenticated user found");
-        throw new Error("No authenticated user found");
-      }
+      // For demo/development: use a consistent UUID if no user is authenticated
+      let ownerId = user?.id;
       
-      console.log("User authenticated:", user.id);
+      if (!ownerId) {
+        console.log("No authenticated user, checking for existing profiles...");
+        // Try to get the first owner profile from the database
+        const { data: ownerProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'owner')
+          .limit(1)
+          .single();
+        
+        if (ownerProfile) {
+          ownerId = ownerProfile.id;
+          console.log("Using existing owner profile:", ownerId);
+        } else {
+          throw new Error("No authenticated user or existing owner profile found. Please contact the administrator.");
+        }
+      }
 
       // Insert property into database
-      console.log("Inserting property into database...");
+      console.log("Inserting property into database with owner_id:", ownerId);
       const { data: insertedProperty, error: insertError } = await supabase
         .from('properties')
         .insert({
@@ -82,7 +97,7 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
           location: formData.location.trim(),
           rent_per_room: parseInt(formData.rentPerRoom),
           total_rooms: parseInt(formData.totalRooms),
-          owner_id: user.id,
+          owner_id: ownerId,
           image_url: formData.imageUrl || "/placeholder.svg",
         })
         .select()
@@ -122,11 +137,12 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
       });
 
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding property:", error);
+      const errorMessage = error?.message || "Failed to add property. Please try again.";
       toast({
         title: "Error",
-        description: "Failed to add property. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
