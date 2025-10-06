@@ -48,7 +48,26 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
 
     // Check credentials based on role
     if (role === 'manager') {
-      // Check against stored manager credentials
+      // First check database via invitations table
+      try {
+        const { data, error } = await supabase.rpc('verify_invitation_login', {
+          login_email: email,
+          login_password: password
+        });
+
+        if (!error && data && data.length > 0 && data[0].user_role === 'manager') {
+          toast({
+            title: "Welcome to KaaSmart!",
+            description: `Logged in as Manager`,
+          });
+          onLogin(email, role);
+          return;
+        }
+      } catch (error) {
+        console.error('Manager login error:', error);
+      }
+
+      // Fallback to localStorage for backward compatibility
       const managerMatch = storedManagerCredentials.find((cred: any) => 
         cred.email === email && cred.password === password
       );
@@ -67,7 +86,26 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
         });
       }
     } else if (role === 'tenant') {
-      // Check against stored tenant credentials
+      // First check database via invitations table
+      try {
+        const { data, error } = await supabase.rpc('verify_invitation_login', {
+          login_email: email,
+          login_password: password
+        });
+
+        if (!error && data && data.length > 0 && data[0].user_role === 'tenant') {
+          toast({
+            title: "Welcome to KaaSmart!",
+            description: `Logged in as Tenant`,
+          });
+          onLogin(email, role);
+          return;
+        }
+      } catch (error) {
+        console.error('Tenant login error:', error);
+      }
+
+      // Fallback to localStorage for backward compatibility
       const tenantMatch = storedTenantCredentials.find((cred: any) => 
         cred.email === email && cred.password === password
       );

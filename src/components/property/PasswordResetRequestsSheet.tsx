@@ -95,31 +95,32 @@ const PasswordResetRequestsSheet = ({ open, onOpenChange }: PasswordResetRequest
 
       if (resetError) throw resetError;
 
-      // Update credentials based on user role
-      if (selectedRequest.user_role === 'owner') {
-        // For property owners, update the invitations table
-        const { data: hashedData, error: hashError } = await supabase
-          .rpc('hash_password', { password: newPassword });
+      // Hash the password
+      const { data: hashedData, error: hashError } = await supabase
+        .rpc('hash_password', { password: newPassword });
 
-        if (hashError) {
-          console.error('Error hashing password:', hashError);
-          throw new Error('Failed to hash password');
-        }
+      if (hashError) {
+        console.error('Error hashing password:', hashError);
+        throw new Error('Failed to hash password');
+      }
 
-        const { error: invitationError } = await supabase
-          .from('invitations')
-          .update({
-            password_hash: hashedData,
-            temporary_password: newPassword,
-          })
-          .eq('email', selectedRequest.email)
-          .eq('role', 'owner');
+      // Update invitations table for all user roles
+      const { error: invitationError } = await supabase
+        .from('invitations')
+        .update({
+          password_hash: hashedData,
+          temporary_password: newPassword,
+        })
+        .eq('email', selectedRequest.email)
+        .eq('role', selectedRequest.user_role as 'owner' | 'manager' | 'tenant' | 'developer');
 
-        if (invitationError) {
-          console.error('Error updating invitation:', invitationError);
-          throw new Error('Failed to update owner credentials');
-        }
-      } else if (selectedRequest.user_role === 'manager') {
+      if (invitationError) {
+        console.error('Error updating invitation:', invitationError);
+        throw new Error(`Failed to update ${selectedRequest.user_role} credentials`);
+      }
+
+      // Also update localStorage for backward compatibility
+      if (selectedRequest.user_role === 'manager') {
         const credentials = JSON.parse(localStorage.getItem('managerCredentials') || '[]');
         const updated = credentials.map((cred: any) => 
           cred.email === selectedRequest.email ? { ...cred, password: newPassword } : cred
