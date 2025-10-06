@@ -140,7 +140,6 @@ export type Database = {
       }
       messages: {
         Row: {
-          is_read: boolean | null
           message_id: string
           message_text: string
           property_id: string | null
@@ -148,10 +147,8 @@ export type Database = {
           room_id: string | null
           sender_id: string
           timestamp: string
-          type: string | null
         }
         Insert: {
-          is_read?: boolean | null
           message_id?: string
           message_text: string
           property_id?: string | null
@@ -159,10 +156,8 @@ export type Database = {
           room_id?: string | null
           sender_id: string
           timestamp?: string
-          type?: string | null
         }
         Update: {
-          is_read?: boolean | null
           message_id?: string
           message_text?: string
           property_id?: string | null
@@ -170,7 +165,6 @@ export type Database = {
           room_id?: string | null
           sender_id?: string
           timestamp?: string
-          type?: string | null
         }
         Relationships: [
           {
