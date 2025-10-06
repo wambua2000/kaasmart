@@ -17,9 +17,7 @@ interface Message {
   recipient_tenant_id?: string;
   property_id?: string;
   room_id?: string;
-  type: string;
   timestamp: string;
-  is_read?: boolean;
   sender_name?: string;
   sender_role?: string;
 }
@@ -44,7 +42,6 @@ const MessageCenter = ({
   const [newMessage, setNewMessage] = useState("");
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>(propertyId || "all");
   const [selectedRoomId, setSelectedRoomId] = useState<string>(roomId || "");
-  const [messageType, setMessageType] = useState<'general' | 'maintenance' | 'announcement'>('general');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -92,17 +89,34 @@ const MessageCenter = ({
         .from('messages')
         .select(`
           *,
-          sender:profiles!messages_sender_id_fkey(full_name, role)
+          sender:profiles!messages_sender_id_fkey(full_name, role),
+          property:properties(name),
+          room:rooms(room_number)
         `)
-        .or(`sender_id.eq.${currentUserId},recipient_tenant_id.eq.${currentUserId}`)
         .order('timestamp', { ascending: false });
 
-      // Additional filters based on selections
-      if (selectedPropertyId && selectedPropertyId !== 'all') {
-        query = query.eq('property_id', selectedPropertyId);
-        if (selectedRoomId) {
-          query = query.eq('room_id', selectedRoomId);
+      // Filter based on user role
+      if (currentUserRole === 'tenant') {
+        // Tenants see: messages sent to them OR messages they sent
+        query = query.or(`recipient_tenant_id.eq.${currentUserId},sender_id.eq.${currentUserId}`);
+        // If roomId provided, filter by it
+        if (roomId) {
+          query = query.eq('room_id', roomId);
         }
+      } else if (currentUserRole === 'owner') {
+        // Owners see: messages they sent OR messages for their properties
+        query = query.or(`sender_id.eq.${currentUserId},property_id.in.(select id from properties where owner_id = ${currentUserId})`);
+        
+        // Additional filters based on selections
+        if (selectedPropertyId && selectedPropertyId !== 'all') {
+          query = query.eq('property_id', selectedPropertyId);
+          if (selectedRoomId) {
+            query = query.eq('room_id', selectedRoomId);
+          }
+        }
+      } else if (currentUserRole === 'manager') {
+        // Managers see all messages (view only)
+        query = query.or(`sender_id.eq.${currentUserId},recipient_tenant_id.eq.${currentUserId}`);
       }
 
       const { data, error } = await query;
@@ -137,37 +151,56 @@ const MessageCenter = ({
         throw new Error("User not authenticated");
       }
 
-      // Determine receiver based on role
+      // Determine receiver based on role and get recipient details
       let receiverId = null;
+      let recipientName = "recipient";
+      
       if (currentUserRole === 'tenant') {
         // Tenant sending to owner - get property owner
-        if (selectedPropertyId && selectedPropertyId !== 'all') {
-          const { data: property } = await supabase
+        if (propertyId || (selectedPropertyId && selectedPropertyId !== 'all')) {
+          const targetPropertyId = propertyId || selectedPropertyId;
+          const { data: property, error: propError } = await supabase
             .from('properties')
-            .select('owner_id')
-            .eq('id', selectedPropertyId)
+            .select('owner_id, profiles!properties_owner_id_fkey(full_name)')
+            .eq('id', targetPropertyId)
             .single();
+          
+          if (propError) throw propError;
           receiverId = property?.owner_id;
+          recipientName = property?.profiles?.full_name || "property owner";
         }
       } else if (currentUserRole === 'owner') {
-        // Owner sending to tenant - get tenant from room
-        if (selectedRoomId) {
-          const { data: room } = await supabase
-            .from('rooms')
-            .select('tenant_id')
-            .eq('id', selectedRoomId)
-            .single();
-          receiverId = room?.tenant_id;
+        // Owner sending to tenant - MUST have a room selected
+        if (!selectedRoomId) {
+          throw new Error("Please select a room to send a message to a specific tenant");
         }
+        
+        const { data: room, error: roomError } = await supabase
+          .from('rooms')
+          .select('tenant_id, tenant_name, property_id')
+          .eq('id', selectedRoomId)
+          .single();
+        
+        if (roomError) throw roomError;
+        
+        if (!room?.tenant_id) {
+          throw new Error("This room doesn't have a tenant assigned yet");
+        }
+        
+        receiverId = room.tenant_id;
+        recipientName = room.tenant_name || "tenant";
+      }
+
+      if (!receiverId) {
+        throw new Error("Could not determine message recipient. Please select a property or room.");
       }
 
       const messagePayload = {
         sender_id: user.id,
         recipient_tenant_id: receiverId,
-        property_id: selectedPropertyId && selectedPropertyId !== 'all' ? selectedPropertyId : null,
-        room_id: selectedRoomId || null,
+        property_id: propertyId || (selectedPropertyId && selectedPropertyId !== 'all' ? selectedPropertyId : null),
+        room_id: roomId || selectedRoomId || null,
         message_text: newMessage,
-        type: messageType === 'maintenance' ? 'maintenance' : 'chat'
       };
 
       console.log("Sending message with payload:", messagePayload);
@@ -184,11 +217,11 @@ const MessageCenter = ({
 
       console.log("Message sent successfully:", data);
       setNewMessage("");
-      // Don't manually reload - real-time subscription will handle it
+      loadMessages(); // Reload to show the new message immediately
 
       toast({
         title: "Message Sent",
-        description: "Your message has been sent successfully"
+        description: `Message sent successfully to ${recipientName}`
       });
     } catch (error) {
       console.error('Error sending message:', error);
@@ -211,14 +244,6 @@ const MessageCenter = ({
     }
   };
 
-  const getMessageTypeIcon = (type: string) => {
-    switch (type) {
-      case 'maintenance': return <AlertCircle className="h-4 w-4" />;
-      case 'announcement': return <Users className="h-4 w-4" />;
-      default: return <MessageSquare className="h-4 w-4" />;
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* Message Filters */}
@@ -231,36 +256,21 @@ const MessageCenter = ({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="property">Property</Label>
-                <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select property" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Properties</SelectItem>
-                    {properties.map(property => (
-                      <SelectItem key={property.id} value={property.id}>
-                        {property.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="messageType">Message Type</Label>
-                <Select value={messageType} onValueChange={(value) => setMessageType(value as any)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="general">General</SelectItem>
-                    <SelectItem value="maintenance">Maintenance</SelectItem>
-                    <SelectItem value="announcement">Announcement</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="property">Property</Label>
+              <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select property" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Properties</SelectItem>
+                  {properties.map(property => (
+                    <SelectItem key={property.id} value={property.id}>
+                      {property.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
@@ -347,15 +357,9 @@ const MessageCenter = ({
                     <span className="text-xs text-muted-foreground">
                       {new Date(message.timestamp).toLocaleDateString()} {new Date(message.timestamp).toLocaleTimeString()}
                     </span>
-                  </div>
-                  <div className="flex items-center gap-2 mb-2">
-                    {getMessageTypeIcon(message.type)}
-                    <Badge variant="outline" className="text-xs">
-                      {message.type}
-                    </Badge>
-                  </div>
-                  <p className="text-sm leading-relaxed">{message.message_text}</p>
-                </div>
+                   </div>
+                   <p className="text-sm leading-relaxed">{message.message_text}</p>
+                 </div>
               ))
             ) : (
               <div className="text-center py-8">

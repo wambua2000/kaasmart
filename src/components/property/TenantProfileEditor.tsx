@@ -33,6 +33,7 @@ interface TenantProfileEditorProps {
     rent_status?: string;
   };
   userRole: 'tenant' | 'manager' | 'owner';
+  onSaveSuccess?: () => void; // Callback to refresh parent data
 }
 
 const TenantProfileEditor = ({
@@ -40,7 +41,8 @@ const TenantProfileEditor = ({
   onClose,
   roomId,
   tenantData,
-  userRole
+  userRole,
+  onSaveSuccess
 }: TenantProfileEditorProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -134,10 +136,15 @@ const TenantProfileEditor = ({
       console.log("Tenant profile updated successfully");
       
       toast({
-        title: "Profile Updated",
-        description: "Tenant profile has been updated and synced across all accounts.",
+        title: "Success",
+        description: `Tenant details updated successfully for ${formData.tenant_name}`,
         variant: "default",
       });
+
+      // Notify parent to refresh data
+      if (onSaveSuccess) {
+        onSaveSuccess();
+      }
 
       onClose();
     } catch (error) {
