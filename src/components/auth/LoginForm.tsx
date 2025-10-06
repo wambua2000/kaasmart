@@ -43,7 +43,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
     // Demo credentials
     const validCredentials = {
       owner: { email: "owner@kaasmart.com", password: "admin123" },
-      developer: { email: "dev@kaasmart.com", password: "dev123" },
+      developer: { email: "dev@kaasmart.com", password: "Developer@123" },
     };
 
     // Check credentials based on role
