@@ -54,8 +54,8 @@ const DocumentReport = ({ properties, isOpen, onClose }: DocumentReportProps) =>
       
       const { data: maintenanceData } = await supabase
         .from('messages')
-        .select('id')
-        .gte('created_at', firstDay.toISOString());
+        .select('message_id')
+        .gte('timestamp', firstDay.toISOString());
       
       setMaintenanceCount(maintenanceData?.length || 0);
 

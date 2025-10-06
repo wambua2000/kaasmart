@@ -11,14 +11,15 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
-  id: string;
-  content: string;
+  message_id: string;
+  message_text: string;
   sender_id: string;
-  receiver_id?: string;
+  recipient_tenant_id?: string;
   property_id?: string;
   room_id?: string;
   type: string;
-  created_at: string;
+  timestamp: string;
+  is_read?: boolean;
   sender_name?: string;
   sender_role?: string;
 }
@@ -93,8 +94,8 @@ const MessageCenter = ({
           *,
           sender:profiles!messages_sender_id_fkey(full_name, role)
         `)
-        .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`)
-        .order('created_at', { ascending: false });
+        .or(`sender_id.eq.${currentUserId},recipient_tenant_id.eq.${currentUserId}`)
+        .order('timestamp', { ascending: false });
 
       // Additional filters based on selections
       if (selectedPropertyId && selectedPropertyId !== 'all') {
@@ -162,11 +163,10 @@ const MessageCenter = ({
 
       const messagePayload = {
         sender_id: user.id,
-        receiver_id: receiverId,
+        recipient_tenant_id: receiverId,
         property_id: selectedPropertyId && selectedPropertyId !== 'all' ? selectedPropertyId : null,
         room_id: selectedRoomId || null,
-        content: newMessage,
-        message: newMessage, // Temporary for type compatibility
+        message_text: newMessage,
         type: messageType === 'maintenance' ? 'maintenance' : 'chat'
       };
 
@@ -336,7 +336,7 @@ const MessageCenter = ({
           <div className="space-y-4 max-h-96 overflow-y-auto">
             {messages.length > 0 ? (
               messages.map((message) => (
-                <div key={message.id} className="border rounded-lg p-4 space-y-2">
+                <div key={message.message_id} className="border rounded-lg p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Badge className={getRoleColor(message.sender_role || 'unknown')}>
@@ -345,7 +345,7 @@ const MessageCenter = ({
                       <span className="font-medium text-sm">{message.sender_name}</span>
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(message.created_at).toLocaleDateString()} {new Date(message.created_at).toLocaleTimeString()}
+                      {new Date(message.timestamp).toLocaleDateString()} {new Date(message.timestamp).toLocaleTimeString()}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 mb-2">
@@ -354,7 +354,7 @@ const MessageCenter = ({
                       {message.type}
                     </Badge>
                   </div>
-                  <p className="text-sm leading-relaxed">{message.content}</p>
+                  <p className="text-sm leading-relaxed">{message.message_text}</p>
                 </div>
               ))
             ) : (

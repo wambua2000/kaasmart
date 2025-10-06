@@ -60,10 +60,9 @@ Status: Pending Review`;
       const { error } = await supabase
         .from('messages')
         .insert([{
-          content: messageText,
-          message: messageText, // Keep for backward compatibility
+          message_text: messageText,
           sender_id: tenantId,
-          receiver_id: receiverId,
+          recipient_tenant_id: receiverId,
           property_id: propertyId || null,
           room_id: roomId || null,
           type: 'maintenance'

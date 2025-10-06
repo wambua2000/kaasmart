@@ -52,8 +52,8 @@ const ReportModal = ({ properties, isOpen, onClose }: ReportModalProps) => {
       
       const { data: maintenanceData } = await supabase
         .from('messages')
-        .select('id')
-        .gte('created_at', firstDay.toISOString());
+        .select('message_id')
+        .gte('timestamp', firstDay.toISOString());
       
       setMaintenanceCount(maintenanceData?.length || 0);
 
