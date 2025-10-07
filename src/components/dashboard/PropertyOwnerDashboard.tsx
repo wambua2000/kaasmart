@@ -60,6 +60,7 @@ const PropertyOwnerDashboard = () => {
   const [isDocumentReportOpen, setIsDocumentReportOpen] = useState(false);
   const [isInviteManagerOpen, setIsInviteManagerOpen] = useState(false);
   const [isPasswordResetOpen, setIsPasswordResetOpen] = useState(false);
+  const [pendingResetCount, setPendingResetCount] = useState(0);
   const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
   const [messageText, setMessageText] = useState("");
   const [selectedRecipient, setSelectedRecipient] = useState("all");
@@ -161,9 +162,25 @@ const PropertyOwnerDashboard = () => {
     }
   };
 
-  // Fetch properties on mount
+  // Fetch pending password reset count
+  const fetchPendingResetCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('password_reset_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+
+      if (error) throw error;
+      setPendingResetCount(count || 0);
+    } catch (error) {
+      console.error("Error fetching pending reset count:", error);
+    }
+  };
+
+  // Fetch properties and reset count on mount
   useEffect(() => {
     fetchProperties();
+    fetchPendingResetCount();
   }, []);
 
   // Set up real-time listener for tenant profile updates
@@ -196,6 +213,51 @@ const PropertyOwnerDashboard = () => {
               return property;
             })
           );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [toast]);
+
+  // Set up real-time listener for password reset requests
+  useEffect(() => {
+    const channel = supabase
+      .channel('password-reset-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'password_reset_requests'
+        },
+        (payload) => {
+          console.log('New password reset request:', payload);
+          
+          // Show toast notification
+          toast({
+            title: "New Password Reset Request",
+            description: `${payload.new.email} (${payload.new.user_role}) has requested a password reset.`,
+            duration: 6000,
+          });
+          
+          // Refresh count
+          fetchPendingResetCount();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'password_reset_requests'
+        },
+        (payload) => {
+          console.log('Password reset request updated:', payload);
+          // Refresh count when status changes
+          fetchPendingResetCount();
         }
       )
       .subscribe();
@@ -319,6 +381,7 @@ const PropertyOwnerDashboard = () => {
           onViewLeaseAgreements={() => setIsLeaseAgreementsOpen(true)}
           onAddProperty={handleAddProperty}
           userRole="owner"
+          pendingResetCount={pendingResetCount}
         />
         
         <div className="flex-1 flex flex-col">
@@ -544,6 +607,7 @@ const PropertyOwnerDashboard = () => {
         <PasswordResetRequestsSheet
           open={isPasswordResetOpen}
           onOpenChange={setIsPasswordResetOpen}
+          onRequestsUpdated={fetchPendingResetCount}
         />
 
         <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>

@@ -25,9 +25,10 @@ interface PasswordResetRequest {
 interface PasswordResetRequestsSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onRequestsUpdated?: () => void;
 }
 
-const PasswordResetRequestsSheet = ({ open, onOpenChange }: PasswordResetRequestsSheetProps) => {
+const PasswordResetRequestsSheet = ({ open, onOpenChange, onRequestsUpdated }: PasswordResetRequestsSheetProps) => {
   const [requests, setRequests] = useState<PasswordResetRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<PasswordResetRequest | null>(null);
   const [newPassword, setNewPassword] = useState("");
@@ -143,6 +144,7 @@ const PasswordResetRequestsSheet = ({ open, onOpenChange }: PasswordResetRequest
       setNewPassword("");
       setNotes("");
       fetchRequests();
+      onRequestsUpdated?.();
     } catch (error: any) {
       console.error('Error approving password reset:', error);
       toast({
@@ -175,6 +177,7 @@ const PasswordResetRequestsSheet = ({ open, onOpenChange }: PasswordResetRequest
       });
 
       fetchRequests();
+      onRequestsUpdated?.();
     } catch (error) {
       console.error('Error rejecting password reset:', error);
       toast({

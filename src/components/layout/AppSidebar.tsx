@@ -21,6 +21,7 @@ interface AppSidebarProps {
   onViewLeaseAgreements?: () => void;
   onAddProperty?: () => void;
   userRole: "owner" | "manager";
+  pendingResetCount?: number;
 }
 
 export function AppSidebar({
@@ -33,6 +34,7 @@ export function AppSidebar({
   onViewLeaseAgreements,
   onAddProperty,
   userRole,
+  pendingResetCount = 0,
 }: AppSidebarProps) {
   const { state } = useSidebar();
   
@@ -87,9 +89,14 @@ export function AppSidebar({
               {userRole === "owner" && (
                 <>
                   <SidebarMenuItem>
-                    <SidebarMenuButton onClick={onPasswordReset}>
+                    <SidebarMenuButton onClick={onPasswordReset} className="relative">
                       <KeyRound className="h-4 w-4" />
                       <span>Password Resets</span>
+                      {pendingResetCount > 0 && (
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-bold text-destructive-foreground animate-pulse">
+                          {pendingResetCount}
+                        </span>
+                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
 
