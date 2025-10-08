@@ -51,6 +51,16 @@ interface Property {
 
 const PropertyOwnerDashboard = () => {
   const { toast } = useToast();
+  
+  // Generate a consistent UUID for the owner
+  const [ownerId] = useState(() => {
+    const stored = localStorage.getItem('mockOwnerId');
+    if (stored) return stored;
+    const newId = crypto.randomUUID();
+    localStorage.setItem('mockOwnerId', newId);
+    return newId;
+  });
+  
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [isAddPropertyModalOpen, setIsAddPropertyModalOpen] = useState(false);
@@ -666,7 +676,7 @@ const PropertyOwnerDashboard = () => {
             </SheetHeader>
             <div className="mt-6">
               <MessageCenter
-                currentUserId="mock-owner-id"
+                currentUserId={ownerId}
                 currentUserRole="owner"
                 properties={properties}
               />

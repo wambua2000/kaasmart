@@ -74,12 +74,7 @@ const MessageCenter = ({
     try {
       let query = supabase
         .from('messages')
-        .select(`
-          *,
-          sender:profiles!messages_sender_id_fkey(full_name, role),
-          property:properties(name),
-          room:rooms(room_number)
-        `)
+        .select('*')
         .order('timestamp', { ascending: false });
 
       // Filter based on user role
@@ -94,10 +89,8 @@ const MessageCenter = ({
         // Owners see: messages they sent OR messages in their properties
         if (selectedPropertyId && selectedPropertyId !== 'all') {
           query = query.eq('property_id', selectedPropertyId);
-        } else {
-          // Show all messages for properties owned by this user
-          query = query.or(`sender_id.eq.${currentUserId}`);
         }
+        query = query.or(`sender_id.eq.${currentUserId}`);
       } else if (currentUserRole === 'manager') {
         // Managers see all messages (view only)
         query = query.or(`sender_id.eq.${currentUserId},recipient_tenant_id.eq.${currentUserId}`);
@@ -105,22 +98,17 @@ const MessageCenter = ({
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading messages:', error);
+        // Don't throw on first load, just show empty messages
+        setMessages([]);
+        return;
+      }
 
-      const formattedMessages = data?.map(msg => ({
-        ...msg,
-        sender_name: msg.sender?.full_name || 'Unknown',
-        sender_role: msg.sender?.role || 'unknown'
-      })) || [];
-
-      setMessages(formattedMessages);
+      setMessages(data || []);
     } catch (error) {
       console.error('Error loading messages:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load messages",
-        variant: "destructive"
-      });
+      setMessages([]);
     }
   };
 
@@ -408,10 +396,9 @@ const MessageCenter = ({
                 <div key={message.message_id} className="border rounded-lg p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Badge className={getRoleColor(message.sender_role || 'unknown')}>
-                        {message.sender_role?.charAt(0).toUpperCase() + message.sender_role?.slice(1)}
+                      <Badge variant="secondary">
+                        {message.sender_id === currentUserId ? 'You' : 'Tenant'}
                       </Badge>
-                      <span className="font-medium text-sm">{message.sender_name}</span>
                     </div>
                     <span className="text-xs text-muted-foreground">
                       {new Date(message.timestamp).toLocaleDateString()} {new Date(message.timestamp).toLocaleTimeString()}
