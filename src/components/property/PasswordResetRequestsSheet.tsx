@@ -47,6 +47,7 @@ const PasswordResetRequestsSheet = ({ open, onOpenChange, onRequestsUpdated }: P
       const { data, error } = await supabase
         .from('password_reset_requests')
         .select('*')
+        .eq('user_role', 'owner')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -83,6 +84,30 @@ const PasswordResetRequestsSheet = ({ open, onOpenChange, onRequestsUpdated }: P
     setIsProcessing(true);
 
     try {
+      // Hash the password
+      const { data: hashedData, error: hashError } = await supabase
+        .rpc('hash_password', { password: newPassword });
+
+      if (hashError) {
+        console.error('Error hashing password:', hashError);
+        throw new Error('Failed to hash password');
+      }
+
+      // Update invitations table for property owners
+      const { error: invitationError } = await supabase
+        .from('invitations')
+        .update({
+          password_hash: hashedData,
+          temporary_password: newPassword,
+        })
+        .eq('email', selectedRequest.email)
+        .eq('role', 'owner');
+
+      if (invitationError) {
+        console.error('Error updating invitation:', invitationError);
+        throw new Error('Failed to update property owner credentials');
+      }
+
       // Update password_reset_requests table
       const { error: resetError } = await supabase
         .from('password_reset_requests')
@@ -95,45 +120,6 @@ const PasswordResetRequestsSheet = ({ open, onOpenChange, onRequestsUpdated }: P
         .eq('id', selectedRequest.id);
 
       if (resetError) throw resetError;
-
-      // Hash the password
-      const { data: hashedData, error: hashError } = await supabase
-        .rpc('hash_password', { password: newPassword });
-
-      if (hashError) {
-        console.error('Error hashing password:', hashError);
-        throw new Error('Failed to hash password');
-      }
-
-      // Update invitations table for all user roles
-      const { error: invitationError } = await supabase
-        .from('invitations')
-        .update({
-          password_hash: hashedData,
-          temporary_password: newPassword,
-        })
-        .eq('email', selectedRequest.email)
-        .eq('role', selectedRequest.user_role as 'owner' | 'manager' | 'tenant' | 'developer');
-
-      if (invitationError) {
-        console.error('Error updating invitation:', invitationError);
-        throw new Error(`Failed to update ${selectedRequest.user_role} credentials`);
-      }
-
-      // Also update localStorage for backward compatibility
-      if (selectedRequest.user_role === 'manager') {
-        const credentials = JSON.parse(localStorage.getItem('managerCredentials') || '[]');
-        const updated = credentials.map((cred: any) => 
-          cred.email === selectedRequest.email ? { ...cred, password: newPassword } : cred
-        );
-        localStorage.setItem('managerCredentials', JSON.stringify(updated));
-      } else if (selectedRequest.user_role === 'tenant') {
-        const credentials = JSON.parse(localStorage.getItem('tenantCredentials') || '[]');
-        const updated = credentials.map((cred: any) => 
-          cred.email === selectedRequest.email ? { ...cred, password: newPassword } : cred
-        );
-        localStorage.setItem('tenantCredentials', JSON.stringify(updated));
-      }
 
       toast({
         title: "Password Reset Complete",
@@ -205,7 +191,7 @@ const PasswordResetRequestsSheet = ({ open, onOpenChange, onRequestsUpdated }: P
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[600px] sm:max-w-[600px] overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>Password Reset Requests</SheetTitle>
+          <SheetTitle>Property Owner Password Reset Requests</SheetTitle>
         </SheetHeader>
 
         <div className="mt-6 space-y-6">

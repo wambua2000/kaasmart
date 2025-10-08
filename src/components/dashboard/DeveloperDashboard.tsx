@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Users, UserPlus, Mail, Shield } from "lucide-react";
+import { Building2, Users, UserPlus, Mail, Shield, Key } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { AppFooter } from "@/components/layout/AppFooter";
 import InvitePropertyOwnerModal from "@/components/property/InvitePropertyOwnerModal";
+import PasswordResetRequestsSheet from "@/components/property/PasswordResetRequestsSheet";
 
 interface PropertyOwner {
   id: string;
@@ -20,11 +21,34 @@ const DeveloperDashboard = () => {
   const { toast } = useToast();
   const [propertyOwners, setPropertyOwners] = useState<PropertyOwner[]>([]);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [isPasswordResetSheetOpen, setIsPasswordResetSheetOpen] = useState(false);
+  const [pendingResetCount, setPendingResetCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch all property owners
   useEffect(() => {
     fetchPropertyOwners();
+    fetchPendingResetCount();
+
+    // Set up real-time subscription for password reset requests
+    const channel = supabase
+      .channel('password_reset_requests_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'password_reset_requests'
+        },
+        () => {
+          fetchPendingResetCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchPropertyOwners = async () => {
@@ -81,6 +105,21 @@ const DeveloperDashboard = () => {
     await fetchPropertyOwners();
   };
 
+  const fetchPendingResetCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('password_reset_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending')
+        .eq('user_role', 'owner');
+
+      if (error) throw error;
+      setPendingResetCount(count || 0);
+    } catch (error) {
+      console.error('Error fetching pending reset count:', error);
+    }
+  };
+
   const totalOwners = propertyOwners.length;
   const totalProperties = propertyOwners.reduce((sum, owner) => sum + owner.propertyCount, 0);
   const ownersWithProperties = propertyOwners.filter(o => o.propertyCount > 0).length;
@@ -101,10 +140,25 @@ const DeveloperDashboard = () => {
               <h1 className="text-3xl font-bold text-foreground">Developer Dashboard</h1>
               <p className="text-muted-foreground">Manage property owners and system settings</p>
             </div>
-            <Button onClick={handleInviteOwner} className="bg-gradient-hero hover:shadow-glow">
-              <UserPlus className="mr-2 h-4 w-4" />
-              Invite Property Owner
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setIsPasswordResetSheetOpen(true)} 
+                variant="outline"
+                className="relative"
+              >
+                <Key className="mr-2 h-4 w-4" />
+                Password Reset Requests
+                {pendingResetCount > 0 && (
+                  <Badge className="ml-2 bg-destructive text-destructive-foreground">
+                    {pendingResetCount}
+                  </Badge>
+                )}
+              </Button>
+              <Button onClick={handleInviteOwner} className="bg-gradient-hero hover:shadow-glow">
+                <UserPlus className="mr-2 h-4 w-4" />
+                Invite Property Owner
+              </Button>
+            </div>
           </div>
 
           {/* Stats Cards */}
@@ -223,6 +277,12 @@ const DeveloperDashboard = () => {
         isOpen={isInviteModalOpen}
         onClose={() => setIsInviteModalOpen(false)}
         onOwnerInvited={handleOwnerInvited}
+      />
+
+      <PasswordResetRequestsSheet
+        open={isPasswordResetSheetOpen}
+        onOpenChange={setIsPasswordResetSheetOpen}
+        onRequestsUpdated={fetchPendingResetCount}
       />
     </div>
   );
