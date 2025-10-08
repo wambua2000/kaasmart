@@ -43,6 +43,7 @@ const MessageCenter = ({
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>(propertyId || "all");
   const [selectedRoomId, setSelectedRoomId] = useState<string>(roomId || "");
   const [loading, setLoading] = useState(false);
+  const [sendingToAll, setSendingToAll] = useState(false);
 
   useEffect(() => {
     loadMessages();
@@ -53,26 +54,12 @@ const MessageCenter = ({
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
-          table: 'messages',
-          filter: `sender_id=eq.${currentUserId}`,
+          table: 'messages'
         },
         () => {
-          console.log('Message change detected - reloading messages');
-          loadMessages();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'messages',
-          filter: `receiver_id=eq.${currentUserId}`,
-        },
-        () => {
-          console.log('Message received - reloading messages');
+          console.log('New message detected - reloading messages');
           loadMessages();
         }
       )
@@ -104,15 +91,12 @@ const MessageCenter = ({
           query = query.eq('room_id', roomId);
         }
       } else if (currentUserRole === 'owner') {
-        // Owners see: messages they sent OR messages for their properties
-        query = query.or(`sender_id.eq.${currentUserId},property_id.in.(select id from properties where owner_id = ${currentUserId})`);
-        
-        // Additional filters based on selections
+        // Owners see: messages they sent OR messages in their properties
         if (selectedPropertyId && selectedPropertyId !== 'all') {
           query = query.eq('property_id', selectedPropertyId);
-          if (selectedRoomId) {
-            query = query.eq('room_id', selectedRoomId);
-          }
+        } else {
+          // Show all messages for properties owned by this user
+          query = query.or(`sender_id.eq.${currentUserId}`);
         }
       } else if (currentUserRole === 'manager') {
         // Managers see all messages (view only)
@@ -140,17 +124,73 @@ const MessageCenter = ({
     }
   };
 
+  const sendToAllTenants = async () => {
+    if (!newMessage.trim()) return;
+
+    setSendingToAll(true);
+    try {
+      // Get all properties owned by this owner
+      const propertiesToMessage = selectedPropertyId && selectedPropertyId !== 'all' 
+        ? [selectedPropertyId] 
+        : properties.map(p => p.id);
+
+      if (propertiesToMessage.length === 0) {
+        throw new Error("No properties found");
+      }
+
+      // Get all tenants from these properties
+      const { data: rooms, error: roomsError } = await supabase
+        .from('rooms')
+        .select('tenant_id, tenant_name, property_id, room_number, id')
+        .in('property_id', propertiesToMessage)
+        .not('tenant_id', 'is', null);
+
+      if (roomsError) throw roomsError;
+
+      if (!rooms || rooms.length === 0) {
+        throw new Error("No tenants found in the selected properties");
+      }
+
+      // Create message for each tenant
+      const messagesToInsert = rooms.map(room => ({
+        sender_id: currentUserId,
+        recipient_tenant_id: room.tenant_id,
+        property_id: room.property_id,
+        room_id: room.id,
+        message_text: newMessage,
+        timestamp: new Date().toISOString()
+      }));
+
+      const { error: insertError } = await supabase
+        .from('messages')
+        .insert(messagesToInsert);
+
+      if (insertError) throw insertError;
+
+      setNewMessage("");
+      loadMessages();
+
+      toast({
+        title: "Messages Sent",
+        description: `Message sent to ${rooms.length} tenant(s) successfully`
+      });
+    } catch (error) {
+      console.error('Error sending messages:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send messages",
+        variant: "destructive"
+      });
+    } finally {
+      setSendingToAll(false);
+    }
+  };
+
   const sendMessage = async () => {
     if (!newMessage.trim()) return;
 
     setLoading(true);
     try {
-      // Get authenticated user
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) {
-        throw new Error("User not authenticated");
-      }
-
       // Determine receiver based on role and get recipient details
       let receiverId = null;
       let recipientName = "recipient";
@@ -196,28 +236,22 @@ const MessageCenter = ({
       }
 
       const messagePayload = {
-        sender_id: user.id,
+        sender_id: currentUserId,
         recipient_tenant_id: receiverId,
         property_id: propertyId || (selectedPropertyId && selectedPropertyId !== 'all' ? selectedPropertyId : null),
         room_id: roomId || selectedRoomId || null,
         message_text: newMessage,
+        timestamp: new Date().toISOString()
       };
 
-      console.log("Sending message with payload:", messagePayload);
-
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('messages')
-        .insert([messagePayload])
-        .select();
+        .insert([messagePayload]);
 
-      if (error) {
-        console.error("Message send error:", error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log("Message sent successfully:", data);
       setNewMessage("");
-      loadMessages(); // Reload to show the new message immediately
+      loadMessages();
 
       toast({
         title: "Message Sent",
@@ -303,14 +337,39 @@ const MessageCenter = ({
                 className="resize-none"
               />
             </div>
-            <Button 
-              onClick={sendMessage}
-              disabled={!newMessage.trim() || loading}
-              className="bg-gradient-hero hover:shadow-glow"
-            >
-              <Send className="mr-2 h-4 w-4" />
-              {loading ? 'Sending...' : 'Send Message'}
-            </Button>
+            {currentUserRole === 'owner' && (
+              <div className="flex gap-2">
+                <Button 
+                  onClick={sendToAllTenants}
+                  disabled={!newMessage.trim() || sendingToAll}
+                  className="bg-gradient-hero hover:shadow-glow flex-1"
+                >
+                  <Users className="mr-2 h-4 w-4" />
+                  {sendingToAll ? 'Sending...' : 'Send to All Tenants'}
+                </Button>
+                {selectedRoomId && (
+                  <Button 
+                    onClick={sendMessage}
+                    disabled={!newMessage.trim() || loading}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    <Send className="mr-2 h-4 w-4" />
+                    {loading ? 'Sending...' : 'Send to Selected Room'}
+                  </Button>
+                )}
+              </div>
+            )}
+            {currentUserRole === 'tenant' && (
+              <Button 
+                onClick={sendMessage}
+                disabled={!newMessage.trim() || loading}
+                className="bg-gradient-hero hover:shadow-glow"
+              >
+                <Send className="mr-2 h-4 w-4" />
+                {loading ? 'Sending...' : 'Send Message'}
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
