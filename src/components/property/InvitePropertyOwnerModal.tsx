@@ -26,6 +26,8 @@ const InvitePropertyOwnerModal = ({
   const [showPassword, setShowPassword] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [nextOwnerNumber, setNextOwnerNumber] = useState<number>(1);
+  const [ownerEmail, setOwnerEmail] = useState<string>("");
+  const [emailError, setEmailError] = useState<string>("");
 
   // Fetch next available owner number when modal opens
   useEffect(() => {
@@ -55,10 +57,13 @@ const InvitePropertyOwnerModal = ({
 
       // Find the next available number
       const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
-      setNextOwnerNumber(maxNumber + 1);
+      const nextNumber = maxNumber + 1;
+      setNextOwnerNumber(nextNumber);
+      setOwnerEmail(`owner${String(nextNumber).padStart(3, '0')}@kaasmart.com`);
     } catch (error) {
       console.error('Error fetching owner count:', error);
       setNextOwnerNumber(1);
+      setOwnerEmail('owner001@kaasmart.com');
     }
   };
 
@@ -71,13 +76,48 @@ const InvitePropertyOwnerModal = ({
     return password;
   };
 
+  const validateEmail = async (email: string): Promise<boolean> => {
+    // Basic email format validation
+    const emailRegex = /^owner\d{3}@kaasmart\.com$/;
+    if (!emailRegex.test(email)) {
+      setEmailError("Email must be in format: ownerXXX@kaasmart.com (e.g., owner001@kaasmart.com)");
+      return false;
+    }
+
+    // Check for duplicates
+    try {
+      const { data: existingOwner, error } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', email)
+        .eq('role', 'owner');
+
+      if (error) throw error;
+
+      if (existingOwner && existingOwner.length > 0) {
+        setEmailError("This email already exists. Please choose a different number.");
+        return false;
+      }
+
+      setEmailError("");
+      return true;
+    } catch (error) {
+      console.error('Error validating email:', error);
+      setEmailError("Failed to validate email. Please try again.");
+      return false;
+    }
+  };
+
   const generateCredentials = async () => {
+    // Validate email before generating
+    const isValid = await validateEmail(ownerEmail);
+    if (!isValid) {
+      return;
+    }
+
     setIsGenerating(true);
 
     try {
-      // Generate email in format owner001@kaasmart.com
-      const ownerEmail = `owner${String(nextOwnerNumber).padStart(3, '0')}@kaasmart.com`;
-
       console.log("Generating credentials for:", ownerEmail);
 
       // Call Supabase RPC to generate invitation
@@ -131,6 +171,7 @@ const InvitePropertyOwnerModal = ({
   const resetModal = () => {
     setGeneratedCredentials(null);
     setShowPassword(false);
+    setEmailError("");
     fetchNextOwnerNumber();
   };
 
@@ -153,20 +194,29 @@ const InvitePropertyOwnerModal = ({
           {!generatedCredentials ? (
             <>
               <div className="space-y-2">
-                <Label>Next Property Owner Email</Label>
-                <div className="p-3 bg-muted/50 rounded-lg border border-border/50">
-                  <p className="text-sm font-mono">
-                    owner{String(nextOwnerNumber).padStart(3, '0')}@kaasmart.com
-                  </p>
-                </div>
+                <Label htmlFor="owner-email">Property Owner Email</Label>
+                <Input
+                  id="owner-email"
+                  type="text"
+                  value={ownerEmail}
+                  onChange={(e) => {
+                    setOwnerEmail(e.target.value);
+                    setEmailError("");
+                  }}
+                  placeholder="owner001@kaasmart.com"
+                  className={emailError ? "border-destructive" : ""}
+                />
+                {emailError && (
+                  <p className="text-xs text-destructive">{emailError}</p>
+                )}
                 <p className="text-xs text-muted-foreground">
-                  This email will be automatically generated for the new property owner
+                  Format: ownerXXX@kaasmart.com (e.g., owner001, owner002, owner003). Edit the number to assign a custom email.
                 </p>
               </div>
 
               <Button
                 onClick={generateCredentials}
-                disabled={isGenerating}
+                disabled={isGenerating || !ownerEmail}
                 className="w-full bg-gradient-hero"
               >
                 <UserPlus className="mr-2 h-4 w-4" />
