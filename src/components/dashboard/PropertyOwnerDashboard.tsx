@@ -127,11 +127,7 @@ const PropertyOwnerDashboard = () => {
   // Fetch properties from database and merge with existing
   const fetchProperties = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) return;
-
-      // Fetch properties with room counts
+      // Fetch properties with room counts using the owner's stored ID
       const { data: propertiesData, error } = await supabase
         .from('properties')
         .select(`
@@ -146,9 +142,12 @@ const PropertyOwnerDashboard = () => {
             is_occupied
           )
         `)
-        .eq('owner_id', user.id);
+        .eq('owner_id', ownerId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching properties:", error);
+        return;
+      }
 
       // Transform data to include occupiedRooms count
       const transformedProperties = propertiesData?.map(property => ({

@@ -113,7 +113,14 @@ const MessageCenter = ({
   };
 
   const sendToAllTenants = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim()) {
+      toast({
+        title: "Empty Message",
+        description: "Please enter a message before sending",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setSendingToAll(true);
     try {
@@ -123,8 +130,10 @@ const MessageCenter = ({
         : properties.map(p => p.id);
 
       if (propertiesToMessage.length === 0) {
-        throw new Error("No properties found");
+        throw new Error("No properties found. Please add properties first.");
       }
+
+      console.log('Sending messages to properties:', propertiesToMessage);
 
       // Get all tenants from these properties
       const { data: rooms, error: roomsError } = await supabase
@@ -133,10 +142,15 @@ const MessageCenter = ({
         .in('property_id', propertiesToMessage)
         .not('tenant_id', 'is', null);
 
-      if (roomsError) throw roomsError;
+      if (roomsError) {
+        console.error('Error fetching rooms:', roomsError);
+        throw new Error(`Database error: ${roomsError.message}`);
+      }
+
+      console.log('Found rooms with tenants:', rooms);
 
       if (!rooms || rooms.length === 0) {
-        throw new Error("No tenants found in the selected properties");
+        throw new Error("No tenants found in the selected properties. Please invite tenants first.");
       }
 
       // Create message for each tenant
@@ -149,24 +163,29 @@ const MessageCenter = ({
         timestamp: new Date().toISOString()
       }));
 
+      console.log('Inserting messages:', messagesToInsert);
+
       const { error: insertError } = await supabase
         .from('messages')
         .insert(messagesToInsert);
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Error inserting messages:', insertError);
+        throw new Error(`Failed to save messages: ${insertError.message}`);
+      }
 
       setNewMessage("");
       loadMessages();
 
       toast({
-        title: "Messages Sent",
-        description: `Message sent to ${rooms.length} tenant(s) successfully`
+        title: "Messages Sent Successfully!",
+        description: `Message delivered to ${rooms.length} tenant(s)`
       });
     } catch (error) {
       console.error('Error sending messages:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to send messages",
+        title: "Failed to Send Message",
+        description: error instanceof Error ? error.message : "Failed to send messages. Please try again.",
         variant: "destructive"
       });
     } finally {
