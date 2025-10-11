@@ -64,29 +64,14 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
     try {
       console.log("Validation passed, proceeding to save...");
       
-      // Get current user or use a default owner ID for demo purposes
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      // For demo/development: use a consistent UUID if no user is authenticated
-      let ownerId = user?.id;
+      // Get owner ID from localStorage
+      const ownerId = localStorage.getItem('ownerId');
       
       if (!ownerId) {
-        console.log("No authenticated user, checking for existing profiles...");
-        // Try to get the first owner profile from the database
-        const { data: ownerProfile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('role', 'owner')
-          .limit(1)
-          .single();
-        
-        if (ownerProfile) {
-          ownerId = ownerProfile.id;
-          console.log("Using existing owner profile:", ownerId);
-        } else {
-          throw new Error("No authenticated user or existing owner profile found. Please contact the administrator.");
-        }
+        throw new Error("Owner ID not found. Please log in again.");
       }
+      
+      console.log("Using owner ID from localStorage:", ownerId);
 
       // Insert property into database
       console.log("Inserting property into database with owner_id:", ownerId);
