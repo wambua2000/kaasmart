@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   User, Phone, Mail, Calendar, CreditCard, MapPin, 
   Upload, MessageSquare, UserPlus, Edit, Save, 
@@ -179,7 +180,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
     });
   };
 
-  const handleSaveNotes = (notes: string) => {
+  const handleSaveNotes = async (notes: string, roomId: string) => {
     if (userRole !== "owner") {
       toast({
         title: "Access Denied",
@@ -189,10 +190,35 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
       return;
     }
     
-    toast({
-      title: "Notes Saved",
-      description: "Notes have been saved successfully.",
-    });
+    try {
+      const { error } = await supabase
+        .from('rooms')
+        .update({ tenant_notes: notes })
+        .eq('id', roomId);
+      
+      if (error) throw error;
+      
+      // Update local state for this specific room
+      setRooms(prevRooms =>
+        prevRooms.map(room =>
+          room.id === roomId && room.tenant
+            ? { ...room, tenant: { ...room.tenant, notes } }
+            : room
+        )
+      );
+      
+      toast({
+        title: "Notes Saved",
+        description: "Notes have been saved for this tenant only.",
+      });
+    } catch (error) {
+      console.error('Error saving notes:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save notes. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleSendMessage = (message: string) => {
@@ -594,11 +620,11 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                         <CardHeader>
                           <CardTitle>Notes</CardTitle>
                         </CardHeader>
-                        <CardContent>
+                         <CardContent>
                           <Textarea
                             placeholder="Add notes about this tenant..."
                             defaultValue={selectedRoom.tenant.notes}
-                            onBlur={(e) => handleSaveNotes(e.target.value)}
+                            onBlur={(e) => handleSaveNotes(e.target.value, selectedRoom.id)}
                           />
                         </CardContent>
                       </Card>
