@@ -290,10 +290,14 @@ const PropertyOwnerDashboard = () => {
     setIsEditPropertyModalOpen(true);
   };
 
-  const handleUpdateProperty = (updatedProperty: Property) => {
-    setProperties(properties.map(p => 
-      p.id === updatedProperty.id ? updatedProperty : p
-    ));
+  const handleUpdateProperty = async (updatedProperty: Property) => {
+    // Refresh properties from database to get accurate data
+    await fetchProperties();
+    
+    toast({
+      title: "Property Updated",
+      description: `${updatedProperty.name} has been updated successfully.`,
+    });
   };
 
   const handleOpenSheet = () => {

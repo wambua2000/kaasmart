@@ -64,32 +64,16 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
     try {
       console.log("Validation passed, proceeding to save...");
       
-      // Get current user or use a default owner ID for demo purposes
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      // For demo/development: use a consistent UUID if no user is authenticated
-      let ownerId = user?.id;
+      // Get ownerId from localStorage (matches custom auth system)
+      const ownerId = localStorage.getItem('mockOwnerId');
       
       if (!ownerId) {
-        console.log("No authenticated user, checking for existing profiles...");
-        // Try to get the first owner profile from the database
-        const { data: ownerProfile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('role', 'owner')
-          .limit(1)
-          .single();
-        
-        if (ownerProfile) {
-          ownerId = ownerProfile.id;
-          console.log("Using existing owner profile:", ownerId);
-        } else {
-          throw new Error("No authenticated user or existing owner profile found. Please contact the administrator.");
-        }
+        throw new Error("Owner ID not found. Please log in again.");
       }
 
+      console.log("Using owner ID from localStorage:", ownerId);
+
       // Insert property into database
-      console.log("Inserting property into database with owner_id:", ownerId);
       const { data: insertedProperty, error: insertError } = await supabase
         .from('properties')
         .insert({
@@ -109,6 +93,27 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
       }
       
       console.log("Property inserted successfully:", insertedProperty);
+
+      // Generate rooms for the new property
+      console.log("Generating rooms for property:", insertedProperty.id);
+      const { error: roomsError } = await supabase.rpc('generate_rooms_for_property', {
+        property_id_param: insertedProperty.id,
+        property_name_param: insertedProperty.name,
+        total_rooms_param: insertedProperty.total_rooms,
+        rent_amount_param: insertedProperty.rent_per_room
+      });
+
+      if (roomsError) {
+        console.error("Error generating rooms:", roomsError);
+        // Don't throw - property is created, rooms can be added later
+        toast({
+          title: "Warning",
+          description: "Property created but rooms generation failed. Please contact support.",
+          variant: "destructive",
+        });
+      } else {
+        console.log("Rooms generated successfully");
+      }
 
       // Notify parent component
       onAddProperty({
