@@ -88,7 +88,7 @@ const TenantProfileEditor = ({
     try {
       console.log("Updating tenant profile for room:", roomId);
       
-      // Update the room with new tenant information and update timestamp
+      // Update the room with new tenant information
       const { error: roomError } = await supabase
         .from('rooms')
         .update({
@@ -97,16 +97,12 @@ const TenantProfileEditor = ({
           tenant_phone: formData.tenant_phone,
           tenant_notes: formData.tenant_notes,
           tenant_accessories: formData.tenant_accessories,
-          updated_at: new Date().toISOString(),
         })
         .eq('id', roomId);
 
       if (roomError) {
-        console.error("Room update error:", roomError);
         throw roomError;
       }
-
-      console.log("Room data updated successfully");
 
       // Get the room to find the tenant_id
       const { data: roomData, error: fetchError } = await supabase

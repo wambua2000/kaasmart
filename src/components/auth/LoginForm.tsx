@@ -42,7 +42,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
     
     // Demo credentials
     const validCredentials = {
-      owner: { email: "owner@kaasmart.com", password: "admin2025" },
+      owner: { email: "owner@kaasmart.com", password: "admin123" },
       developer: { email: "dev@kaasmart.com", password: "Developer@123" },
     };
 
