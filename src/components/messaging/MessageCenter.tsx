@@ -18,8 +18,6 @@ interface Message {
   property_id?: string;
   room_id?: string;
   timestamp: string;
-  sender_name?: string;
-  sender_role?: string;
 }
 
 interface MessageCenterProps {
@@ -81,7 +79,6 @@ const MessageCenter = ({
       if (currentUserRole === 'tenant') {
         // Tenants see: messages sent to them OR messages they sent
         query = query.or(`recipient_tenant_id.eq.${currentUserId},sender_id.eq.${currentUserId}`);
-        // If roomId provided, filter by it
         if (roomId) {
           query = query.eq('room_id', roomId);
         }
@@ -138,7 +135,7 @@ const MessageCenter = ({
       // Get all tenants from these properties
       const { data: rooms, error: roomsError } = await supabase
         .from('rooms')
-        .select('tenant_id, tenant_name, property_id, room_number, id')
+        .select('tenant_id, tenant_name, property_id, id')
         .in('property_id', propertiesToMessage)
         .not('tenant_id', 'is', null);
 
@@ -416,7 +413,7 @@ const MessageCenter = ({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary">
-                        {message.sender_id === currentUserId ? 'You' : 'Tenant'}
+                        {message.sender_id === currentUserId ? 'You' : 'Other'}
                       </Badge>
                     </div>
                     <span className="text-xs text-muted-foreground">
