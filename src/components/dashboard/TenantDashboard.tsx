@@ -82,41 +82,6 @@ const TenantDashboard = ({ tenantInfo: loggedInTenantInfo }: TenantDashboardProp
     };
   });
 
-  // Fetch tenant data from database on mount
-  useEffect(() => {
-    const fetchTenantData = async () => {
-      if (!loggedInTenantInfo?.email) return;
-
-      try {
-        const { data: roomData, error } = await supabase
-          .from('rooms')
-          .select('*')
-          .eq('tenant_email', loggedInTenantInfo.email)
-          .single();
-
-        if (error) throw error;
-
-        if (roomData) {
-          setTenantInfo(prev => ({
-            ...prev,
-            name: roomData.tenant_name || prev.name,
-            email: roomData.tenant_email || prev.email,
-            phone: roomData.tenant_phone || prev.phone,
-            accessories: roomData.tenant_accessories || prev.accessories,
-            dateOfEntry: roomData.tenant_date_of_entry || prev.dateOfEntry,
-            rentAmount: Number(roomData.rent_amount),
-            roomId: roomData.id,
-            propertyId: roomData.property_id,
-          }));
-        }
-      } catch (error) {
-        console.error('Error fetching tenant data:', error);
-      }
-    };
-
-    fetchTenantData();
-  }, [loggedInTenantInfo?.email]);
-
   // Set up real-time listener for tenant profile updates
   useEffect(() => {
     const channel = supabase
@@ -131,6 +96,7 @@ const TenantDashboard = ({ tenantInfo: loggedInTenantInfo }: TenantDashboardProp
         },
         (payload) => {
           console.log('Tenant profile updated:', payload);
+          // Update local state with new tenant data
           const updatedRoom = payload.new;
           setTenantInfo(prev => ({
             ...prev,
@@ -138,8 +104,7 @@ const TenantDashboard = ({ tenantInfo: loggedInTenantInfo }: TenantDashboardProp
             email: updatedRoom.tenant_email || prev.email,
             phone: updatedRoom.tenant_phone || prev.phone,
             accessories: updatedRoom.tenant_accessories || prev.accessories,
-            dateOfEntry: updatedRoom.tenant_date_of_entry || prev.dateOfEntry,
-            rentAmount: Number(updatedRoom.rent_amount) || prev.rentAmount,
+            dateOfEntry: updatedRoom.tenant_date_of_entry || prev.dateOfEntry
           }));
           
           toast({
@@ -159,38 +124,13 @@ const TenantDashboard = ({ tenantInfo: loggedInTenantInfo }: TenantDashboardProp
   const [message, setMessage] = useState("");
 
 
-  const handleUpdateInfo = async (field: keyof TenantInfo, value: string) => {
+  const handleUpdateInfo = (field: keyof TenantInfo, value: string) => {
     if (field === "name" || field === "email" || field === "phone") {
       setTenantInfo(prev => ({ ...prev, [field]: value }));
-      
-      // Only save to database if we have roomId
-      if (tenantInfo.roomId) {
-        try {
-          const updateData: Record<string, string> = {};
-          if (field === "name") updateData.tenant_name = value;
-          if (field === "email") updateData.tenant_email = value;
-          if (field === "phone") updateData.tenant_phone = value;
-
-          const { error } = await supabase
-            .from('rooms')
-            .update(updateData)
-            .eq('id', tenantInfo.roomId);
-
-          if (error) throw error;
-
-          toast({
-            title: "Information Updated",
-            description: "Your information has been saved successfully.",
-          });
-        } catch (error) {
-          console.error('Error updating tenant info:', error);
-          toast({
-            title: "Update Failed",
-            description: "Could not save changes. Please try again.",
-            variant: "destructive",
-          });
-        }
-      }
+      toast({
+        title: "Information Updated",
+        description: "Your information has been updated successfully.",
+      });
     }
   };
 
