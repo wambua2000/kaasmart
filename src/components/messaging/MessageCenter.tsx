@@ -241,8 +241,8 @@ const MessageCenter = ({
       }
 
       const messagePayload = {
-        sender_id: currentUserId, ,
-        receiver_id: selectedRoomId,
+        sender_id: currentUserId,
+        receiver_id: receiverId,
         property_id: targetPropertyId,
         content: newMessage,
         created_at: new Date().toISOString(),
