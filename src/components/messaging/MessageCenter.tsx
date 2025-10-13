@@ -244,8 +244,7 @@ const MessageCenter = ({
         sender_id: currentUserId,
         receiver_id: receiverId,
         property_id: targetPropertyId,
-        content: newMessage,
-        created_at: new Date().toISOString(),
+        content: newMessage
       };
 
       const { error } = await supabase
