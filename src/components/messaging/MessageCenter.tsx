@@ -11,32 +11,25 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
-  message_id: string;
-  message_text: string;
+  id: string;
+  content: string;
   sender_id: string;
-  recipient_tenant_id?: string;
+  receiver_id: string;
   property_id?: string;
-  room_id?: string;
-  timestamp: string;
+  created_at: string;
   sender_name?: string;
   sender_role?: string;
 }
 
 interface MessageCenterProps {
   currentUserId: string;
-  currentUserRole: 'owner' | 'manager' | 'tenant';
+  currentUserRole: "owner" | "manager" | "tenant";
   properties?: Array<{ id: string; name: string }>;
   roomId?: string;
   propertyId?: string;
 }
 
-const MessageCenter = ({ 
-  currentUserId, 
-  currentUserRole, 
-  properties = [], 
-  roomId, 
-  propertyId 
-}: MessageCenterProps) => {
+const MessageCenter = ({ currentUserId, currentUserRole, properties = [], roomId, propertyId }: MessageCenterProps) => {
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -50,18 +43,18 @@ const MessageCenter = ({
 
     // Set up real-time subscription for new messages
     const channel = supabase
-      .channel('messages-changes')
+      .channel("messages-realtime")
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages'
+          event: "*",
+          schema: "public",
+          table: "messages",
         },
-        () => {
-          console.log('New message detected - reloading messages');
+        (payload) => {
+          console.log("Message change detected:", payload);
           loadMessages();
-        }
+        },
       )
       .subscribe();
 
@@ -72,42 +65,37 @@ const MessageCenter = ({
 
   const loadMessages = async () => {
     try {
-      let query = supabase
-        .from('messages')
-        .select('*')
-        .order('timestamp', { ascending: false });
+      let query = supabase.from("messages").select("*").order("created_at", { ascending: false });
 
-      // Filter based on user role
-      if (currentUserRole === 'tenant') {
-        // Tenants see: messages sent to them OR messages they sent
-        query = query.or(`recipient_tenant_id.eq.${currentUserId},sender_id.eq.${currentUserId}`);
-        // If roomId provided, filter by it
-        if (roomId) {
-          query = query.eq('room_id', roomId);
-        }
-      } else if (currentUserRole === 'owner') {
-        // Owners see: messages they sent OR messages in their properties
-        if (selectedPropertyId && selectedPropertyId !== 'all') {
-          query = query.eq('property_id', selectedPropertyId);
-        }
-        query = query.or(`sender_id.eq.${currentUserId}`);
-      } else if (currentUserRole === 'manager') {
-        // Managers see all messages (view only)
-        query = query.or(`sender_id.eq.${currentUserId},recipient_tenant_id.eq.${currentUserId}`);
+      // Filter based on user role - users see messages where they are sender or receiver
+      query = query.or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`);
+
+      // Additional filter by property if selected
+      if (currentUserRole === "owner" && selectedPropertyId && selectedPropertyId !== "all") {
+        query = query.eq("property_id", selectedPropertyId);
       }
 
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error loading messages:', error);
-        // Don't throw on first load, just show empty messages
+        console.error("Error loading messages:", error);
+        toast({
+          title: "Error Loading Messages",
+          description: error.message,
+          variant: "destructive",
+        });
         setMessages([]);
         return;
       }
 
       setMessages(data || []);
     } catch (error) {
-      console.error('Error loading messages:', error);
+      console.error("Error loading messages:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load messages. Please try again.",
+        variant: "destructive",
+      });
       setMessages([]);
     }
   };
@@ -117,7 +105,7 @@ const MessageCenter = ({
       toast({
         title: "Empty Message",
         description: "Please enter a message before sending",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -125,52 +113,41 @@ const MessageCenter = ({
     setSendingToAll(true);
     try {
       // Get all properties owned by this owner
-      const propertiesToMessage = selectedPropertyId && selectedPropertyId !== 'all' 
-        ? [selectedPropertyId] 
-        : properties.map(p => p.id);
+      const propertiesToMessage =
+        selectedPropertyId && selectedPropertyId !== "all" ? [selectedPropertyId] : properties.map((p) => p.id);
 
       if (propertiesToMessage.length === 0) {
         throw new Error("No properties found. Please add properties first.");
       }
 
-      console.log('Sending messages to properties:', propertiesToMessage);
-
       // Get all tenants from these properties
       const { data: rooms, error: roomsError } = await supabase
-        .from('rooms')
-        .select('tenant_id, tenant_name, property_id, room_number, id')
-        .in('property_id', propertiesToMessage)
-        .not('tenant_id', 'is', null);
+        .from("rooms")
+        .select("tenant_id, property_id")
+        .in("property_id", propertiesToMessage)
+        .not("tenant_id", "is", null);
 
       if (roomsError) {
-        console.error('Error fetching rooms:', roomsError);
+        console.error("Error fetching rooms:", roomsError);
         throw new Error(`Database error: ${roomsError.message}`);
       }
-
-      console.log('Found rooms with tenants:', rooms);
 
       if (!rooms || rooms.length === 0) {
         throw new Error("No tenants found in the selected properties. Please invite tenants first.");
       }
 
       // Create message for each tenant
-      const messagesToInsert = rooms.map(room => ({
+      const messagesToInsert = rooms.map((room) => ({
         sender_id: currentUserId,
-        recipient_tenant_id: room.tenant_id,
+        receiver_id: room.tenant_id,
         property_id: room.property_id,
-        room_id: room.id,
-        message_text: newMessage,
-        timestamp: new Date().toISOString()
+        content: newMessage,
       }));
 
-      console.log('Inserting messages:', messagesToInsert);
-
-      const { error: insertError } = await supabase
-        .from('messages')
-        .insert(messagesToInsert);
+      const { error: insertError } = await supabase.from("messages").insert(messagesToInsert);
 
       if (insertError) {
-        console.error('Error inserting messages:', insertError);
+        console.error("Error inserting messages:", insertError);
         throw new Error(`Failed to save messages: ${insertError.message}`);
       }
 
@@ -179,14 +156,14 @@ const MessageCenter = ({
 
       toast({
         title: "Messages Sent Successfully!",
-        description: `Message delivered to ${rooms.length} tenant(s)`
+        description: `Message delivered to ${rooms.length} tenant(s)`,
       });
     } catch (error) {
-      console.error('Error sending messages:', error);
+      console.error("Error sending messages:", error);
       toast({
         title: "Failed to Send Message",
         description: error instanceof Error ? error.message : "Failed to send messages. Please try again.",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setSendingToAll(false);
@@ -194,48 +171,57 @@ const MessageCenter = ({
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim()) {
+      toast({
+        title: "Empty Message",
+        description: "Please enter a message before sending",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setLoading(true);
     try {
       // Determine receiver based on role and get recipient details
       let receiverId = null;
       let recipientName = "recipient";
-      
-      if (currentUserRole === 'tenant') {
+      let targetPropertyId = null;
+
+      if (currentUserRole === "tenant") {
         // Tenant sending to owner - get property owner
-        if (propertyId || (selectedPropertyId && selectedPropertyId !== 'all')) {
-          const targetPropertyId = propertyId || selectedPropertyId;
+        if (propertyId || (selectedPropertyId && selectedPropertyId !== "all")) {
+          targetPropertyId = propertyId || selectedPropertyId;
           const { data: property, error: propError } = await supabase
-            .from('properties')
-            .select('owner_id, profiles!properties_owner_id_fkey(full_name)')
-            .eq('id', targetPropertyId)
+            .from("properties")
+            .select("owner_id, profiles!properties_owner_id_fkey(full_name)")
+            .eq("id", targetPropertyId)
             .single();
-          
+
           if (propError) throw propError;
           receiverId = property?.owner_id;
           recipientName = property?.profiles?.full_name || "property owner";
         }
-      } else if (currentUserRole === 'owner') {
+      } else if (currentUserRole === "owner") {
         // Owner sending to tenant - MUST have a room selected
         if (!selectedRoomId) {
           throw new Error("Please select a room to send a message to a specific tenant");
         }
-        
+
         const { data: room, error: roomError } = await supabase
-          .from('rooms')
-          .select('tenant_id, tenant_name, property_id')
-          .eq('id', selectedRoomId)
+          .from("rooms")
+          .select("tenant_id, tenant_name, property_id")
+          .eq("id", selectedRoomId)
           .single();
-        
+
         if (roomError) throw roomError;
-        
+
         if (!room?.tenant_id) {
           throw new Error("This room doesn't have a tenant assigned yet");
         }
-        
+
         receiverId = room.tenant_id;
         recipientName = room.tenant_name || "tenant";
+        targetPropertyId = room.property_id;
       }
 
       if (!receiverId) {
@@ -244,16 +230,12 @@ const MessageCenter = ({
 
       const messagePayload = {
         sender_id: currentUserId,
-        recipient_tenant_id: receiverId,
-        property_id: propertyId || (selectedPropertyId && selectedPropertyId !== 'all' ? selectedPropertyId : null),
-        room_id: roomId || selectedRoomId || null,
-        message_text: newMessage,
-        timestamp: new Date().toISOString()
+        receiver_id: receiverId,
+        property_id: targetPropertyId,
+        content: newMessage,
       };
 
-      const { error } = await supabase
-        .from('messages')
-        .insert([messagePayload]);
+      const { error } = await supabase.from("messages").insert([messagePayload]);
 
       if (error) throw error;
 
@@ -262,14 +244,14 @@ const MessageCenter = ({
 
       toast({
         title: "Message Sent",
-        description: `Message sent successfully to ${recipientName}`
+        description: `Message sent successfully to ${recipientName}`,
       });
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error("Error sending message:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to send message",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -278,17 +260,21 @@ const MessageCenter = ({
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'owner': return 'bg-blue-100 text-blue-800';
-      case 'manager': return 'bg-green-100 text-green-800';
-      case 'tenant': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "owner":
+        return "bg-blue-100 text-blue-800";
+      case "manager":
+        return "bg-green-100 text-green-800";
+      case "tenant":
+        return "bg-yellow-100 text-yellow-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   return (
     <div className="space-y-6">
       {/* Message Filters */}
-      {currentUserRole !== 'tenant' && (
+      {currentUserRole !== "tenant" && (
         <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -305,7 +291,7 @@ const MessageCenter = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Properties</SelectItem>
-                  {properties.map(property => (
+                  {properties.map((property) => (
                     <SelectItem key={property.id} value={property.id}>
                       {property.name}
                     </SelectItem>
@@ -318,7 +304,7 @@ const MessageCenter = ({
       )}
 
       {/* Send Message - Only for owners and tenants */}
-      {currentUserRole !== 'manager' && (
+      {currentUserRole !== "manager" && (
         <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -326,10 +312,9 @@ const MessageCenter = ({
               Send Message
             </CardTitle>
             <CardDescription>
-              {currentUserRole === 'tenant' 
+              {currentUserRole === "tenant"
                 ? "Send a message to property management"
-                : "Send a message to tenants or staff"
-              }
+                : "Send a message to tenants or staff"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -344,37 +329,37 @@ const MessageCenter = ({
                 className="resize-none"
               />
             </div>
-            {currentUserRole === 'owner' && (
+            {currentUserRole === "owner" && (
               <div className="flex gap-2">
-                <Button 
+                <Button
                   onClick={sendToAllTenants}
                   disabled={!newMessage.trim() || sendingToAll}
                   className="bg-gradient-hero hover:shadow-glow flex-1"
                 >
                   <Users className="mr-2 h-4 w-4" />
-                  {sendingToAll ? 'Sending...' : 'Send to All Tenants'}
+                  {sendingToAll ? "Sending..." : "Send to All Tenants"}
                 </Button>
                 {selectedRoomId && (
-                  <Button 
+                  <Button
                     onClick={sendMessage}
                     disabled={!newMessage.trim() || loading}
                     variant="outline"
                     className="flex-1"
                   >
                     <Send className="mr-2 h-4 w-4" />
-                    {loading ? 'Sending...' : 'Send to Selected Room'}
+                    {loading ? "Sending..." : "Send to Selected Room"}
                   </Button>
                 )}
               </div>
             )}
-            {currentUserRole === 'tenant' && (
-              <Button 
+            {currentUserRole === "tenant" && (
+              <Button
                 onClick={sendMessage}
                 disabled={!newMessage.trim() || loading}
                 className="bg-gradient-hero hover:shadow-glow"
               >
                 <Send className="mr-2 h-4 w-4" />
-                {loading ? 'Sending...' : 'Send Message'}
+                {loading ? "Sending..." : "Send Message"}
               </Button>
             )}
           </CardContent>
@@ -382,13 +367,14 @@ const MessageCenter = ({
       )}
 
       {/* View-only notice for managers */}
-      {currentUserRole === 'manager' && (
+      {currentUserRole === "manager" && (
         <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
           <CardContent className="py-6">
             <div className="flex items-center gap-3 text-muted-foreground">
               <AlertCircle className="h-5 w-5" />
               <p className="text-sm">
-                You have view-only access to messages. You can see messages from property owners and maintenance requests from tenants.
+                You have view-only access to messages. You can see messages from property owners and maintenance
+                requests from tenants.
               </p>
             </div>
           </CardContent>
@@ -403,28 +389,25 @@ const MessageCenter = ({
               <MessageSquare className="h-5 w-5 text-primary" />
               Messages
             </div>
-            <Badge variant="secondary">
-              {messages.length} messages
-            </Badge>
+            <Badge variant="secondary">{messages.length} messages</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4 max-h-96 overflow-y-auto">
             {messages.length > 0 ? (
               messages.map((message) => (
-                <div key={message.message_id} className="border rounded-lg p-4 space-y-2">
+                <div key={message.id} className="border rounded-lg p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Badge variant="secondary">
-                        {message.sender_id === currentUserId ? 'You' : 'Tenant'}
-                      </Badge>
+                      <Badge variant="secondary">{message.sender_id === currentUserId ? "Sent" : "Received"}</Badge>
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(message.timestamp).toLocaleDateString()} {new Date(message.timestamp).toLocaleTimeString()}
+                      {new Date(message.created_at).toLocaleDateString()}{" "}
+                      {new Date(message.created_at).toLocaleTimeString()}
                     </span>
-                   </div>
-                   <p className="text-sm leading-relaxed">{message.message_text}</p>
-                 </div>
+                  </div>
+                  <p className="text-sm leading-relaxed">{message.content}</p>
+                </div>
               ))
             ) : (
               <div className="text-center py-8">
