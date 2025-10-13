@@ -140,31 +140,28 @@ export type Database = {
       }
       messages: {
         Row: {
-          message_id: string
-          message_text: string
+          content: string
+          created_at: string
+          id: string
           property_id: string | null
-          recipient_tenant_id: string | null
-          room_id: string | null
+          receiver_id: string
           sender_id: string
-          timestamp: string
         }
         Insert: {
-          message_id?: string
-          message_text: string
+          content: string
+          created_at?: string
+          id?: string
           property_id?: string | null
-          recipient_tenant_id?: string | null
-          room_id?: string | null
+          receiver_id: string
           sender_id: string
-          timestamp?: string
         }
         Update: {
-          message_id?: string
-          message_text?: string
+          content?: string
+          created_at?: string
+          id?: string
           property_id?: string | null
-          recipient_tenant_id?: string | null
-          room_id?: string | null
+          receiver_id?: string
           sender_id?: string
-          timestamp?: string
         }
         Relationships: [
           {
@@ -172,20 +169,6 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "messages_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "rooms"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "messages_sender_id_fkey"
-            columns: ["sender_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

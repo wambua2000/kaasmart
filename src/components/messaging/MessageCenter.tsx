@@ -11,13 +11,12 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
-  message_id: string;
-  message_text: string;
+  id: string;
+  content: string;
   sender_id: string;
-  recipient_tenant_id?: string;
+  receiver_id: string;
   property_id?: string;
-  room_id?: string;
-  timestamp: string;
+  created_at: string;
   sender_name?: string;
   sender_role?: string;
 }
@@ -50,16 +49,16 @@ const MessageCenter = ({
 
     // Set up real-time subscription for new messages
     const channel = supabase
-      .channel('messages-changes')
+      .channel('messages-realtime')
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'messages'
         },
-        () => {
-          console.log('New message detected - reloading messages');
+        (payload) => {
+          console.log('Message change detected:', payload);
           loadMessages();
         }
       )
@@ -75,32 +74,25 @@ const MessageCenter = ({
       let query = supabase
         .from('messages')
         .select('*')
-        .order('timestamp', { ascending: false });
+        .order('created_at', { ascending: false });
 
-      // Filter based on user role
-      if (currentUserRole === 'tenant') {
-        // Tenants see: messages sent to them OR messages they sent
-        query = query.or(`recipient_tenant_id.eq.${currentUserId},sender_id.eq.${currentUserId}`);
-        // If roomId provided, filter by it
-        if (roomId) {
-          query = query.eq('room_id', roomId);
-        }
-      } else if (currentUserRole === 'owner') {
-        // Owners see: messages they sent OR messages in their properties
-        if (selectedPropertyId && selectedPropertyId !== 'all') {
-          query = query.eq('property_id', selectedPropertyId);
-        }
-        query = query.or(`sender_id.eq.${currentUserId}`);
-      } else if (currentUserRole === 'manager') {
-        // Managers see all messages (view only)
-        query = query.or(`sender_id.eq.${currentUserId},recipient_tenant_id.eq.${currentUserId}`);
+      // Filter based on user role - users see messages where they are sender or receiver
+      query = query.or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`);
+
+      // Additional filter by property if selected
+      if (currentUserRole === 'owner' && selectedPropertyId && selectedPropertyId !== 'all') {
+        query = query.eq('property_id', selectedPropertyId);
       }
 
       const { data, error } = await query;
 
       if (error) {
         console.error('Error loading messages:', error);
-        // Don't throw on first load, just show empty messages
+        toast({
+          title: "Error Loading Messages",
+          description: error.message,
+          variant: "destructive"
+        });
         setMessages([]);
         return;
       }
@@ -108,6 +100,11 @@ const MessageCenter = ({
       setMessages(data || []);
     } catch (error) {
       console.error('Error loading messages:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load messages. Please try again.",
+        variant: "destructive"
+      });
       setMessages([]);
     }
   };
@@ -133,12 +130,10 @@ const MessageCenter = ({
         throw new Error("No properties found. Please add properties first.");
       }
 
-      console.log('Sending messages to properties:', propertiesToMessage);
-
       // Get all tenants from these properties
       const { data: rooms, error: roomsError } = await supabase
         .from('rooms')
-        .select('tenant_id, tenant_name, property_id, room_number, id')
+        .select('tenant_id, property_id')
         .in('property_id', propertiesToMessage)
         .not('tenant_id', 'is', null);
 
@@ -147,8 +142,6 @@ const MessageCenter = ({
         throw new Error(`Database error: ${roomsError.message}`);
       }
 
-      console.log('Found rooms with tenants:', rooms);
-
       if (!rooms || rooms.length === 0) {
         throw new Error("No tenants found in the selected properties. Please invite tenants first.");
       }
@@ -156,14 +149,10 @@ const MessageCenter = ({
       // Create message for each tenant
       const messagesToInsert = rooms.map(room => ({
         sender_id: currentUserId,
-        recipient_tenant_id: room.tenant_id,
+        receiver_id: room.tenant_id,
         property_id: room.property_id,
-        room_id: room.id,
-        message_text: newMessage,
-        timestamp: new Date().toISOString()
+        content: newMessage
       }));
-
-      console.log('Inserting messages:', messagesToInsert);
 
       const { error: insertError } = await supabase
         .from('messages')
@@ -194,18 +183,26 @@ const MessageCenter = ({
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim()) {
+      toast({
+        title: "Empty Message",
+        description: "Please enter a message before sending",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setLoading(true);
     try {
       // Determine receiver based on role and get recipient details
       let receiverId = null;
       let recipientName = "recipient";
+      let targetPropertyId = null;
       
       if (currentUserRole === 'tenant') {
         // Tenant sending to owner - get property owner
         if (propertyId || (selectedPropertyId && selectedPropertyId !== 'all')) {
-          const targetPropertyId = propertyId || selectedPropertyId;
+          targetPropertyId = propertyId || selectedPropertyId;
           const { data: property, error: propError } = await supabase
             .from('properties')
             .select('owner_id, profiles!properties_owner_id_fkey(full_name)')
@@ -236,6 +233,7 @@ const MessageCenter = ({
         
         receiverId = room.tenant_id;
         recipientName = room.tenant_name || "tenant";
+        targetPropertyId = room.property_id;
       }
 
       if (!receiverId) {
@@ -244,11 +242,9 @@ const MessageCenter = ({
 
       const messagePayload = {
         sender_id: currentUserId,
-        recipient_tenant_id: receiverId,
-        property_id: propertyId || (selectedPropertyId && selectedPropertyId !== 'all' ? selectedPropertyId : null),
-        room_id: roomId || selectedRoomId || null,
-        message_text: newMessage,
-        timestamp: new Date().toISOString()
+        receiver_id: receiverId,
+        property_id: targetPropertyId,
+        content: newMessage
       };
 
       const { error } = await supabase
@@ -412,18 +408,18 @@ const MessageCenter = ({
           <div className="space-y-4 max-h-96 overflow-y-auto">
             {messages.length > 0 ? (
               messages.map((message) => (
-                <div key={message.message_id} className="border rounded-lg p-4 space-y-2">
+                <div key={message.id} className="border rounded-lg p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary">
-                        {message.sender_id === currentUserId ? 'You' : 'Tenant'}
+                        {message.sender_id === currentUserId ? 'Sent' : 'Received'}
                       </Badge>
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(message.timestamp).toLocaleDateString()} {new Date(message.timestamp).toLocaleTimeString()}
+                      {new Date(message.created_at).toLocaleDateString()} {new Date(message.created_at).toLocaleTimeString()}
                     </span>
                    </div>
-                   <p className="text-sm leading-relaxed">{message.message_text}</p>
+                   <p className="text-sm leading-relaxed">{message.content}</p>
                  </div>
               ))
             ) : (
