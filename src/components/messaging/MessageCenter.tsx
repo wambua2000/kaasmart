@@ -243,8 +243,8 @@ const MessageCenter = ({
       const messagePayload = {
         sender_id: currentUserId,
         receiver_id: receiverId,
-        property_id: targetPropertyId,
-        content: newMessage
+        property_id: targetPropertyId ?? null,
+        content: newMessage,
       };
 
       const { error } = await supabase
