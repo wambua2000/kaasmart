@@ -241,10 +241,11 @@ const MessageCenter = ({
       }
 
       const messagePayload = {
-        sender_id: currentUserId,
-        receiver_id: receiverId,
-        property_id: targetPropertyId ?? null,
+        sender_id: currentUserId, ,
+        receiver_id: selectedRoomId,
+        property_id: targetPropertyId,
         content: newMessage,
+        created_at: new Date().toISOString(),
       };
 
       const { error } = await supabase
