@@ -11,15 +11,12 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
-  message_id: string;
-  message_text: string;
+  id: string;
+  content: string;
   sender_id: string;
-  recipient_tenant_id?: string;
+  receiver_id: string;
   property_id?: string;
-  room_id?: string;
-  timestamp: string;
-  sender_name?: string;
-  sender_role?: string;
+  created_at: string;
 }
 
 interface MessageCenterProps {
@@ -75,16 +72,12 @@ const MessageCenter = ({
       let query = supabase
         .from('messages')
         .select('*')
-        .order('timestamp', { ascending: false });
+        .order('created_at', { ascending: false });
 
       // Filter based on user role
       if (currentUserRole === 'tenant') {
         // Tenants see: messages sent to them OR messages they sent
-        query = query.or(`recipient_tenant_id.eq.${currentUserId},sender_id.eq.${currentUserId}`);
-        // If roomId provided, filter by it
-        if (roomId) {
-          query = query.eq('room_id', roomId);
-        }
+        query = query.or(`receiver_id.eq.${currentUserId},sender_id.eq.${currentUserId}`);
       } else if (currentUserRole === 'owner') {
         // Owners see: messages they sent OR messages in their properties
         if (selectedPropertyId && selectedPropertyId !== 'all') {
@@ -93,7 +86,7 @@ const MessageCenter = ({
         query = query.or(`sender_id.eq.${currentUserId}`);
       } else if (currentUserRole === 'manager') {
         // Managers see all messages (view only)
-        query = query.or(`sender_id.eq.${currentUserId},recipient_tenant_id.eq.${currentUserId}`);
+        query = query.or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`);
       }
 
       const { data, error } = await query;
@@ -156,11 +149,10 @@ const MessageCenter = ({
       // Create message for each tenant
       const messagesToInsert = rooms.map(room => ({
         sender_id: currentUserId,
-        recipient_tenant_id: room.tenant_id,
+        receiver_id: room.tenant_id,
         property_id: room.property_id,
-        room_id: room.id,
-        message_text: newMessage,
-        timestamp: new Date().toISOString()
+        content: newMessage,
+        created_at: new Date().toISOString()
       }));
 
       console.log('Inserting messages:', messagesToInsert);
@@ -179,7 +171,7 @@ const MessageCenter = ({
 
       toast({
         title: "Messages Sent Successfully!",
-        description: `Message delivered to ${rooms.length} tenant(s)`
+        description: `Message delivered to ${rooms.length} tenant(s). SMS notifications will be sent to available phone numbers.`
       });
     } catch (error) {
       console.error('Error sending messages:', error);
@@ -244,11 +236,10 @@ const MessageCenter = ({
 
       const messagePayload = {
         sender_id: currentUserId,
-        recipient_tenant_id: receiverId,
+        receiver_id: receiverId,
         property_id: propertyId || (selectedPropertyId && selectedPropertyId !== 'all' ? selectedPropertyId : null),
-        room_id: roomId || selectedRoomId || null,
-        message_text: newMessage,
-        timestamp: new Date().toISOString()
+        content: newMessage,
+        created_at: new Date().toISOString()
       };
 
       const { error } = await supabase
@@ -262,7 +253,7 @@ const MessageCenter = ({
 
       toast({
         title: "Message Sent",
-        description: `Message sent successfully to ${recipientName}`
+        description: `Message sent successfully to ${recipientName}. SMS notification will be sent if phone number is available.`
       });
     } catch (error) {
       console.error('Error sending message:', error);
@@ -327,8 +318,8 @@ const MessageCenter = ({
             </CardTitle>
             <CardDescription>
               {currentUserRole === 'tenant' 
-                ? "Send a message to property management"
-                : "Send a message to tenants or staff"
+                ? "Send a message to property management. SMS notifications will be sent automatically."
+                : "Send messages to tenants or staff. SMS notifications will be sent automatically to recipients with registered phone numbers."
               }
             </CardDescription>
           </CardHeader>
@@ -412,18 +403,18 @@ const MessageCenter = ({
           <div className="space-y-4 max-h-96 overflow-y-auto">
             {messages.length > 0 ? (
               messages.map((message) => (
-                <div key={message.message_id} className="border rounded-lg p-4 space-y-2">
+                <div key={message.id} className="border rounded-lg p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary">
-                        {message.sender_id === currentUserId ? 'You' : 'Tenant'}
+                        {message.sender_id === currentUserId ? 'You' : 'Other'}
                       </Badge>
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(message.timestamp).toLocaleDateString()} {new Date(message.timestamp).toLocaleTimeString()}
+                      {new Date(message.created_at).toLocaleDateString()} {new Date(message.created_at).toLocaleTimeString()}
                     </span>
                    </div>
-                   <p className="text-sm leading-relaxed">{message.message_text}</p>
+                   <p className="text-sm leading-relaxed">{message.content}</p>
                  </div>
               ))
             ) : (
