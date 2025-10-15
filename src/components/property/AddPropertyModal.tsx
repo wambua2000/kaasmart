@@ -64,14 +64,14 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
     try {
       console.log("Validation passed, proceeding to save...");
       
-      // Get ownerId from localStorage (matches custom auth system)
-      const ownerId = localStorage.getItem('mockOwnerId');
+      // Get authenticated user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
       
-      if (!ownerId) {
-        throw new Error("Owner ID not found. Please log in again.");
+      if (authError || !user) {
+        throw new Error("Authentication required. Please log in again.");
       }
 
-      console.log("Using owner ID from localStorage:", ownerId);
+      console.log("Using authenticated user ID:", user.id);
 
       // Insert property into database
       const { data: insertedProperty, error: insertError } = await supabase
@@ -81,7 +81,7 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
           location: formData.location.trim(),
           rent_per_room: parseInt(formData.rentPerRoom),
           total_rooms: parseInt(formData.totalRooms),
-          owner_id: ownerId,
+          owner_id: user.id,
           image_url: formData.imageUrl || "/placeholder.svg",
         })
         .select()
