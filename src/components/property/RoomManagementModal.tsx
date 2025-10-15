@@ -64,63 +64,53 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
   const [tempEmergencyContact, setTempEmergencyContact] = useState(globalEmergencyContact);
   const [rooms, setRooms] = useState<Room[]>([]);
 
-  // Initialize rooms when property changes - MUST be before early return
+  // Fetch actual rooms from database
   React.useEffect(() => {
-    if (property) {
-      const generateRooms = (totalRooms: number, occupiedRooms: number): Room[] => {
-        const tenantNames = [
-          "John Kamau", "Mary Wanjiku", "Peter Ochieng", "Grace Akinyi", "David Mwangi",
-          "Sarah Njeri", "James Kiprotich", "Lucy Wambui", "Samuel Otieno", "Rose Wairimu",
-          "Michael Kiplagat", "Faith Nyambura", "Joseph Muturi", "Alice Wanjiru", "Daniel Kimani"
-        ];
+    const fetchRooms = async () => {
+      if (!property?.id) return;
 
-        // Generate room prefix based on property name
-        const getRoomPrefix = (propertyName: string): string => {
-          const nameMap: Record<string, string> = {
-            "White House": "White",
-            "Yellow House": "Yellow", 
-            "Green House": "Green",
-            "Skyline Apartment": "Skyline"
-          };
-          return nameMap[propertyName] || "Room";
-        };
+      try {
+        const { data: roomsData, error } = await supabase
+          .from('rooms')
+          .select('*')
+          .eq('property_id', property.id)
+          .order('room_number');
 
-        const roomPrefix = getRoomPrefix(property.name);
-        const newRooms: Room[] = [];
+        if (error) throw error;
 
-        for (let i = 1; i <= totalRooms; i++) {
-          const isOccupied = i <= occupiedRooms;
-          const room: Room = {
-            id: `${property.id}-${i}`,
-            number: `${roomPrefix}${i.toString().padStart(3, '0')}`,
-            status: isOccupied ? "occupied" : "vacant",
-            rentAmount: property.rent_per_room,
-          };
+        // Transform database rooms to Room interface
+        const transformedRooms: Room[] = roomsData?.map(room => ({
+          id: room.id,
+          number: room.room_number,
+          status: room.is_occupied ? "occupied" : "vacant",
+          rentAmount: Number(room.rent_amount),
+          tenant: room.is_occupied && room.tenant_id ? {
+            id: room.tenant_id,
+            name: room.tenant_name || "Unknown Tenant",
+            email: room.tenant_email || "",
+            phone: room.tenant_phone || "",
+            dateOfEntry: room.tenant_date_of_entry || "",
+            rentAmount: Number(room.rent_amount),
+            rentStatus: room.rent_status === "paid" ? "paid" : "not-paid",
+            accessories: room.tenant_accessories || [],
+            emergencyContact: globalEmergencyContact,
+            notes: room.tenant_notes || undefined,
+          } : undefined
+        })) || [];
 
-          if (isOccupied) {
-            const randomTenant = tenantNames[Math.floor(Math.random() * tenantNames.length)];
-            room.tenant = {
-              id: `tenant-${i}`,
-              name: randomTenant,
-              email: `${randomTenant.toLowerCase().replace(' ', '.')}@email.com`,
-              phone: `+254 7${Math.floor(10000000 + Math.random() * 90000000)}`,
-              dateOfEntry: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-              rentAmount: property.rent_per_room,
-              rentStatus: Math.random() > 0.7 ? "not-paid" : "paid",
-              accessories: ["Bed", "Table", "Chair"].filter(() => Math.random() > 0.3),
-              emergencyContact: globalEmergencyContact,
-              notes: Math.random() > 0.5 ? "Good tenant, pays on time" : undefined,
-            };
-          }
+        setRooms(transformedRooms);
+      } catch (error) {
+        console.error('Error fetching rooms:', error);
+        toast({
+          title: "Error Loading Rooms",
+          description: "Failed to load rooms from database.",
+          variant: "destructive"
+        });
+      }
+    };
 
-          newRooms.push(room);
-        }
-        return newRooms;
-      };
-
-      setRooms(generateRooms(property.total_rooms, property.occupiedRooms));
-    }
-  }, [property?.id, globalEmergencyContact]);
+    fetchRooms();
+  }, [property?.id, globalEmergencyContact, toast]);
 
   if (!property) return null;
 
@@ -134,50 +124,91 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
     setEditingTenant({ ...tenant });
   };
 
-  const handleSaveTenant = () => {
+  const handleSaveTenant = async () => {
     if (!editingTenant || !selectedRoom) return;
     
-    // Update the specific room with the edited tenant data
-    setRooms(prevRooms => 
-      prevRooms.map(room => 
-        room.id === selectedRoom.id 
-          ? { ...room, tenant: editingTenant }
-          : room
-      )
-    );
-    
-    // Update the selected room to reflect changes
-    setSelectedRoom(prev => prev ? { ...prev, tenant: editingTenant } : null);
-    
-    toast({
-      title: "Tenant Updated",
-      description: "Tenant information has been saved successfully.",
-    });
-    setEditingTenant(null);
+    try {
+      // Update tenant information in database
+      const { error } = await supabase
+        .from('rooms')
+        .update({
+          tenant_name: editingTenant.name,
+          tenant_email: editingTenant.email,
+          tenant_phone: editingTenant.phone,
+          tenant_date_of_entry: editingTenant.dateOfEntry,
+          tenant_accessories: editingTenant.accessories,
+          rent_status: editingTenant.rentStatus
+        })
+        .eq('id', selectedRoom.id);
+
+      if (error) throw error;
+
+      // Update the specific room with the edited tenant data
+      setRooms(prevRooms => 
+        prevRooms.map(room => 
+          room.id === selectedRoom.id 
+            ? { ...room, tenant: editingTenant }
+            : room
+        )
+      );
+      
+      // Update the selected room to reflect changes
+      setSelectedRoom(prev => prev ? { ...prev, tenant: editingTenant } : null);
+      
+      toast({
+        title: "Tenant Updated",
+        description: "Tenant information has been saved successfully.",
+      });
+      setEditingTenant(null);
+    } catch (error) {
+      console.error('Error updating tenant:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update tenant information. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleMarkRentPaid = (roomId: string) => {
-    // Update the specific room's rent status
-    setRooms(prevRooms =>
-      prevRooms.map(room =>
-        room.id === roomId && room.tenant
-          ? { ...room, tenant: { ...room.tenant, rentStatus: "paid" } }
-          : room
-      )
-    );
-    
-    // Update selected room if it's the one being updated
-    if (selectedRoom?.id === roomId && selectedRoom.tenant) {
-      setSelectedRoom(prev => prev ? {
-        ...prev,
-        tenant: { ...prev.tenant!, rentStatus: "paid" }
-      } : null);
+  const handleMarkRentPaid = async (roomId: string) => {
+    try {
+      // Update rent status in database
+      const { error } = await supabase
+        .from('rooms')
+        .update({ rent_status: 'paid' })
+        .eq('id', roomId);
+
+      if (error) throw error;
+
+      // Update the specific room's rent status in local state
+      setRooms(prevRooms =>
+        prevRooms.map(room =>
+          room.id === roomId && room.tenant
+            ? { ...room, tenant: { ...room.tenant, rentStatus: "paid" } }
+            : room
+        )
+      );
+      
+      // Update selected room if it's the one being updated
+      if (selectedRoom?.id === roomId && selectedRoom.tenant) {
+        setSelectedRoom(prev => prev ? {
+          ...prev,
+          tenant: { ...prev.tenant!, rentStatus: "paid" }
+        } : null);
+      }
+      
+      toast({
+        title: "Rent Marked as Paid",
+        description: "The rent status has been updated.",
+      });
+    } catch (error) {
+      console.error('Error updating rent status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update rent status. Please try again.",
+        variant: "destructive"
+      });
     }
-    
-    toast({
-      title: "Rent Marked as Paid",
-      description: "The rent status has been updated.",
-    });
   };
 
   const handleSaveNotes = async (notes: string, roomId: string) => {
@@ -221,11 +252,47 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
     }
   };
 
-  const handleSendMessage = (message: string) => {
-    toast({
-      title: "Message Sent",
-      description: "Message has been sent to the tenant.",
-    });
+  const handleSendMessage = async (message: string) => {
+    if (!selectedRoom?.tenant) {
+      toast({
+        title: "Error",
+        description: "No tenant selected to send message to.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error("You must be logged in to send messages.");
+      }
+
+      // Send message targeted to specific tenant via their room
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          sender_id: user.id,
+          receiver_id: selectedRoom.tenant.id,
+          property_id: property?.id,
+          content: message
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Message Sent",
+        description: `Message sent to ${selectedRoom.tenant.name} in ${selectedRoom.number} only.`,
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleAddTenant = () => {
@@ -499,13 +566,45 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                                       <Input
                                         type="number"
                                         value={selectedRoom.tenant.rentAmount}
-                                        onChange={(e) => {
+                                        onChange={async (e) => {
                                           const newAmount = parseInt(e.target.value) || 0;
-                                          // Update rent amount logic here
-                                          toast({
-                                            title: "Rent Updated",
-                                            description: `Rent amount updated to KSh ${newAmount.toLocaleString()}`,
-                                          });
+                                          
+                                          try {
+                                            // Update rent amount in database
+                                            const { error } = await supabase
+                                              .from('rooms')
+                                              .update({ rent_amount: newAmount })
+                                              .eq('id', selectedRoom.id);
+
+                                            if (error) throw error;
+
+                                            // Update local state
+                                            setRooms(prevRooms =>
+                                              prevRooms.map(room =>
+                                                room.id === selectedRoom.id && room.tenant
+                                                  ? { ...room, tenant: { ...room.tenant, rentAmount: newAmount }, rentAmount: newAmount }
+                                                  : room
+                                              )
+                                            );
+
+                                            setSelectedRoom(prev => prev ? {
+                                              ...prev,
+                                              tenant: prev.tenant ? { ...prev.tenant, rentAmount: newAmount } : undefined,
+                                              rentAmount: newAmount
+                                            } : null);
+
+                                            toast({
+                                              title: "Rent Updated",
+                                              description: `Rent for ${selectedRoom.number} updated to KSh ${newAmount.toLocaleString()}`,
+                                            });
+                                          } catch (error) {
+                                            console.error('Error updating rent:', error);
+                                            toast({
+                                              title: "Error",
+                                              description: "Failed to update rent amount. Please try again.",
+                                              variant: "destructive"
+                                            });
+                                          }
                                         }}
                                         className="w-32"
                                       />
@@ -636,13 +735,25 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                         <CardHeader>
                           <CardTitle className="flex items-center gap-2">
                             <MessageSquare className="h-5 w-5" />
-                            Send Message
+                            Send Message to {selectedRoom.tenant.name} ({selectedRoom.number})
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <Textarea placeholder="Type your message..." />
-                          <Button className="mt-3" onClick={() => handleSendMessage("message")}>
-                            Send Message
+                          <Textarea 
+                            id="message-textarea"
+                            placeholder={`Type your message to ${selectedRoom.tenant.name} only...`} 
+                          />
+                          <Button 
+                            className="mt-3" 
+                            onClick={() => {
+                              const textarea = document.getElementById("message-textarea") as HTMLTextAreaElement;
+                              if (textarea?.value) {
+                                handleSendMessage(textarea.value);
+                                textarea.value = "";
+                              }
+                            }}
+                          >
+                            Send Message to This Tenant Only
                           </Button>
                         </CardContent>
                       </Card>

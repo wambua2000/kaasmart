@@ -64,11 +64,11 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
     try {
       console.log("Validation passed, proceeding to save...");
       
-      // Get authenticated user
+      // Get current user from Supabase auth
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError || !user) {
-        throw new Error("Authentication required. Please log in again.");
+        throw new Error("You must be logged in to add properties. Please log in again.");
       }
 
       console.log("Using authenticated user ID:", user.id);

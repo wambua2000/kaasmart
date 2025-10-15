@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,19 @@ const ForgotPasswordDialog = ({ open, onOpenChange }: ForgotPasswordDialogProps)
   const [role, setRole] = useState<UserRole>("tenant");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+
+  // Auto-populate email from current user when dialog opens
+  React.useEffect(() => {
+    if (open) {
+      const fetchUserEmail = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) {
+          setEmail(user.email);
+        }
+      };
+      fetchUserEmail();
+    }
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

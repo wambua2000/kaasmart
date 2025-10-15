@@ -52,7 +52,26 @@ interface Property {
 const PropertyOwnerDashboard = () => {
   const { toast } = useToast();
   
-  const [userId, setUserId] = useState<string>("");
+  // Use authenticated user ID instead of mock localStorage
+  const [ownerId, setOwnerId] = useState<string | null>(null);
+  
+  // Get authenticated user on mount
+  useEffect(() => {
+    const getAuthUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setOwnerId(user.id);
+      } else {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to view your properties.",
+          variant: "destructive"
+        });
+      }
+    };
+    getAuthUser();
+  }, []);
+  
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [isAddPropertyModalOpen, setIsAddPropertyModalOpen] = useState(false);
@@ -81,19 +100,10 @@ const PropertyOwnerDashboard = () => {
 
   // Fetch properties from database
   const fetchProperties = async () => {
+    if (!ownerId) return;
+    
     try {
-      // Get authenticated user
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
-      if (authError || !user) {
-        console.error("Authentication error:", authError);
-        return;
-      }
-
-      // Store user ID for MessageCenter
-      setUserId(user.id);
-
-      // Fetch properties with room counts using authenticated user's ID
+      // Fetch properties with room counts using the authenticated user's ID
       const { data: propertiesData, error } = await supabase
         .from('properties')
         .select(`
@@ -108,10 +118,15 @@ const PropertyOwnerDashboard = () => {
             is_occupied
           )
         `)
-        .eq('owner_id', user.id);
+        .eq('owner_id', ownerId);
 
       if (error) {
         console.error("Error fetching properties:", error);
+        toast({
+          title: "Error Loading Properties",
+          description: error.message,
+          variant: "destructive"
+        });
         return;
       }
 
@@ -147,11 +162,13 @@ const PropertyOwnerDashboard = () => {
     }
   };
 
-  // Fetch properties and reset count on mount
+  // Fetch properties and reset count when ownerId is available
   useEffect(() => {
-    fetchProperties();
-    fetchPendingResetCount();
-  }, []);
+    if (ownerId) {
+      fetchProperties();
+      fetchPendingResetCount();
+    }
+  }, [ownerId]);
 
   // Set up real-time listener for tenant profile updates
   useEffect(() => {
@@ -640,7 +657,7 @@ const PropertyOwnerDashboard = () => {
             </SheetHeader>
             <div className="mt-6">
               <MessageCenter
-                currentUserId={userId}
+                currentUserId={ownerId}
                 currentUserRole="owner"
                 properties={properties}
               />
