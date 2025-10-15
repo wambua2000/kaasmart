@@ -221,11 +221,47 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
     }
   };
 
-  const handleSendMessage = (message: string) => {
-    toast({
-      title: "Message Sent",
-      description: "Message has been sent to the tenant.",
-    });
+  const handleSendMessage = async (message: string) => {
+    if (!selectedRoom?.tenant) {
+      toast({
+        title: "Error",
+        description: "No tenant selected to send message to.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error("You must be logged in to send messages.");
+      }
+
+      // Send message targeted to specific tenant via their room
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          sender_id: user.id,
+          receiver_id: selectedRoom.tenant.id,
+          property_id: property?.id,
+          content: message
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Message Sent",
+        description: `Message sent to ${selectedRoom.tenant.name} in ${selectedRoom.number} only.`,
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleAddTenant = () => {
@@ -499,13 +535,45 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                                       <Input
                                         type="number"
                                         value={selectedRoom.tenant.rentAmount}
-                                        onChange={(e) => {
+                                        onChange={async (e) => {
                                           const newAmount = parseInt(e.target.value) || 0;
-                                          // Update rent amount logic here
-                                          toast({
-                                            title: "Rent Updated",
-                                            description: `Rent amount updated to KSh ${newAmount.toLocaleString()}`,
-                                          });
+                                          
+                                          try {
+                                            // Update rent amount in database
+                                            const { error } = await supabase
+                                              .from('rooms')
+                                              .update({ rent_amount: newAmount })
+                                              .eq('id', selectedRoom.id);
+
+                                            if (error) throw error;
+
+                                            // Update local state
+                                            setRooms(prevRooms =>
+                                              prevRooms.map(room =>
+                                                room.id === selectedRoom.id && room.tenant
+                                                  ? { ...room, tenant: { ...room.tenant, rentAmount: newAmount }, rentAmount: newAmount }
+                                                  : room
+                                              )
+                                            );
+
+                                            setSelectedRoom(prev => prev ? {
+                                              ...prev,
+                                              tenant: prev.tenant ? { ...prev.tenant, rentAmount: newAmount } : undefined,
+                                              rentAmount: newAmount
+                                            } : null);
+
+                                            toast({
+                                              title: "Rent Updated",
+                                              description: `Rent for ${selectedRoom.number} updated to KSh ${newAmount.toLocaleString()}`,
+                                            });
+                                          } catch (error) {
+                                            console.error('Error updating rent:', error);
+                                            toast({
+                                              title: "Error",
+                                              description: "Failed to update rent amount. Please try again.",
+                                              variant: "destructive"
+                                            });
+                                          }
                                         }}
                                         className="w-32"
                                       />
@@ -636,13 +704,25 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                         <CardHeader>
                           <CardTitle className="flex items-center gap-2">
                             <MessageSquare className="h-5 w-5" />
-                            Send Message
+                            Send Message to {selectedRoom.tenant.name} ({selectedRoom.number})
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <Textarea placeholder="Type your message..." />
-                          <Button className="mt-3" onClick={() => handleSendMessage("message")}>
-                            Send Message
+                          <Textarea 
+                            id="message-textarea"
+                            placeholder={`Type your message to ${selectedRoom.tenant.name} only...`} 
+                          />
+                          <Button 
+                            className="mt-3" 
+                            onClick={() => {
+                              const textarea = document.getElementById("message-textarea") as HTMLTextAreaElement;
+                              if (textarea?.value) {
+                                handleSendMessage(textarea.value);
+                                textarea.value = "";
+                              }
+                            }}
+                          >
+                            Send Message to This Tenant Only
                           </Button>
                         </CardContent>
                       </Card>
