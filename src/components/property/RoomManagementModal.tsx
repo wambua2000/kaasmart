@@ -129,53 +129,26 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
     setEditingTenant({ ...tenant });
   };
 
-  const handleSaveTenant = async () => {
+  const handleSaveTenant = () => {
     if (!editingTenant || !selectedRoom) return;
     
-    try {
-      // Update database
-      const { error } = await supabase
-        .from('rooms')
-        .update({
-          tenant_name: editingTenant.name,
-          tenant_email: editingTenant.email,
-          tenant_phone: editingTenant.phone,
-          tenant_date_of_entry: editingTenant.dateOfEntry,
-          rent_amount: editingTenant.rentAmount
-        })
-        .eq('id', selectedRoom.id);
-
-      if (error) throw error;
-
-      // Update the specific room with the edited tenant data
-      setRooms(prevRooms => 
-        prevRooms.map(room => 
-          room.id === selectedRoom.id 
-            ? { ...room, tenant: editingTenant, rentAmount: editingTenant.rentAmount }
-            : room
-        )
-      );
-      
-      // Update the selected room to reflect changes
-      setSelectedRoom(prev => prev ? { 
-        ...prev, 
-        tenant: editingTenant,
-        rentAmount: editingTenant.rentAmount 
-      } : null);
-      
-      toast({
-        title: "Tenant Updated",
-        description: "Tenant information has been saved successfully.",
-      });
-      setEditingTenant(null);
-    } catch (error) {
-      console.error('Error saving tenant:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save tenant information. Please try again.",
-        variant: "destructive"
-      });
-    }
+    // Update the specific room with the edited tenant data
+    setRooms(prevRooms => 
+      prevRooms.map(room => 
+        room.id === selectedRoom.id 
+          ? { ...room, tenant: editingTenant }
+          : room
+      )
+    );
+    
+    // Update the selected room to reflect changes
+    setSelectedRoom(prev => prev ? { ...prev, tenant: editingTenant } : null);
+    
+    toast({
+      title: "Tenant Updated",
+      description: "Tenant information has been saved successfully.",
+    });
+    setEditingTenant(null);
   };
 
   const handleMarkRentPaid = (roomId: string) => {
@@ -598,18 +571,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                                   onChange={(e) => setEditingTenant({...editingTenant, phone: e.target.value})}
                                 />
                               </div>
-                              <div>
-                                <Label htmlFor="rentAmount">Rent Amount (KSh)</Label>
-                                <Input
-                                  id="rentAmount"
-                                  type="number"
-                                  value={editingTenant.rentAmount}
-                                  onChange={(e) => setEditingTenant({...editingTenant, rentAmount: parseInt(e.target.value) || 0})}
-                                />
-                              </div>
-                            </div>
-                            {userRole === "owner" && (
-                              <div className="grid grid-cols-2 gap-4">
+                              {userRole === "owner" && (
                                 <div>
                                   <Label htmlFor="dateOfEntry">Date of Entry</Label>
                                   <Input
@@ -619,11 +581,11 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                                     onChange={(e) => setEditingTenant({...editingTenant, dateOfEntry: e.target.value})}
                                   />
                                 </div>
-                              </div>
-                            )}
+                              )}
+                            </div>
                             {userRole === "manager" && (
                               <p className="text-sm text-muted-foreground">
-                                Note: As a manager, you can edit name, phone, email, and rent amount.
+                                Note: As a manager, you can only edit name, phone, and email.
                               </p>
                             )}
                             <Button onClick={handleSaveTenant}>
