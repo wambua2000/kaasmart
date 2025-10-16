@@ -43,18 +43,30 @@ serve(async (req: Request) => {
 
     const user = users.find(u => u.email === email);
     
-    if (!user) {
-      throw new Error(`User with email ${email} not found`);
-    }
+    if (user) {
+      // User exists in auth - update their password
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        user.id,
+        { password: newPassword }
+      );
 
-    // Update user's password
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      user.id,
-      { password: newPassword }
-    );
+      if (updateError) {
+        throw new Error(`Failed to update password: ${updateError.message}`);
+      }
+    } else {
+      // User doesn't exist yet - update their invitation with new temporary password
+      const { error: inviteError } = await supabaseAdmin
+        .from('invitations')
+        .update({
+          temporary_password: newPassword,
+          password_hash: newPassword // Store plaintext for invited users who haven't signed up
+        })
+        .eq('email', email)
+        .eq('is_used', false);
 
-    if (updateError) {
-      throw new Error(`Failed to update password: ${updateError.message}`);
+      if (inviteError) {
+        throw new Error(`Failed to update invitation: ${inviteError.message}`);
+      }
     }
 
     // Update password_reset_requests table
