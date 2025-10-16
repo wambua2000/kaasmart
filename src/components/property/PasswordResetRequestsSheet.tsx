@@ -47,7 +47,6 @@ const PasswordResetRequestsSheet = ({ open, onOpenChange, onRequestsUpdated }: P
       const { data, error } = await supabase
         .from('password_reset_requests')
         .select('*')
-        .eq('user_role', 'owner')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -84,42 +83,23 @@ const PasswordResetRequestsSheet = ({ open, onOpenChange, onRequestsUpdated }: P
     setIsProcessing(true);
 
     try {
-      // Hash the password
-      const { data: hashedData, error: hashError } = await supabase
-        .rpc('hash_password', { password: newPassword });
+      // Call edge function to reset password
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: {
+          email: selectedRequest.email,
+          newPassword: newPassword,
+          requestId: selectedRequest.id,
+          notes: notes || null
+        }
+      });
 
-      if (hashError) {
-        console.error('Error hashing password:', hashError);
-        throw new Error('Failed to hash password');
+      if (error) {
+        throw new Error(error.message || 'Failed to reset password');
       }
 
-      // Update invitations table for property owners
-      const { error: invitationError } = await supabase
-        .from('invitations')
-        .update({
-          password_hash: hashedData,
-          temporary_password: newPassword,
-        })
-        .eq('email', selectedRequest.email)
-        .eq('role', 'owner');
-
-      if (invitationError) {
-        console.error('Error updating invitation:', invitationError);
-        throw new Error('Failed to update property owner credentials');
+      if (data?.error) {
+        throw new Error(data.error);
       }
-
-      // Update password_reset_requests table
-      const { error: resetError } = await supabase
-        .from('password_reset_requests')
-        .update({
-          status: 'completed',
-          new_password: newPassword,
-          notes,
-          completed_at: new Date().toISOString()
-        })
-        .eq('id', selectedRequest.id);
-
-      if (resetError) throw resetError;
 
       toast({
         title: "Password Reset Complete",
@@ -191,7 +171,7 @@ const PasswordResetRequestsSheet = ({ open, onOpenChange, onRequestsUpdated }: P
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[600px] sm:max-w-[600px] overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>Property Owner Password Reset Requests</SheetTitle>
+          <SheetTitle>Password Reset Requests</SheetTitle>
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
