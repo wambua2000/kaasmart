@@ -55,11 +55,19 @@ serve(async (req: Request) => {
       }
     } else {
       // User doesn't exist yet - update their invitation with new temporary password
+      // First hash the password using the database function
+      const { data: hashedPassword, error: hashError } = await supabaseAdmin
+        .rpc('hash_password', { password: newPassword });
+
+      if (hashError || !hashedPassword) {
+        throw new Error(`Failed to hash password: ${hashError?.message || 'Unknown error'}`);
+      }
+
       const { error: inviteError } = await supabaseAdmin
         .from('invitations')
         .update({
           temporary_password: newPassword,
-          password_hash: newPassword // Store plaintext for invited users who haven't signed up
+          password_hash: hashedPassword
         })
         .eq('email', email)
         .eq('is_used', false);
