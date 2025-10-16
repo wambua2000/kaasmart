@@ -52,14 +52,8 @@ interface Property {
 const PropertyOwnerDashboard = () => {
   const { toast } = useToast();
   
-  // Generate a consistent UUID for the owner
-  const [ownerId] = useState(() => {
-    const stored = localStorage.getItem('mockOwnerId');
-    if (stored) return stored;
-    const newId = crypto.randomUUID();
-    localStorage.setItem('mockOwnerId', newId);
-    return newId;
-  });
+  // Get authenticated user ID from Supabase Auth
+  const [ownerId, setOwnerId] = useState<string | null>(null);
   
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
@@ -79,44 +73,7 @@ const PropertyOwnerDashboard = () => {
   const [isMaintenanceOpen, setIsMaintenanceOpen] = useState(false);
   const [isMessageCenterOpen, setIsMessageCenterOpen] = useState(false);
   const [isLeaseAgreementsOpen, setIsLeaseAgreementsOpen] = useState(false);
-  const [properties, setProperties] = useState<Property[]>([
-    {
-      id: "1",
-      name: "Skyline Apartment",
-      location: "Nairobi West, Nairobi",
-      rent_per_room: 15000,
-      total_rooms: 50,
-      occupiedRooms: 42,
-      image_url: skylineApartment,
-    },
-    {
-      id: "2",
-      name: "Yellow House",
-      location: "Mombasa Road, Nairobi", 
-      rent_per_room: 18000,
-      total_rooms: 20,
-      occupiedRooms: 18,
-      image_url: yellowHouse,
-    },
-    {
-      id: "3",
-      name: "White House",
-      location: "Kisumu CBD, Kisumu",
-      rent_per_room: 12000,
-      total_rooms: 20,
-      occupiedRooms: 16,
-      image_url: whiteHouse,
-    },
-    {
-      id: "4",
-      name: "Green House",
-      location: "Nakuru Town, Nakuru",
-      rent_per_room: 14000,
-      total_rooms: 20,
-      occupiedRooms: 17,
-      image_url: greenHouse,
-    },
-  ]);
+  const [properties, setProperties] = useState<Property[]>([]);
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.total_rooms, 0);
@@ -124,10 +81,12 @@ const PropertyOwnerDashboard = () => {
   const vacantRooms = totalRooms - occupiedRooms;
   const occupancyRate = totalRooms > 0 ? ((occupiedRooms / totalRooms) * 100).toFixed(1) : "0.0";
 
-  // Fetch properties from database and merge with existing
+  // Fetch properties from database
   const fetchProperties = async () => {
+    if (!ownerId) return;
+
     try {
-      // Fetch properties with room counts using the owner's stored ID
+      // Fetch properties with room counts using the authenticated owner ID
       const { data: propertiesData, error } = await supabase
         .from('properties')
         .select(`
@@ -146,6 +105,11 @@ const PropertyOwnerDashboard = () => {
 
       if (error) {
         console.error("Error fetching properties:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load properties from database",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -160,12 +124,7 @@ const PropertyOwnerDashboard = () => {
         image_url: property.image_url || undefined,
       })) || [];
 
-      // Merge with existing properties (keep sample properties and add new ones)
-      setProperties(prev => {
-        const sampleIds = ["1", "2", "3", "4"];
-        const sampleProperties = prev.filter(p => sampleIds.includes(p.id));
-        return [...sampleProperties, ...transformedProperties];
-      });
+      setProperties(transformedProperties);
     } catch (error) {
       console.error("Error fetching properties:", error);
     }
@@ -186,11 +145,24 @@ const PropertyOwnerDashboard = () => {
     }
   };
 
-  // Fetch properties and reset count on mount
+  // Fetch authenticated user
   useEffect(() => {
-    fetchProperties();
-    fetchPendingResetCount();
+    const getAuthenticatedUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setOwnerId(user.id);
+      }
+    };
+    getAuthenticatedUser();
   }, []);
+
+  // Fetch properties and reset count when ownerId is available
+  useEffect(() => {
+    if (ownerId) {
+      fetchProperties();
+      fetchPendingResetCount();
+    }
+  }, [ownerId]);
 
   // Set up real-time listener for tenant profile updates
   useEffect(() => {
@@ -678,11 +650,13 @@ const PropertyOwnerDashboard = () => {
               <SheetTitle>Message Center</SheetTitle>
             </SheetHeader>
             <div className="mt-6">
-              <MessageCenter
-                currentUserId={ownerId}
-                currentUserRole="owner"
-                properties={properties}
-              />
+          {ownerId && (
+            <MessageCenter 
+              currentUserId={ownerId}
+              currentUserRole="owner"
+              properties={properties}
+            />
+          )}
             </div>
           </SheetContent>
         </Sheet>
