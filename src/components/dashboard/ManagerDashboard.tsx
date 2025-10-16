@@ -38,50 +38,58 @@ const ManagerDashboard = () => {
   const [isMessageCenterOpen, setIsMessageCenterOpen] = useState(false);
   const [isLeaseAgreementsOpen, setIsLeaseAgreementsOpen] = useState(false);
   const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
-  const [properties, setProperties] = useState<Property[]>([
-    {
-      id: "1",
-      name: "Skyline Apartment",
-      location: "Nairobi West, Nairobi",
-      rent_per_room: 15000,
-      total_rooms: 50,
-      occupiedRooms: 42,
-      image_url: skylineApartment,
-    },
-    {
-      id: "2",
-      name: "Yellow House",
-      location: "Mombasa Road, Nairobi", 
-      rent_per_room: 18000,
-      total_rooms: 20,
-      occupiedRooms: 18,
-      image_url: yellowHouse,
-    },
-    {
-      id: "3",
-      name: "White House",
-      location: "Kisumu CBD, Kisumu",
-      rent_per_room: 12000,
-      total_rooms: 20,
-      occupiedRooms: 16,
-      image_url: whiteHouse,
-    },
-    {
-      id: "4",
-      name: "Green House",
-      location: "Nakuru Town, Nakuru",
-      rent_per_room: 14000,
-      total_rooms: 20,
-      occupiedRooms: 17,
-      image_url: greenHouse,
-    },
-  ]);
+  const [properties, setProperties] = useState<Property[]>([]);
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.total_rooms, 0);
   const occupiedRooms = properties.reduce((sum, prop) => sum + prop.occupiedRooms, 0);
   const vacantRooms = totalRooms - occupiedRooms;
   const occupancyRate = ((occupiedRooms / totalRooms) * 100).toFixed(1);
+
+  // Fetch properties from database
+  useEffect(() => {
+    const fetchProperties = async () => {
+      const { data: propertiesData, error } = await supabase
+        .from('properties')
+        .select('*');
+      
+      if (error) {
+        console.error('Error fetching properties:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load properties",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (propertiesData) {
+        // Fetch occupied room counts for each property
+        const propertiesWithOccupancy = await Promise.all(
+          propertiesData.map(async (prop) => {
+            const { count } = await supabase
+              .from('rooms')
+              .select('*', { count: 'exact', head: true })
+              .eq('property_id', prop.id)
+              .eq('is_occupied', true);
+            
+            return {
+              id: prop.id,
+              name: prop.name,
+              location: prop.location,
+              rent_per_room: prop.rent_per_room,
+              total_rooms: prop.total_rooms,
+              occupiedRooms: count || 0,
+              image_url: prop.image_url
+            };
+          })
+        );
+        setProperties(propertiesWithOccupancy);
+      }
+    };
+
+    fetchProperties();
+  }, [toast]);
 
   // Set up real-time listener for tenant profile updates
   useEffect(() => {
