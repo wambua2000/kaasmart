@@ -51,15 +51,7 @@ interface Property {
 
 const PropertyOwnerDashboard = () => {
   const { toast } = useToast();
-  
-  // Generate a consistent UUID for the owner
-  const [ownerId] = useState(() => {
-    const stored = localStorage.getItem('mockOwnerId');
-    if (stored) return stored;
-    const newId = crypto.randomUUID();
-    localStorage.setItem('mockOwnerId', newId);
-    return newId;
-  });
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
@@ -127,7 +119,15 @@ const PropertyOwnerDashboard = () => {
   // Fetch properties from database and merge with existing
   const fetchProperties = async () => {
     try {
-      // Fetch properties with room counts using the owner's stored ID
+      // Get authenticated user from Supabase
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        console.error("Authentication error:", authError);
+        return;
+      }
+
+      // Fetch properties with room counts using the authenticated user's ID
       const { data: propertiesData, error } = await supabase
         .from('properties')
         .select(`
@@ -142,7 +142,7 @@ const PropertyOwnerDashboard = () => {
             is_occupied
           )
         `)
-        .eq('owner_id', ownerId);
+        .eq('owner_id', user.id);
 
       if (error) {
         console.error("Error fetching properties:", error);
@@ -186,10 +186,18 @@ const PropertyOwnerDashboard = () => {
     }
   };
 
-  // Fetch properties and reset count on mount
+  // Fetch authenticated user and initial data on mount
   useEffect(() => {
-    fetchProperties();
-    fetchPendingResetCount();
+    const initializeData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+        fetchProperties();
+        fetchPendingResetCount();
+      }
+    };
+    
+    initializeData();
   }, []);
 
   // Set up real-time listener for tenant profile updates
@@ -678,11 +686,13 @@ const PropertyOwnerDashboard = () => {
               <SheetTitle>Message Center</SheetTitle>
             </SheetHeader>
             <div className="mt-6">
-              <MessageCenter
-                currentUserId={ownerId}
-                currentUserRole="owner"
-                properties={properties}
-              />
+              {currentUserId && (
+                <MessageCenter
+                  currentUserId={currentUserId}
+                  currentUserRole="owner"
+                  properties={properties}
+                />
+              )}
             </div>
           </SheetContent>
         </Sheet>
