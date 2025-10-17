@@ -138,6 +138,41 @@ export type Database = {
           },
         ]
       }
+      manager_properties: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          can_manage_all: boolean | null
+          id: string
+          manager_id: string
+          property_id: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          can_manage_all?: boolean | null
+          id?: string
+          manager_id: string
+          property_id?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          can_manage_all?: boolean | null
+          id?: string
+          manager_id?: string
+          property_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manager_properties_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -359,6 +394,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -417,6 +473,13 @@ export type Database = {
       get_user_role_safe: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
       }
       hash_password: {
         Args: { password: string }
