@@ -128,12 +128,49 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
       });
 
       if (!error && data && data.length > 0 && data[0].user_role === role) {
-        toast({
-          title: "Welcome to KaaSmart!",
-          description: `Logged in as ${role.charAt(0).toUpperCase() + role.slice(1)}`,
+        const invitationData = data[0];
+        
+        // Try to sign in first (in case account already exists)
+        let authResult = await supabase.auth.signInWithPassword({
+          email: email,
+          password: password
         });
-        onLogin(email, role);
-        return;
+
+        // If sign in fails, create new Supabase auth account
+        if (authResult.error) {
+          authResult = await supabase.auth.signUp({
+            email: email,
+            password: password,
+            options: {
+              emailRedirectTo: `${window.location.origin}/`,
+              data: {
+                role: invitationData.user_role,
+                invitation_id: invitationData.invitation_id
+              }
+            }
+          });
+        }
+
+        // Mark invitation as used
+        if (authResult.data.user && !authResult.error) {
+          await supabase.rpc('use_invitation', {
+            invitation_id: invitationData.invitation_id
+          });
+
+          toast({
+            title: "Welcome to KaaSmart!",
+            description: `Logged in as ${role.charAt(0).toUpperCase() + role.slice(1)}`,
+          });
+          onLogin(email, role);
+          return;
+        } else if (authResult.error) {
+          toast({
+            title: "Authentication Error",
+            description: authResult.error.message,
+            variant: "destructive",
+          });
+          return;
+        }
       }
     } catch (error) {
       console.error('Invitation login error:', error);

@@ -85,16 +85,44 @@ const Index = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleLogin = (email: string, role: UserRole) => {
-    let tenantInfo = null;
+  const handleLogin = async (email: string, role: UserRole) => {
+    // Check if there's an active Supabase session
+    const { data: { session } } = await supabase.auth.getSession();
     
-    // If logging in as tenant, get their room/property info
-    if (role === 'tenant') {
-      const storedTenantCredentials = JSON.parse(localStorage.getItem('tenantCredentials') || '[]');
-      tenantInfo = storedTenantCredentials.find((cred: any) => cred.email === email);
+    if (session) {
+      // Fetch profile from database
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email, role, full_name')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (profile) {
+        // Handle tenant info if needed
+        let tenantInfo = null;
+        if (profile.role === 'tenant') {
+          const { data: roomData } = await supabase
+            .from('rooms')
+            .select(`
+              *,
+              properties (
+                id,
+                name,
+                location
+              )
+            `)
+            .eq('tenant_id', session.user.id)
+            .single();
+          tenantInfo = roomData;
+        }
+        
+        setUser({ email: profile.email, role: profile.role as UserRole, tenantInfo });
+        return;
+      }
     }
     
-    setUser({ email, role, tenantInfo });
+    // Fallback for demo credentials without Supabase session
+    setUser({ email, role });
   };
 
   const handleLogout = async () => {
