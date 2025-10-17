@@ -36,151 +36,115 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
       return;
     }
 
-    // Get stored manager and tenant credentials
-    const storedManagerCredentials = JSON.parse(localStorage.getItem('managerCredentials') || '[]');
-    const storedTenantCredentials = JSON.parse(localStorage.getItem('tenantCredentials') || '[]');
-    
-    // Demo credentials
+    // Try Supabase authentication first for all roles
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+
+      if (authData?.user && !authError) {
+        // Fetch user profile to verify role
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('role, email, full_name, phone')
+          .eq('id', authData.user.id)
+          .single();
+
+        if (!profileError && profile) {
+          // Verify the role matches what user selected
+          if (profile.role === role) {
+            // For tenants, fetch their room/property info
+            if (role === 'tenant') {
+              const { data: roomData } = await supabase
+                .from('rooms')
+                .select(`
+                  *,
+                  properties (
+                    id,
+                    name,
+                    location
+                  )
+                `)
+                .eq('tenant_id', authData.user.id)
+                .single();
+
+              toast({
+                title: "Welcome to KaaSmart!",
+                description: `Logged in as Tenant`,
+              });
+            } else {
+              toast({
+                title: "Welcome to KaaSmart!",
+                description: `Logged in as ${role.charAt(0).toUpperCase() + role.slice(1)}`,
+              });
+            }
+            onLogin(email, role);
+            return;
+          } else {
+            toast({
+              title: "Invalid Role",
+              description: `This account is registered as ${profile.role}, not ${role}.`,
+              variant: "destructive",
+            });
+            await supabase.auth.signOut();
+            return;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Supabase auth error:', error);
+    }
+
+    // Fallback to demo credentials and invitation system
     const validCredentials = {
       owner: { email: "owner@kaasmart.com", password: "admin2025" },
       developer: { email: "dev@kaasmart.com", password: "Developer@123" },
     };
 
-    // Check credentials based on role
-    if (role === 'manager') {
-      // First check database via invitations table
-      try {
-        const { data, error } = await supabase.rpc('verify_invitation_login', {
-          login_email: email,
-          login_password: password
-        });
+    if (role === 'owner' && email === validCredentials.owner.email && password === validCredentials.owner.password) {
+      toast({
+        title: "Welcome to KaaSmart!",
+        description: `Logged in as Property Owner (Demo)`,
+      });
+      onLogin(email, role);
+      return;
+    }
 
-        if (!error && data && data.length > 0 && data[0].user_role === 'manager') {
-          toast({
-            title: "Welcome to KaaSmart!",
-            description: `Logged in as Manager`,
-          });
-          onLogin(email, role);
-          return;
-        }
-      } catch (error) {
-        console.error('Manager login error:', error);
-      }
+    if (role === 'developer' && email === validCredentials.developer.email && password === validCredentials.developer.password) {
+      toast({
+        title: "Welcome to KaaSmart!",
+        description: `Logged in as Developer/Admin (Demo)`,
+      });
+      onLogin(email, role);
+      return;
+    }
 
-      // Fallback to localStorage for backward compatibility
-      const managerMatch = storedManagerCredentials.find((cred: any) => 
-        cred.email === email && cred.password === password
-      );
-      
-      if (managerMatch) {
+    // Check invitations table as final fallback
+    try {
+      const { data, error } = await supabase.rpc('verify_invitation_login', {
+        login_email: email,
+        login_password: password
+      });
+
+      if (!error && data && data.length > 0 && data[0].user_role === role) {
         toast({
           title: "Welcome to KaaSmart!",
-          description: `Logged in as Manager`,
-        });
-        onLogin(email, role);
-      } else {
-        toast({
-          title: "Invalid Credentials",
-          description: "Manager credentials not found. Please contact the property owner for access.",
-          variant: "destructive",
-        });
-      }
-    } else if (role === 'tenant') {
-      // First check database via invitations table
-      try {
-        const { data, error } = await supabase.rpc('verify_invitation_login', {
-          login_email: email,
-          login_password: password
-        });
-
-        if (!error && data && data.length > 0 && data[0].user_role === 'tenant') {
-          toast({
-            title: "Welcome to KaaSmart!",
-            description: `Logged in as Tenant`,
-          });
-          onLogin(email, role);
-          return;
-        }
-      } catch (error) {
-        console.error('Tenant login error:', error);
-      }
-
-      // Fallback to localStorage for backward compatibility
-      const tenantMatch = storedTenantCredentials.find((cred: any) => 
-        cred.email === email && cred.password === password
-      );
-      
-      if (tenantMatch) {
-        toast({
-          title: "Welcome to KaaSmart!",
-          description: `Logged in as Tenant - ${tenantMatch.propertyName}, Room ${tenantMatch.roomNumber}`,
-        });
-        onLogin(email, role);
-      } else {
-        toast({
-          title: "Invalid Credentials",
-          description: "Tenant credentials not found. Please contact the property owner for access.",
-          variant: "destructive",
-        });
-      }
-    } else if (role === 'owner') {
-      // Check demo owner first
-      if (email === validCredentials.owner.email && password === validCredentials.owner.password) {
-        toast({
-          title: "Welcome to KaaSmart!",
-          description: `Logged in as Property Owner`,
+          description: `Logged in as ${role.charAt(0).toUpperCase() + role.slice(1)}`,
         });
         onLogin(email, role);
         return;
       }
-
-      // Check invitations table for generated owner credentials
-      try {
-        const { data, error } = await supabase.rpc('verify_invitation_login', {
-          login_email: email,
-          login_password: password
-        });
-
-        if (error) throw error;
-
-        if (data && data.length > 0 && data[0].user_role === 'owner') {
-          toast({
-            title: "Welcome to KaaSmart!",
-            description: `Logged in as Property Owner`,
-          });
-          onLogin(email, role);
-        } else {
-          toast({
-            title: "Invalid Credentials",
-            description: "Please check your email and password.",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error('Login error:', error);
-        toast({
-          title: "Invalid Credentials",
-          description: "Please check your email and password.",
-          variant: "destructive",
-        });
-      }
-    } else if (role === 'developer') {
-      // Check developer credentials
-      const creds = validCredentials.developer;
-      if (email === creds.email && password === creds.password) {
-        toast({
-          title: "Welcome to KaaSmart!",
-          description: `Logged in as Developer/Admin`,
-        });
-        onLogin(email, role);
-      } else {
-        toast({
-          title: "Invalid Credentials",
-          description: "Please check your email and password.",
-          variant: "destructive",
-        });
-      }
+    } catch (error) {
+      console.error('Invitation login error:', error);
     }
+
+    // If we get here, authentication failed
+    toast({
+      title: "Invalid Credentials",
+      description: "Please check your email, password, and selected role.",
+      variant: "destructive",
+    });
   };
 
   return (
