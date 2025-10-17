@@ -30,11 +30,27 @@ const InviteTenantModal = ({
 }: InviteTenantModalProps) => {
   const { toast } = useToast();
   const [tenantName, setTenantName] = useState("");
+  const [tenantEmail, setTenantEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [dateOfEntry, setDateOfEntry] = useState(new Date().toISOString().split('T')[0]);
   const [generatedCredentials, setGeneratedCredentials] = useState<{
     email: string;
     password: string;
   } | null>(null);
+
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setEmailError("Please enter a valid email address (e.g., tenant@gmail.com)");
+      return false;
+    }
+    if (email.includes('@kaasmart.com')) {
+      setEmailError("Please use a real email address (Gmail, Yahoo, Outlook, etc.)");
+      return false;
+    }
+    setEmailError("");
+    return true;
+  };
 
   const generateTenantCredentials = () => {
     if (!tenantName.trim()) {
@@ -46,10 +62,14 @@ const InviteTenantModal = ({
       return;
     }
 
-    // Generate email based on property and room
-    const propertyPrefix = propertyName.toLowerCase().split(' ')[0]; // "white", "skyline", etc.
-    const roomNumOnly = roomNumber.replace(/[^0-9]/g, ''); // Extract just numbers from room
-    const email = `${propertyPrefix}${roomNumOnly.padStart(3, '0')}@kaasmart.com`;
+    if (!tenantEmail.trim() || !validateEmail(tenantEmail)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid real email address.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     // Generate random password
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -58,7 +78,7 @@ const InviteTenantModal = ({
       password += characters.charAt(Math.floor(Math.random() * characters.length));
     }
 
-    const credentials = { email, password };
+    const credentials = { email: tenantEmail, password };
     setGeneratedCredentials(credentials);
 
     toast({
@@ -102,6 +122,8 @@ const InviteTenantModal = ({
 
   const handleClose = () => {
     setTenantName("");
+    setTenantEmail("");
+    setEmailError("");
     setDateOfEntry(new Date().toISOString().split('T')[0]);
     setGeneratedCredentials(null);
     onClose();
@@ -140,6 +162,27 @@ const InviteTenantModal = ({
             </div>
 
             <div>
+              <Label htmlFor="tenantEmail">Tenant Email *</Label>
+              <Input
+                id="tenantEmail"
+                type="email"
+                value={tenantEmail}
+                onChange={(e) => {
+                  setTenantEmail(e.target.value);
+                  setEmailError("");
+                }}
+                placeholder="tenant@gmail.com"
+                className={emailError ? "border-destructive" : ""}
+              />
+              {emailError && (
+                <p className="text-xs text-destructive mt-1">{emailError}</p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                ⚠️ Use a real email address (Gmail, Yahoo, Outlook, etc.)
+              </p>
+            </div>
+
+            <div>
               <Label htmlFor="dateOfEntry">Date of Entry</Label>
               <Input
                 id="dateOfEntry"
@@ -154,7 +197,7 @@ const InviteTenantModal = ({
             <Button 
               onClick={generateTenantCredentials}
               className="bg-gradient-hero hover:shadow-glow"
-              disabled={!tenantName.trim()}
+              disabled={!tenantName.trim() || !tenantEmail.trim()}
             >
               Generate Login Credentials
             </Button>

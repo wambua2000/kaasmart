@@ -29,6 +29,8 @@ interface InviteManagerModalProps {
 const InviteManagerModal = ({ isOpen, onClose, properties, onManagerInvited }: InviteManagerModalProps) => {
   const [inviteType, setInviteType] = useState<'all' | 'single'>('single');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
+  const [managerEmail, setManagerEmail] = useState<string>('');
+  const [emailError, setEmailError] = useState<string>('');
   const [generatedCredentials, setGeneratedCredentials] = useState<{
     email: string;
     password: string;
@@ -45,12 +47,33 @@ const InviteManagerModal = ({ isOpen, onClose, properties, onManagerInvited }: I
     return password;
   };
 
+  const validateEmail = (): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(managerEmail)) {
+      setEmailError("Please enter a valid email address");
+      return false;
+    }
+    if (managerEmail.includes('@kaasmart.com')) {
+      setEmailError("Please use a real email address (Gmail, Yahoo, Outlook, etc.)");
+      return false;
+    }
+    setEmailError("");
+    return true;
+  };
+
   const generateCredentials = () => {
-    let email = '';
+    if (!managerEmail.trim() || !validateEmail()) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid real email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     let propertyName = '';
     
     if (inviteType === 'all') {
-      email = 'allmanager@kaasmart.com';
       propertyName = 'All Properties';
     } else {
       const selectedProperty = properties.find(p => p.id === selectedPropertyId);
@@ -62,25 +85,17 @@ const InviteManagerModal = ({ isOpen, onClose, properties, onManagerInvited }: I
         });
         return;
       }
-      
-      if (selectedProperty.name === 'Skyline Apartment') {
-        email = 'skylinemanager@kaasmart.com';
-      } else {
-        // For other properties, use a general format
-        const propertySlug = selectedProperty.name.toLowerCase().replace(/\s+/g, '');
-        email = `${propertySlug}manager@kaasmart.com`;
-      }
       propertyName = selectedProperty.name;
     }
 
     const password = generatePassword();
     
-    const credentials = { email, password };
+    const credentials = { email: managerEmail, password };
     setGeneratedCredentials(credentials);
 
     // Call the callback to register the credentials in the system
     onManagerInvited({
-      email,
+      email: managerEmail,
       password,
       scope: inviteType,
       propertyId: inviteType === 'single' ? selectedPropertyId : undefined,
@@ -104,6 +119,8 @@ const InviteManagerModal = ({ isOpen, onClose, properties, onManagerInvited }: I
   const resetModal = () => {
     setInviteType('single');
     setSelectedPropertyId('');
+    setManagerEmail('');
+    setEmailError('');
     setGeneratedCredentials(null);
     setShowPassword(false);
   };
@@ -162,7 +179,32 @@ const InviteManagerModal = ({ isOpen, onClose, properties, onManagerInvited }: I
                 </div>
               )}
 
-              <Button onClick={generateCredentials} className="w-full">
+              <div className="space-y-2">
+                <Label htmlFor="manager-email">Manager Email *</Label>
+                <Input
+                  id="manager-email"
+                  type="email"
+                  value={managerEmail}
+                  onChange={(e) => {
+                    setManagerEmail(e.target.value);
+                    setEmailError("");
+                  }}
+                  placeholder="manager@gmail.com"
+                  className={emailError ? "border-destructive" : ""}
+                />
+                {emailError && (
+                  <p className="text-xs text-destructive">{emailError}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  ⚠️ Use a real email address (Gmail, Yahoo, Outlook, etc.)
+                </p>
+              </div>
+
+              <Button 
+                onClick={generateCredentials} 
+                className="w-full"
+                disabled={!managerEmail.trim() || (inviteType === 'single' && !selectedPropertyId)}
+              >
                 <Mail className="mr-2 h-4 w-4" />
                 Generate Manager Credentials
               </Button>

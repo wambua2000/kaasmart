@@ -37,34 +37,9 @@ const InvitePropertyOwnerModal = ({
   }, [isOpen]);
 
   const fetchNextOwnerNumber = async () => {
-    try {
-      // Get all existing owners to determine the next number
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('role', 'owner')
-        .like('email', 'owner%@kaasmart.com');
-
-      if (error) throw error;
-
-      // Extract numbers from existing owner emails
-      const existingNumbers = (profiles || [])
-        .map(p => {
-          const match = p.email.match(/owner(\d+)@kaasmart\.com/);
-          return match ? parseInt(match[1]) : 0;
-        })
-        .filter(n => n > 0);
-
-      // Find the next available number
-      const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
-      const nextNumber = maxNumber + 1;
-      setNextOwnerNumber(nextNumber);
-      setOwnerEmail(`owner${String(nextNumber).padStart(3, '0')}@kaasmart.com`);
-    } catch (error) {
-      console.error('Error fetching owner count:', error);
-      setNextOwnerNumber(1);
-      setOwnerEmail('owner001@kaasmart.com');
-    }
+    // Clear the email field to require manual input
+    setOwnerEmail("");
+    setEmailError("");
   };
 
   const generatePassword = () => {
@@ -78,9 +53,15 @@ const InvitePropertyOwnerModal = ({
 
   const validateEmail = async (email: string): Promise<boolean> => {
     // Basic email format validation
-    const emailRegex = /^owner\d{3}@kaasmart\.com$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setEmailError("Email must be in format: ownerXXX@kaasmart.com (e.g., owner001@kaasmart.com)");
+      setEmailError("Please enter a valid email address");
+      return false;
+    }
+
+    // Reject @kaasmart.com emails
+    if (email.includes('@kaasmart.com')) {
+      setEmailError("Please use a real email address (Gmail, Yahoo, Outlook, etc.)");
       return false;
     }
 
@@ -95,7 +76,7 @@ const InvitePropertyOwnerModal = ({
       if (error) throw error;
 
       if (existingOwner && existingOwner.length > 0) {
-        setEmailError("This email already exists. Please choose a different number.");
+        setEmailError("This email already exists. Please use a different email.");
         return false;
       }
 
@@ -194,23 +175,23 @@ const InvitePropertyOwnerModal = ({
           {!generatedCredentials ? (
             <>
               <div className="space-y-2">
-                <Label htmlFor="owner-email">Property Owner Email</Label>
+                <Label htmlFor="owner-email">Property Owner Email *</Label>
                 <Input
                   id="owner-email"
-                  type="text"
+                  type="email"
                   value={ownerEmail}
                   onChange={(e) => {
                     setOwnerEmail(e.target.value);
                     setEmailError("");
                   }}
-                  placeholder="owner001@kaasmart.com"
+                  placeholder="owner@gmail.com"
                   className={emailError ? "border-destructive" : ""}
                 />
                 {emailError && (
                   <p className="text-xs text-destructive">{emailError}</p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Format: ownerXXX@kaasmart.com (e.g., owner001, owner002, owner003). Edit the number to assign a custom email.
+                  ⚠️ Use a real email address (Gmail, Yahoo, Outlook, etc.) - not @kaasmart.com
                 </p>
               </div>
 
