@@ -96,31 +96,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
       console.error('Supabase auth error:', error);
     }
 
-    // Fallback to demo credentials and invitation system
-    const validCredentials = {
-      owner: { email: "owner@kaasmart.com", password: "admin2025" },
-      developer: { email: "dev@kaasmart.com", password: "Developer@123" },
-    };
-
-    if (role === 'owner' && email === validCredentials.owner.email && password === validCredentials.owner.password) {
-      toast({
-        title: "Welcome to KaaSmart!",
-        description: `Logged in as Property Owner (Demo)`,
-      });
-      onLogin(email, role);
-      return;
-    }
-
-    if (role === 'developer' && email === validCredentials.developer.email && password === validCredentials.developer.password) {
-      toast({
-        title: "Welcome to KaaSmart!",
-        description: `Logged in as Developer/Admin (Demo)`,
-      });
-      onLogin(email, role);
-      return;
-    }
-
-    // Check invitations table as final fallback
+    // Check invitations table for new users
     try {
       const { data, error } = await supabase.rpc('verify_invitation_login', {
         login_email: email,
