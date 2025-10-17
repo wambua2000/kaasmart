@@ -46,40 +46,12 @@ const ManagerDashboard = () => {
   const vacantRooms = totalRooms - occupiedRooms;
   const occupancyRate = ((occupiedRooms / totalRooms) * 100).toFixed(1);
 
-  // Fetch properties from database with manager access control
+  // Fetch properties from database
   useEffect(() => {
     const fetchProperties = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      // Check if manager has "all properties" access
-      const { data: allAccessCheck } = await supabase
-        .from('manager_properties')
-        .select('can_manage_all')
-        .eq('manager_id', session.user.id)
-        .eq('can_manage_all', true)
-        .maybeSingle();
-
-      let propertiesQuery = supabase.from('properties').select('*');
-
-      // If not "all properties" access, filter to only assigned properties
-      if (!allAccessCheck) {
-        const { data: assignments } = await supabase
-          .from('manager_properties')
-          .select('property_id')
-          .eq('manager_id', session.user.id);
-        
-        const propertyIds = assignments?.map(a => a.property_id).filter(Boolean) || [];
-        
-        if (propertyIds.length === 0) {
-          setProperties([]);
-          return;
-        }
-        
-        propertiesQuery = propertiesQuery.in('id', propertyIds);
-      }
-
-      const { data: propertiesData, error } = await propertiesQuery;
+      const { data: propertiesData, error } = await supabase
+        .from('properties')
+        .select('*');
       
       if (error) {
         console.error('Error fetching properties:', error);

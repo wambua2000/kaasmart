@@ -38,7 +38,6 @@ import DocumentReport from "@/components/property/DocumentReport";
 import InviteManagerModal from "@/components/manager/InviteManagerModal";
 import PasswordResetRequestsSheet from "@/components/property/PasswordResetRequestsSheet";
 import AllLeaseDocumentsViewer from "@/components/property/AllLeaseDocumentsViewer";
-import { ManagerAssignmentsModal } from "@/components/manager/ManagerAssignmentsModal";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Property {
@@ -75,7 +74,6 @@ const PropertyOwnerDashboard = () => {
   const [isLeaseAgreementsOpen, setIsLeaseAgreementsOpen] = useState(false);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showManagerAssignments, setShowManagerAssignments] = useState(false);
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.total_rooms, 0);
@@ -388,14 +386,6 @@ const PropertyOwnerDashboard = () => {
                   <h1 className="text-3xl font-bold text-foreground">Property Owner Dashboard</h1>
                   <p className="text-muted-foreground">Manage your properties with ease</p>
                 </div>
-                <Button
-                  onClick={() => setShowManagerAssignments(true)}
-                  variant="outline"
-                  className="gap-2"
-                >
-                  <Users className="h-4 w-4" />
-                  Manage Managers
-                </Button>
               </div>
 
         {/* Stats Cards */}
@@ -708,12 +698,6 @@ const PropertyOwnerDashboard = () => {
             </div>
           </SheetContent>
         </Sheet>
-
-        <ManagerAssignmentsModal
-          isOpen={showManagerAssignments}
-          onClose={() => setShowManagerAssignments(false)}
-          properties={properties.map(p => ({ id: p.id, name: p.name }))}
-        />
       </div>
     </SidebarProvider>
   );
