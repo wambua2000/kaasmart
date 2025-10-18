@@ -68,31 +68,71 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError || !user) {
+        console.error("Authentication error:", authError);
         throw new Error("Please log in to add properties.");
       }
 
-      console.log("Using authenticated user ID:", user.id);
+      console.log("Authenticated user ID:", user.id);
+
+      // Verify user has 'owner' role
+      console.log("Checking user role...");
+      const { data: userRoles, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'owner');
+
+      if (roleError) {
+        console.error("Role check error:", roleError);
+        throw new Error("Unable to verify user permissions. Please contact support.");
+      }
+
+      if (!userRoles || userRoles.length === 0) {
+        console.error("User does not have 'owner' role");
+        throw new Error("You must be a property owner to add properties. Please contact support to upgrade your account.");
+      }
+
+      console.log("User has 'owner' role, proceeding with insert...");
 
       // Insert property into database
+      const propertyData = {
+        name: formData.name.trim(),
+        location: formData.location.trim(),
+        rent_per_room: parseInt(formData.rentPerRoom),
+        total_rooms: parseInt(formData.totalRooms),
+        owner_id: user.id,
+        image_url: formData.imageUrl || "/placeholder.svg",
+      };
+
+      console.log("Inserting property with data:", propertyData);
+
       const { data: insertedProperty, error: insertError } = await supabase
         .from('properties')
-        .insert({
-          name: formData.name.trim(),
-          location: formData.location.trim(),
-          rent_per_room: parseInt(formData.rentPerRoom),
-          total_rooms: parseInt(formData.totalRooms),
-          owner_id: user.id,
-          image_url: formData.imageUrl || "/placeholder.svg",
-        })
+        .insert(propertyData)
         .select()
         .single();
 
       if (insertError) {
-        console.error("Database insert error:", insertError);
-        throw insertError;
+        console.error("❌ Database insert error details:", {
+          message: insertError.message,
+          details: insertError.details,
+          hint: insertError.hint,
+          code: insertError.code,
+        });
+        
+        // Provide more specific error messages
+        if (insertError.code === 'PGRST301') {
+          throw new Error("Unable to retrieve the property after creation. Please refresh the page.");
+        } else if (insertError.message?.includes('policy')) {
+          throw new Error("Permission denied: Unable to add property. Please ensure your account has the correct permissions.");
+        } else if (insertError.message?.includes('infinite recursion')) {
+          throw new Error("Database configuration issue detected. Please contact support.");
+        }
+        
+        throw new Error(insertError.message || "Failed to add property. Please try again.");
       }
       
-      console.log("Property inserted successfully:", insertedProperty);
+      console.log("✅ Property inserted successfully:", insertedProperty);
 
       // Generate rooms for the new property
       console.log("Generating rooms for property:", insertedProperty.id);
