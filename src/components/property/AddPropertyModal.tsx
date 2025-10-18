@@ -84,15 +84,33 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
 
       if (roleError) {
         console.error("Role check error:", roleError);
-        throw new Error("Unable to verify user permissions. Please contact support.");
+        // Fallback: check profiles table
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile?.role !== 'owner') {
+          throw new Error("You must be a property owner to add properties. Please contact support.");
+        }
+        console.log("✅ Role verified via profiles table (fallback)");
+      } else if (!userRoles || userRoles.length === 0) {
+        console.error("User does not have 'owner' role in user_roles table");
+        // Fallback: check profiles table
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile?.role !== 'owner') {
+          throw new Error("You must be a property owner to add properties. Please contact support.");
+        }
+        console.log("✅ Role verified via profiles table (fallback)");
+      } else {
+        console.log("✅ User has 'owner' role, proceeding with insert...");
       }
-
-      if (!userRoles || userRoles.length === 0) {
-        console.error("User does not have 'owner' role");
-        throw new Error("You must be a property owner to add properties. Please contact support to upgrade your account.");
-      }
-
-      console.log("User has 'owner' role, proceeding with insert...");
 
       // Insert property into database
       const propertyData = {
