@@ -39,9 +39,9 @@ export function AppSidebar({
   const { state } = useSidebar();
   
   return (
-    <Sidebar collapsible="offcanvas" className="border-r border-border/50 bg-card/80 backdrop-blur-sm">
-      <SidebarContent>
-        <SidebarGroup className="bg-blue-900 rounded-lg mx-2 mt-2">
+    <Sidebar collapsible="offcanvas" className="border-r border-border/50">
+      <SidebarContent className="bg-blue-900">
+        <SidebarGroup className="rounded-lg mx-2 mt-2">
           <SidebarGroupLabel className="text-white font-semibold">Actions</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
