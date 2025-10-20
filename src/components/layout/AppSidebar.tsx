@@ -41,13 +41,13 @@ export function AppSidebar({
   return (
     <Sidebar collapsible="offcanvas" className="border-r border-border/50 bg-card/80 backdrop-blur-sm">
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Actions</SidebarGroupLabel>
+        <SidebarGroup className="bg-blue-900 rounded-lg mx-2 mt-2">
+          <SidebarGroupLabel className="text-white font-semibold">Actions</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {userRole === "owner" && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={onOpenSheet}>
+                  <SidebarMenuButton onClick={onOpenSheet} className="text-white hover:bg-blue-800 hover:text-white">
                     <ExternalLink className="h-4 w-4" />
                     <span>Open Sheet</span>
                   </SidebarMenuButton>
@@ -55,14 +55,14 @@ export function AppSidebar({
               )}
 
               <SidebarMenuItem>
-                <SidebarMenuButton onClick={onOpenMaintenance}>
+                <SidebarMenuButton onClick={onOpenMaintenance} className="text-white hover:bg-blue-800 hover:text-white">
                   <Wrench className="h-4 w-4" />
                   <span>Maintenance</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton onClick={onOpenMessageCenter}>
+                <SidebarMenuButton onClick={onOpenMessageCenter} className="text-white hover:bg-blue-800 hover:text-white">
                   <MessageSquare className="h-4 w-4" />
                   <span>Message Centre</span>
                 </SidebarMenuButton>
@@ -70,7 +70,7 @@ export function AppSidebar({
 
               {userRole === "owner" && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={onGenerateReport}>
+                  <SidebarMenuButton onClick={onGenerateReport} className="text-white hover:bg-blue-800 hover:text-white">
                     <FileText className="h-4 w-4" />
                     <span>Generate Report</span>
                   </SidebarMenuButton>
@@ -79,7 +79,7 @@ export function AppSidebar({
 
               {onViewLeaseAgreements && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={onViewLeaseAgreements}>
+                  <SidebarMenuButton onClick={onViewLeaseAgreements} className="text-white hover:bg-blue-800 hover:text-white">
                     <FileCheck className="h-4 w-4" />
                     <span>Lease Agreements</span>
                   </SidebarMenuButton>
@@ -89,7 +89,7 @@ export function AppSidebar({
               {userRole === "owner" && (
                 <>
                   <SidebarMenuItem>
-                    <SidebarMenuButton onClick={onPasswordReset} className="relative">
+                    <SidebarMenuButton onClick={onPasswordReset} className="relative text-white hover:bg-blue-800 hover:text-white">
                       <KeyRound className="h-4 w-4" />
                       <span>Password Resets</span>
                       {pendingResetCount > 0 && (
@@ -101,14 +101,14 @@ export function AppSidebar({
                   </SidebarMenuItem>
 
                   <SidebarMenuItem>
-                    <SidebarMenuButton onClick={onInviteManager}>
+                    <SidebarMenuButton onClick={onInviteManager} className="text-white hover:bg-blue-800 hover:text-white">
                       <Mail className="h-4 w-4" />
                       <span>Invite Manager</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
 
                   <SidebarMenuItem>
-                    <SidebarMenuButton onClick={onAddProperty} className="text-primary font-medium">
+                    <SidebarMenuButton onClick={onAddProperty} className="text-white hover:bg-blue-800 hover:text-white font-medium">
                       <Plus className="h-4 w-4" />
                       <span>Add Property</span>
                     </SidebarMenuButton>
