@@ -268,7 +268,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
     }
   };
 
-  const handleTenantInvited = (tenantData: {
+  const handleTenantInvited = async (tenantData: {
     email: string;
     password: string;
     propertyName: string;
@@ -276,23 +276,104 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
     name: string;
     dateOfEntry: string;
   }) => {
-    // Store tenant credentials in localStorage for login recognition
-    const existingCredentials = JSON.parse(localStorage.getItem('tenantCredentials') || '[]');
-    const newCredentials = {
-      email: tenantData.email,
-      password: tenantData.password,
-      propertyName: tenantData.propertyName,
-      roomNumber: tenantData.roomNumber,
-      tenantName: tenantData.name,
-      dateOfEntry: tenantData.dateOfEntry,
-    };
-    existingCredentials.push(newCredentials);
-    localStorage.setItem('tenantCredentials', JSON.stringify(existingCredentials));
-    
-    toast({
-      title: "Tenant Invited Successfully",
-      description: `Login credentials generated for ${tenantData.name} in ${tenantData.roomNumber}`,
-    });
+    if (!selectedRoom) {
+      toast({
+        title: "Error",
+        description: "No room selected",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Create invitation in database using the Supabase function
+      const { data, error: invitationError } = await supabase.rpc('generate_invitation_credentials', {
+        invitation_email: tenantData.email,
+        invitation_role: 'tenant',
+        invite_property_id: property.id,
+        invite_room_id: selectedRoom.id,
+      });
+
+      if (invitationError) {
+        console.error('Error creating tenant invitation:', invitationError);
+        toast({
+          title: "Error",
+          description: "Failed to create tenant invitation. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Update the room with tenant information (but not tenant_id yet - that's set on login)
+      const { error: updateError } = await supabase
+        .from('rooms')
+        .update({
+          tenant_name: tenantData.name,
+          tenant_email: tenantData.email,
+          tenant_date_of_entry: tenantData.dateOfEntry,
+          is_occupied: true,
+        })
+        .eq('id', selectedRoom.id);
+
+      if (updateError) {
+        console.error('Error updating room:', updateError);
+        toast({
+          title: "Warning",
+          description: "Invitation created but room details may not have updated.",
+          variant: "destructive",
+        });
+      }
+
+      // Refresh rooms list to show updated data
+      const { data: roomsData } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('property_id', property.id)
+        .order('room_number');
+
+      if (roomsData) {
+        const mappedRooms: Room[] = roomsData.map(room => ({
+          id: room.id,
+          number: room.room_number,
+          status: room.is_occupied ? "occupied" : "vacant",
+          rentAmount: Number(room.rent_amount),
+          property_id: room.property_id,
+          tenant: room.is_occupied ? {
+            id: room.tenant_id || '',
+            name: room.tenant_name || "Unknown",
+            email: room.tenant_email || "",
+            phone: room.tenant_phone || "",
+            dateOfEntry: room.tenant_date_of_entry || new Date().toISOString().split('T')[0],
+            rentAmount: Number(room.rent_amount),
+            rentStatus: (room.rent_status as "paid" | "not-paid") || "not-paid",
+            accessories: room.tenant_accessories || [],
+            emergencyContact: globalEmergencyContact,
+            notes: room.tenant_notes || undefined,
+          } : undefined
+        }));
+        setRooms(mappedRooms);
+        
+        // Update selected room to show new tenant
+        const updatedSelectedRoom = mappedRooms.find(r => r.id === selectedRoom.id);
+        if (updatedSelectedRoom) {
+          setSelectedRoom(updatedSelectedRoom);
+        }
+      }
+
+      toast({
+        title: "Tenant Invited Successfully",
+        description: `Login credentials generated for ${tenantData.name}. Share the credentials with the tenant.`,
+      });
+
+      setIsInviteTenantOpen(false);
+    } catch (error) {
+      console.error('Error inviting tenant:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSaveEmergencyContact = () => {
