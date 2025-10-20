@@ -19,38 +19,17 @@ const Index = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {
-        // Fetch user profile to get role
+        // Only fetch essential profile data
         const { data: profile } = await supabase
           .from('profiles')
-          .select('email, role, full_name')
+          .select('email, role')
           .eq('id', session.user.id)
           .single();
 
         if (profile) {
-          let tenantInfo = null;
-          
-          // If tenant, fetch room/property info
-          if (profile.role === 'tenant') {
-            const { data: roomData } = await supabase
-              .from('rooms')
-              .select(`
-                *,
-                properties (
-                  id,
-                  name,
-                  location
-                )
-              `)
-              .eq('tenant_id', session.user.id)
-              .single();
-            
-            tenantInfo = roomData;
-          }
-          
           setUser({
             email: profile.email,
-            role: profile.role as UserRole,
-            tenantInfo
+            role: profile.role as UserRole
           });
         }
       }
@@ -62,22 +41,28 @@ const Index = () => {
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
+        // ONLY synchronous state updates here - no database calls!
         if (event === 'SIGNED_OUT') {
           setUser(null);
+          setIsLoadingSession(false);
         } else if (event === 'SIGNED_IN' && session) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('email, role')
-            .eq('id', session.user.id)
-            .single();
+          // Defer database calls to prevent deadlock
+          setTimeout(async () => {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('email, role')
+              .eq('id', session.user.id)
+              .single();
 
-          if (profile) {
-            setUser({
-              email: profile.email,
-              role: profile.role as UserRole
-            });
-          }
+            if (profile) {
+              setUser({
+                email: profile.email,
+                role: profile.role as UserRole
+              });
+            }
+            setIsLoadingSession(false);
+          }, 0);
         }
       }
     );
@@ -93,30 +78,12 @@ const Index = () => {
       // Fetch profile from database
       const { data: profile } = await supabase
         .from('profiles')
-        .select('email, role, full_name')
+        .select('email, role')
         .eq('id', session.user.id)
         .single();
       
       if (profile) {
-        // Handle tenant info if needed
-        let tenantInfo = null;
-        if (profile.role === 'tenant') {
-          const { data: roomData } = await supabase
-            .from('rooms')
-            .select(`
-              *,
-              properties (
-                id,
-                name,
-                location
-              )
-            `)
-            .eq('tenant_id', session.user.id)
-            .single();
-          tenantInfo = roomData;
-        }
-        
-        setUser({ email: profile.email, role: profile.role as UserRole, tenantInfo });
+        setUser({ email: profile.email, role: profile.role as UserRole });
         return;
       }
     }
@@ -164,7 +131,7 @@ const Index = () => {
       {user.role === "developer" && <DeveloperDashboard />}
       {user.role === "owner" && <PropertyOwnerDashboard />}
       {user.role === "manager" && <ManagerDashboard />}
-      {user.role === "tenant" && <TenantDashboard tenantInfo={user.tenantInfo} />}
+      {user.role === "tenant" && <TenantDashboard />}
     </div>
   );
 };
