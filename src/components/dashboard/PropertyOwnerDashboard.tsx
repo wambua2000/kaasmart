@@ -292,22 +292,44 @@ const PropertyOwnerDashboard = () => {
     setIsInviteManagerOpen(true);
   };
 
-  const handleManagerInvited = (managerData: {
+  const handleManagerInvited = async (managerData: {
     email: string;
     password: string;
     scope: 'all' | 'single';
     propertyId?: string;
     propertyName?: string;
   }) => {
-    // Store manager credentials in localStorage
-    const existingCredentials = JSON.parse(localStorage.getItem('managerCredentials') || '[]');
-    const newCredentials = [...existingCredentials, managerData];
-    localStorage.setItem('managerCredentials', JSON.stringify(newCredentials));
-    
-    toast({
-      title: "Manager Invited Successfully",
-      description: `Manager credentials generated for ${managerData.propertyName || 'selected scope'}`,
-    });
+    try {
+      // Create invitation in database using the Supabase function
+      const { data, error } = await supabase.rpc('generate_invitation_credentials', {
+        invitation_email: managerData.email,
+        invitation_role: 'manager',
+        invite_property_id: managerData.scope === 'single' ? managerData.propertyId : null,
+        invite_room_id: null,
+      });
+
+      if (error) {
+        console.error('Error creating manager invitation:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create manager invitation. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Manager Invited Successfully",
+        description: `Credentials generated for ${managerData.propertyName || 'all properties'}. Share the credentials with the manager.`,
+      });
+    } catch (error) {
+      console.error('Error inviting manager:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleGenerateReport = () => {
