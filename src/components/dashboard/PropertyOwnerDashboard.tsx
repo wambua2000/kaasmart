@@ -395,8 +395,8 @@ const PropertyOwnerDashboard = () => {
         
         <div className="flex-1 flex flex-col">
           {/* Blue Header Bar */}
-          <div className="w-full h-16 bg-blue-600 flex items-center px-6">
-            <SidebarTrigger className="mr-4 text-white hover:bg-blue-700" />
+          <div className="w-full h-16 bg-blue-900 flex items-center px-6">
+            <SidebarTrigger className="mr-4 text-white hover:bg-blue-800" />
             <h1 className="text-white text-2xl font-bold">KaaSmart Property Management</h1>
           </div>
 
