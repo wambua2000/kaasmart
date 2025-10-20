@@ -286,6 +286,29 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
     }
 
     try {
+      // Clean up any previous room assignments for this email before creating new invitation
+      const { data: existingRooms } = await supabase
+        .from('rooms')
+        .select('id, property_id')
+        .eq('tenant_email', tenantData.email)
+        .eq('is_occupied', true);
+
+      if (existingRooms && existingRooms.length > 0) {
+        // Clear tenant from old rooms
+        await supabase
+          .from('rooms')
+          .update({
+            tenant_id: null,
+            is_occupied: false,
+            tenant_name: null,
+            tenant_email: null,
+            tenant_phone: null,
+            tenant_accessories: null,
+            tenant_date_of_entry: null,
+          })
+          .in('id', existingRooms.map(r => r.id));
+      }
+
       // Create invitation in database using the Supabase function
       const { data, error: invitationError } = await supabase.rpc('generate_invitation_credentials', {
         invitation_email: tenantData.email,
