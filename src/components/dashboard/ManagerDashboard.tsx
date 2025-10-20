@@ -63,50 +63,12 @@ const ManagerDashboard = () => {
           return;
         }
 
-        // Check manager assignments
-        const { data: assignments, error: assignmentError } = await supabase
-          .from('manager_properties')
-          .select('property_id, can_manage_all')
-          .eq('manager_id', user.id);
-
-        if (assignmentError) {
-          console.error('Error fetching manager assignments:', assignmentError);
-          toast({
-            title: "Error",
-            description: "Failed to load property assignments",
-            variant: "destructive"
+        // Use the optimized RPC function to get properties with stats in a single query
+        const { data: propertiesData, error } = await supabase
+          .rpc('get_manager_properties_with_stats', {
+            manager_user_id: user.id
           });
-          return;
-        }
 
-        // Determine which properties to fetch
-        let propertiesQuery = supabase.from('properties').select('*');
-        
-        if (assignments && assignments.length > 0) {
-          const canManageAll = assignments.some(a => a.can_manage_all);
-          
-          if (!canManageAll) {
-            // Filter by specific property IDs
-            const propertyIds = assignments
-              .filter(a => a.property_id !== null)
-              .map(a => a.property_id);
-            
-            if (propertyIds.length === 0) {
-              setProperties([]);
-              return;
-            }
-            
-            propertiesQuery = propertiesQuery.in('id', propertyIds);
-          }
-          // If can_manage_all is true, fetch all properties (no filter needed)
-        } else {
-          // No assignments found
-          setProperties([]);
-          return;
-        }
-
-        const { data: propertiesData, error } = await propertiesQuery;
-        
         if (error) {
           console.error('Error fetching properties:', error);
           toast({
@@ -118,27 +80,17 @@ const ManagerDashboard = () => {
         }
 
         if (propertiesData) {
-          // Fetch occupied room counts for each property
-          const propertiesWithOccupancy = await Promise.all(
-            propertiesData.map(async (prop) => {
-              const { count } = await supabase
-                .from('rooms')
-                .select('*', { count: 'exact', head: true })
-                .eq('property_id', prop.id)
-                .eq('is_occupied', true);
-              
-              return {
-                id: prop.id,
-                name: prop.name,
-                location: prop.location,
-                rent_per_room: prop.rent_per_room,
-                total_rooms: prop.total_rooms,
-                occupiedRooms: count || 0,
-                image_url: prop.image_url
-              };
-            })
-          );
-          setProperties(propertiesWithOccupancy);
+          const formattedProperties = propertiesData.map((property: any) => ({
+            id: property.id,
+            name: property.name,
+            location: property.location,
+            rent_per_room: property.rent_per_room,
+            total_rooms: property.total_rooms,
+            occupiedRooms: Number(property.occupied_rooms),
+            image_url: property.image_url || undefined,
+          }));
+
+          setProperties(formattedProperties);
         }
       } catch (error) {
         console.error('Unexpected error:', error);

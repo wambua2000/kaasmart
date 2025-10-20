@@ -470,6 +470,18 @@ export type Database = {
           room_id: string
         }[]
       }
+      get_manager_properties_with_stats: {
+        Args: { manager_user_id: string }
+        Returns: {
+          id: string
+          image_url: string
+          location: string
+          name: string
+          occupied_rooms: number
+          rent_per_room: number
+          total_rooms: number
+        }[]
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

@@ -30,57 +30,72 @@ interface TenantInfo {
   propertyId?: string;
 }
 
-interface TenantDashboardProps {
-  tenantInfo?: {
-    email: string;
-    propertyName: string;
-    roomNumber: string;
-    tenantName: string;
-    dateOfEntry: string;
-  };
-}
-
-const TenantDashboard = ({ tenantInfo: loggedInTenantInfo }: TenantDashboardProps) => {
+const TenantDashboard = () => {
   const { toast } = useToast();
-  const [tenantInfo, setTenantInfo] = useState<TenantInfo>(() => {
-    // Use logged-in tenant info if available, otherwise use demo data
-    if (loggedInTenantInfo) {
-      // Map property locations
-      const locationMap: Record<string, string> = {
-        'White House': 'Kisumu CBD, Kisumu',
-        'Yellow House': 'Nyalenda, Kisumu',
-        'Green House': 'Nakuru Town, Nakuru',
-        'Skyline Apartment': 'Nairobi West, Nairobi'
-      };
-
-      return {
-        name: loggedInTenantInfo.tenantName,
-        email: loggedInTenantInfo.email,
-        phone: "+254 712 345 678", // Default value
-        room: loggedInTenantInfo.roomNumber,
-        apartment: loggedInTenantInfo.propertyName,
-        location: locationMap[loggedInTenantInfo.propertyName] || "Location TBD",
-        rentAmount: 15000, // Default value based on property
-        dateOfEntry: loggedInTenantInfo.dateOfEntry,
-        emergencyContact: "+254 701 234 567", // Default value
-        accessories: ["Bed", "Table", "Chair"], // Default value
-      };
-    }
-    
-    // Default demo data
-    return {
-      name: "John Kamau",
-      email: "john.kamau@email.com",
-      phone: "+254 712 345 678",
-      room: "skyline001",
-      apartment: "Skyline Apartment",
-      location: "Nairobi West, Nairobi",
-      rentAmount: 15000,
-      dateOfEntry: "2024-01-15",
-      emergencyContact: "+254 701 234 567",
-      accessories: ["Bed", "Table", "Chair", "Wardrobe"],
-    };
+  const [tenantInfo, setTenantInfo] = useState<TenantInfo>({
+    name: "John Kamau",
+    email: "john.kamau@email.com",
+    phone: "+254 712 345 678",
+    room: "skyline001",
+    apartment: "Skyline Apartment",
+    location: "Nairobi West, Nairobi",
+    rentAmount: 15000,
+    dateOfEntry: "2024-01-15",
+    emergencyContact: "+254 701 234 567",
+    accessories: ["Bed", "Table", "Chair", "Wardrobe"],
   });
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch tenant's room and property info on mount
+  useEffect(() => {
+    const fetchTenantData = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: roomData } = await supabase
+        .from('rooms')
+        .select(`
+          id,
+          room_number,
+          rent_amount,
+          tenant_date_of_entry,
+          tenant_name,
+          tenant_email,
+          tenant_phone,
+          tenant_accessories,
+          properties (
+            id,
+            name,
+            location
+          )
+        `)
+        .eq('tenant_id', session.user.id)
+        .single();
+
+      if (roomData && roomData.properties) {
+        setTenantInfo({
+          name: roomData.tenant_name || session.user.email || "Tenant",
+          email: roomData.tenant_email || session.user.email || "",
+          phone: roomData.tenant_phone || "+254 712 345 678",
+          room: roomData.room_number,
+          apartment: roomData.properties.name,
+          location: roomData.properties.location,
+          rentAmount: Number(roomData.rent_amount),
+          dateOfEntry: roomData.tenant_date_of_entry || new Date().toISOString().split('T')[0],
+          emergencyContact: "+254 701 234 567",
+          accessories: roomData.tenant_accessories || ["Bed", "Table", "Chair"],
+          roomId: roomData.id,
+          propertyId: roomData.properties.id,
+        });
+      }
+      setIsLoading(false);
+    };
+
+    fetchTenantData();
+  }, []);
 
   // Set up real-time listener for tenant profile updates
   useEffect(() => {
@@ -153,6 +168,17 @@ const TenantDashboard = ({ tenantInfo: loggedInTenantInfo }: TenantDashboardProp
     });
     setMessage("");
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-earth">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading your room details...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-earth p-6">
