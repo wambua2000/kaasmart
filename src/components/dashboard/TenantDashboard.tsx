@@ -33,16 +33,16 @@ interface TenantInfo {
 const TenantDashboard = () => {
   const { toast } = useToast();
   const [tenantInfo, setTenantInfo] = useState<TenantInfo>({
-    name: "John Kamau",
-    email: "john.kamau@email.com",
-    phone: "+254 712 345 678",
-    room: "skyline001",
-    apartment: "Skyline Apartment",
-    location: "Nairobi West, Nairobi",
-    rentAmount: 15000,
-    dateOfEntry: "2024-01-15",
-    emergencyContact: "+254 701 234 567",
-    accessories: ["Bed", "Table", "Chair", "Wardrobe"],
+    name: "",
+    email: "",
+    phone: "",
+    room: "",
+    apartment: "",
+    location: "",
+    rentAmount: 0,
+    dateOfEntry: "",
+    emergencyContact: "",
+    accessories: [],
   });
   const [isLoading, setIsLoading] = useState(true);
 
