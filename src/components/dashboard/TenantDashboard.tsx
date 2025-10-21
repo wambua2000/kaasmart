@@ -32,7 +32,18 @@ interface TenantInfo {
 
 const TenantDashboard = () => {
   const { toast } = useToast();
-  const [tenantInfo, setTenantInfo] = useState<TenantInfo | null>(null);
+  const [tenantInfo, setTenantInfo] = useState<TenantInfo>({
+    name: "John Kamau",
+    email: "john.kamau@email.com",
+    phone: "+254 712 345 678",
+    room: "skyline001",
+    apartment: "Skyline Apartment",
+    location: "Nairobi West, Nairobi",
+    rentAmount: 15000,
+    dateOfEntry: "2024-01-15",
+    emergencyContact: "+254 701 234 567",
+    accessories: ["Bed", "Table", "Chair", "Wardrobe"],
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch tenant's room and property info on mount
@@ -44,8 +55,7 @@ const TenantDashboard = () => {
         return;
       }
 
-      // First try to query by tenant_id
-      let { data: roomData, error } = await supabase
+      const { data: roomData } = await supabase
         .from('rooms')
         .select(`
           id,
@@ -63,56 +73,23 @@ const TenantDashboard = () => {
           )
         `)
         .eq('tenant_id', session.user.id)
-        .maybeSingle();
-
-      // Fallback: If no room found by tenant_id, try by tenant_email
-      if (!roomData && session.user.email) {
-        const fallbackQuery = await supabase
-          .from('rooms')
-          .select(`
-            id,
-            room_number,
-            rent_amount,
-            tenant_date_of_entry,
-            tenant_name,
-            tenant_email,
-            tenant_phone,
-            tenant_accessories,
-            properties (
-              id,
-              name,
-              location
-            )
-          `)
-          .eq('tenant_email', session.user.email)
-          .maybeSingle();
-        
-        roomData = fallbackQuery.data;
-        error = fallbackQuery.error;
-      }
-
-      if (error) {
-        console.error('Error fetching room data:', error);
-      }
+        .single();
 
       if (roomData && roomData.properties) {
         setTenantInfo({
           name: roomData.tenant_name || session.user.email || "Tenant",
           email: roomData.tenant_email || session.user.email || "",
-          phone: roomData.tenant_phone || "",
+          phone: roomData.tenant_phone || "+254 712 345 678",
           room: roomData.room_number,
           apartment: roomData.properties.name,
           location: roomData.properties.location,
           rentAmount: Number(roomData.rent_amount),
           dateOfEntry: roomData.tenant_date_of_entry || new Date().toISOString().split('T')[0],
           emergencyContact: "+254 701 234 567",
-          accessories: roomData.tenant_accessories || [],
+          accessories: roomData.tenant_accessories || ["Bed", "Table", "Chair"],
           roomId: roomData.id,
           propertyId: roomData.properties.id,
         });
-      } else {
-        // No room assigned
-        setTenantInfo(null);
       }
       setIsLoading(false);
     };
@@ -122,8 +99,6 @@ const TenantDashboard = () => {
 
   // Set up real-time listener for tenant profile updates
   useEffect(() => {
-    if (!tenantInfo?.roomId) return;
-
     const channel = supabase
       .channel('tenant-profile-updates')
       .on(
@@ -132,20 +107,20 @@ const TenantDashboard = () => {
           event: 'UPDATE',
           schema: 'public',
           table: 'rooms',
-          filter: `id=eq.${tenantInfo.roomId}`
+          filter: `tenant_email=eq.${tenantInfo.email}`
         },
         (payload) => {
           console.log('Tenant profile updated:', payload);
           // Update local state with new tenant data
           const updatedRoom = payload.new;
-          setTenantInfo(prev => prev ? {
+          setTenantInfo(prev => ({
             ...prev,
             name: updatedRoom.tenant_name || prev.name,
             email: updatedRoom.tenant_email || prev.email,
             phone: updatedRoom.tenant_phone || prev.phone,
             accessories: updatedRoom.tenant_accessories || prev.accessories,
             dateOfEntry: updatedRoom.tenant_date_of_entry || prev.dateOfEntry
-          } : null);
+          }));
           
           toast({
             title: "Profile Updated",
@@ -158,7 +133,7 @@ const TenantDashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [tenantInfo?.roomId, toast]);
+  }, [tenantInfo.email, toast]);
 
   const [maintenanceRequest, setMaintenanceRequest] = useState("");
   const [message, setMessage] = useState("");
@@ -201,21 +176,6 @@ const TenantDashboard = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Loading your room details...</p>
         </div>
-      </div>
-    );
-  }
-
-  if (!tenantInfo) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-earth p-6">
-        <Card className="max-w-md">
-          <CardHeader>
-            <CardTitle>No Room Assigned</CardTitle>
-            <CardDescription>
-              You don't have a room assigned yet. Please contact your property manager.
-            </CardDescription>
-          </CardHeader>
-        </Card>
       </div>
     );
   }
