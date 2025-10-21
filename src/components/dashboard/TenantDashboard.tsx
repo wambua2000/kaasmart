@@ -55,7 +55,7 @@ const TenantDashboard = () => {
         return;
       }
 
-      const { data: roomData } = await supabase
+      const { data: roomData, error } = await supabase
         .from('rooms')
         .select(`
           id,
@@ -74,6 +74,27 @@ const TenantDashboard = () => {
         `)
         .eq('tenant_id', session.user.id)
         .single();
+
+      if (error) {
+        console.error('Error fetching tenant room data:', error);
+        toast({
+          title: "Error Loading Room Data",
+          description: "Could not load your room information. Please contact support.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (!roomData) {
+        console.warn('No room data found for tenant');
+        toast({
+          title: "No Room Assigned",
+          description: "You don't have a room assigned yet. Please contact your property owner.",
+        });
+        setIsLoading(false);
+        return;
+      }
 
       if (roomData && roomData.properties) {
         setTenantInfo({
