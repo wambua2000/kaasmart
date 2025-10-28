@@ -72,6 +72,7 @@ const MessageCenter = ({
       let query = supabase
         .from('messages')
         .select('*')
+        .not('content', 'ilike', '%MAINTENANCE REQUEST%')
         .order('created_at', { ascending: false });
 
       // Filter based on user role

@@ -64,7 +64,14 @@ const PropertyOwnerDashboard = () => {
   const [isInviteManagerOpen, setIsInviteManagerOpen] = useState(false);
   const [isPasswordResetOpen, setIsPasswordResetOpen] = useState(false);
   const [pendingResetCount, setPendingResetCount] = useState(0);
-  const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
+  const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{
+    id: string;
+    property: string;
+    room: string;
+    tenant: string;
+    message: string;
+    timestamp: string;
+  }>>([]);
   const [messageText, setMessageText] = useState("");
   const [selectedRecipient, setSelectedRecipient] = useState("all");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -138,7 +145,7 @@ const PropertyOwnerDashboard = () => {
   }, []);
 
   // Fetch pending password reset count
-  const fetchPendingResetCount = async () => {
+  const fetchPendingResetCount = useCallback(async () => {
     try {
       const { count, error } = await supabase
         .from('password_reset_requests')
@@ -150,7 +157,43 @@ const PropertyOwnerDashboard = () => {
     } catch (error) {
       console.error("Error fetching pending reset count:", error);
     }
-  };
+  }, []);
+
+  // Fetch maintenance requests
+  const fetchMaintenanceRequests = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: messages, error } = await supabase
+        .from('messages')
+        .select(`
+          id,
+          content,
+          created_at,
+          property_id,
+          sender_id,
+          profiles!messages_sender_id_fkey(full_name)
+        `)
+        .ilike('content', '%MAINTENANCE REQUEST%')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedMessages = messages?.map(msg => ({
+        id: msg.id,
+        property: 'Property',
+        room: 'N/A',
+        tenant: (msg.profiles as any)?.full_name || 'Unknown Tenant',
+        message: msg.content,
+        timestamp: new Date(msg.created_at).toLocaleString()
+      })) || [];
+
+      setMaintenanceMessages(formattedMessages);
+    } catch (error) {
+      console.error('Error fetching maintenance requests:', error);
+    }
+  }, []);
 
   // Fetch authenticated user and initial data on mount
   useEffect(() => {
@@ -160,11 +203,12 @@ const PropertyOwnerDashboard = () => {
         setCurrentUserId(user.id);
         fetchProperties();
         fetchPendingResetCount();
+        fetchMaintenanceRequests();
       }
     };
     
     initializeData();
-  }, [fetchProperties]);
+  }, [fetchProperties, fetchPendingResetCount, fetchMaintenanceRequests]);
 
   // Set up real-time listener for tenant profile updates
   useEffect(() => {
@@ -196,18 +240,39 @@ const PropertyOwnerDashboard = () => {
     };
   }, [fetchProperties, toast]);
 
+  // Set up real-time listener for maintenance requests
+  useEffect(() => {
+    const channel = supabase
+      .channel('maintenance-requests')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: 'content=ilike.*MAINTENANCE REQUEST*'
+      }, () => {
+        fetchMaintenanceRequests();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchMaintenanceRequests]);
+
   // Add visibility change listener to refresh data when user returns to tab
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         console.log('Tab became visible, refreshing properties');
         fetchProperties();
+        fetchPendingResetCount();
+        fetchMaintenanceRequests();
       }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [fetchProperties]);
+  }, [fetchProperties, fetchPendingResetCount, fetchMaintenanceRequests]);
 
   // Set up real-time listener for password reset requests
   useEffect(() => {

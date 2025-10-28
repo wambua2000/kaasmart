@@ -37,7 +37,14 @@ const ManagerDashboard = () => {
   const [isMaintenanceOpen, setIsMaintenanceOpen] = useState(false);
   const [isMessageCenterOpen, setIsMessageCenterOpen] = useState(false);
   const [isLeaseAgreementsOpen, setIsLeaseAgreementsOpen] = useState(false);
-  const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{id: string, property: string, room: string, tenant: string, message: string, timestamp: string}>>([]);
+  const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{
+    id: string;
+    property: string;
+    room: string;
+    tenant: string;
+    message: string;
+    timestamp: string;
+  }>>([]);
   const [properties, setProperties] = useState<Property[]>([]);
 
   const totalProperties = properties.length;
@@ -101,10 +108,47 @@ const ManagerDashboard = () => {
     }
   }, [toast]);
 
+  // Fetch maintenance requests
+  const fetchMaintenanceRequests = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: messages, error } = await supabase
+        .from('messages')
+        .select(`
+          id,
+          content,
+          created_at,
+          property_id,
+          sender_id,
+          profiles!messages_sender_id_fkey(full_name)
+        `)
+        .ilike('content', '%MAINTENANCE REQUEST%')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedMessages = messages?.map(msg => ({
+        id: msg.id,
+        property: 'Property',
+        room: 'N/A',
+        tenant: (msg.profiles as any)?.full_name || 'Unknown Tenant',
+        message: msg.content,
+        timestamp: new Date(msg.created_at).toLocaleString()
+      })) || [];
+
+      setMaintenanceMessages(formattedMessages);
+    } catch (error) {
+      console.error('Error fetching maintenance requests:', error);
+    }
+  }, []);
+
   // Fetch properties on mount
   useEffect(() => {
     fetchProperties();
-  }, [fetchProperties]);
+    fetchMaintenanceRequests();
+  }, [fetchProperties, fetchMaintenanceRequests]);
 
   // Set up real-time listener for tenant profile updates
   useEffect(() => {
@@ -136,18 +180,38 @@ const ManagerDashboard = () => {
     };
   }, [fetchProperties, toast]);
 
+  // Set up real-time listener for maintenance requests
+  useEffect(() => {
+    const channel = supabase
+      .channel('manager-maintenance-requests')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: 'content=ilike.*MAINTENANCE REQUEST*'
+      }, () => {
+        fetchMaintenanceRequests();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchMaintenanceRequests]);
+
   // Add visibility change listener to refresh data when user returns to tab
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         console.log('Tab became visible, refreshing properties');
         fetchProperties();
+        fetchMaintenanceRequests();
       }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [fetchProperties]);
+  }, [fetchProperties, fetchMaintenanceRequests]);
 
   const handleAddProperty = () => {
     const newProperty: Property = {
