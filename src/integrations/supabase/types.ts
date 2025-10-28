@@ -493,14 +493,8 @@ export type Database = {
         }
         Returns: boolean
       }
-      hash_password: {
-        Args: { password: string }
-        Returns: string
-      }
-      use_invitation: {
-        Args: { invitation_id: string }
-        Returns: boolean
-      }
+      hash_password: { Args: { password: string }; Returns: string }
+      use_invitation: { Args: { invitation_id: string }; Returns: boolean }
       verify_invitation_login: {
         Args: { login_email: string; login_password: string }
         Returns: {
