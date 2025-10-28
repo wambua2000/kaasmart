@@ -170,6 +170,23 @@ const PropertyOwnerDashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // First, get the owner's property IDs
+      const { data: ownerProperties } = await supabase
+        .from('properties')
+        .select('id')
+        .eq('owner_id', user.id);
+
+      const propertyIds = ownerProperties?.map(p => p.id) || [];
+
+      console.log('Property Owner - User ID:', user.id);
+      console.log('Property Owner - Property IDs:', propertyIds);
+
+      if (propertyIds.length === 0) {
+        setMaintenanceMessages([]);
+        return;
+      }
+
+      // Fetch maintenance messages for owned properties
       const { data: messages, error } = await supabase
         .from('messages')
         .select(`
@@ -180,10 +197,13 @@ const PropertyOwnerDashboard = () => {
           sender_id,
           profiles!messages_sender_id_fkey(full_name)
         `)
+        .in('property_id', propertyIds)
         .ilike('content', '%MAINTENANCE REQUEST%')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+
+      console.log('Property Owner - Messages fetched:', messages?.length || 0);
 
       // Fetch room and property details for each message
       const messagesWithDetails = await Promise.all(

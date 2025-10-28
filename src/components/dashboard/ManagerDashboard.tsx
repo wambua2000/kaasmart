@@ -119,7 +119,24 @@ const ManagerDashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: messages, error } = await supabase
+      // First, get the manager's assigned property IDs
+      const { data: managerAssignments } = await supabase
+        .from('manager_properties')
+        .select('property_id, can_manage_all')
+        .eq('manager_id', user.id);
+
+      console.log('Manager - User ID:', user.id);
+      console.log('Manager - Assignments:', managerAssignments);
+
+      if (!managerAssignments || managerAssignments.length === 0) {
+        setMaintenanceMessages([]);
+        return;
+      }
+
+      // Check if manager can manage all properties
+      const canManageAll = managerAssignments.some(mp => mp.can_manage_all);
+
+      let query = supabase
         .from('messages')
         .select(`
           id,
@@ -129,10 +146,30 @@ const ManagerDashboard = () => {
           sender_id,
           profiles!messages_sender_id_fkey(full_name)
         `)
-        .ilike('content', '%MAINTENANCE REQUEST%')
+        .ilike('content', '%MAINTENANCE REQUEST%');
+
+      // If manager can't manage all, filter by assigned properties
+      if (!canManageAll) {
+        const propertyIds = managerAssignments
+          .map(mp => mp.property_id)
+          .filter(id => id !== null);
+
+        console.log('Manager - Assigned Property IDs:', propertyIds);
+
+        if (propertyIds.length === 0) {
+          setMaintenanceMessages([]);
+          return;
+        }
+
+        query = query.in('property_id', propertyIds);
+      }
+
+      const { data: messages, error } = await query
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+
+      console.log('Manager - Messages fetched:', messages?.length || 0);
 
       // Fetch room and property details for each message
       const messagesWithDetails = await Promise.all(
