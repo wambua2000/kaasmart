@@ -558,7 +558,7 @@ const ManagerDashboard = () => {
                         </div>
                         <div className="space-y-1">
                           <p className="text-sm font-semibold text-primary">
-                            {msg.property} - {msg.room.toUpperCase()}
+                            {msg.property} - {msg.room.charAt(0).toUpperCase() + msg.room.slice(1)}
                           </p>
                           <p className="text-sm text-muted-foreground">
                             Tenant: {msg.tenant}

@@ -248,7 +248,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
       setMessageContent("");
       toast({
         title: "Message Sent",
-        description: `Message sent to ${selectedRoom.tenant.name} in ${selectedRoom.number.toUpperCase()}. SMS notification will be sent if available.`,
+        description: `Message sent to ${selectedRoom.tenant.name} in ${selectedRoom.number.charAt(0).toUpperCase() + selectedRoom.number.slice(1)}. SMS notification will be sent if available.`,
       });
     } catch (error) {
       console.error('Error sending message:', error);
@@ -524,7 +524,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                 >
                   <CardContent className="p-3">
                      <div className="flex items-center justify-between">
-                       <span className="font-medium">{room.number.toUpperCase()}</span>
+                       <span className="font-medium">{room.number.charAt(0).toUpperCase() + room.number.slice(1)}</span>
                        <Badge variant={room.status === "occupied" ? "default" : "secondary"}>
                          {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
                        </Badge>
@@ -555,7 +555,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
             {selectedRoom ? (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold">{selectedRoom.number.toUpperCase()}</h2>
+                  <h2 className="text-2xl font-bold">{selectedRoom.number.charAt(0).toUpperCase() + selectedRoom.number.slice(1)}</h2>
                   <Badge 
                     variant={selectedRoom.status === "occupied" ? "default" : "secondary"}
                     className="text-base px-3 py-1"
@@ -885,7 +885,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
                             Send Message to {selectedRoom.tenant.name}
                           </CardTitle>
                           <CardDescription>
-                            This message will only be sent to the tenant in {selectedRoom.number.toUpperCase()}
+                            This message will only be sent to the tenant in {selectedRoom.number.charAt(0).toUpperCase() + selectedRoom.number.slice(1)}
                           </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-3">
