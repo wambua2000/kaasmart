@@ -46,6 +46,7 @@ const ManagerDashboard = () => {
     timestamp: string;
   }>>([]);
   const [properties, setProperties] = useState<Property[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.total_rooms, 0);
@@ -144,10 +145,18 @@ const ManagerDashboard = () => {
     }
   }, []);
 
-  // Fetch properties on mount
+  // Fetch properties on mount and set current user ID
   useEffect(() => {
-    fetchProperties();
-    fetchMaintenanceRequests();
+    const initializeData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+        fetchProperties();
+        fetchMaintenanceRequests();
+      }
+    };
+    
+    initializeData();
   }, [fetchProperties, fetchMaintenanceRequests]);
 
   // Set up real-time listener for tenant profile updates
@@ -494,11 +503,13 @@ const ManagerDashboard = () => {
               <SheetTitle>Message Center</SheetTitle>
             </SheetHeader>
             <div className="mt-6">
-              <MessageCenter
-                currentUserId="mock-manager-id"
-                currentUserRole="manager"
-                properties={properties}
-              />
+              {currentUserId && (
+                <MessageCenter
+                  currentUserId={currentUserId}
+                  currentUserRole="manager"
+                  properties={properties}
+                />
+              )}
             </div>
           </SheetContent>
         </Sheet>

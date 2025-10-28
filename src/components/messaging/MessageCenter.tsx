@@ -80,14 +80,19 @@ const MessageCenter = ({
         // Tenants see: messages sent to them OR messages they sent
         query = query.or(`receiver_id.eq.${currentUserId},sender_id.eq.${currentUserId}`);
       } else if (currentUserRole === 'owner') {
-        // Owners see: messages they sent OR messages in their properties
+        // Owners see: messages they sent OR messages sent to them in their properties
         if (selectedPropertyId && selectedPropertyId !== 'all') {
           query = query.eq('property_id', selectedPropertyId);
         }
-        query = query.or(`sender_id.eq.${currentUserId}`);
-      } else if (currentUserRole === 'manager') {
-        // Managers see all messages (view only)
+        // Show messages where owner is either sender or receiver
         query = query.or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`);
+      } else if (currentUserRole === 'manager') {
+        // Managers see all messages for properties they manage (RLS handles filtering)
+        // Apply property filter if specific property selected
+        if (selectedPropertyId && selectedPropertyId !== 'all') {
+          query = query.eq('property_id', selectedPropertyId);
+        }
+        // Don't add sender/receiver filter - let RLS policies handle authorization
       }
 
       const { data, error } = await query;
