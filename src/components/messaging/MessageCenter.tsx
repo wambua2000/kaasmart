@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MessageSquare, Send, Users, AlertCircle } from "lucide-react";
+import { MessageSquare, Send, Users, AlertCircle, Building, Home } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -17,6 +17,10 @@ interface Message {
   receiver_id: string;
   property_id?: string;
   created_at: string;
+  property_name?: string;
+  room_number?: string;
+  sender_name?: string;
+  sender_role?: string;
 }
 
 interface MessageCenterProps {
@@ -55,8 +59,39 @@ const MessageCenter = ({
           schema: 'public',
           table: 'messages'
         },
-        () => {
-          console.log('New message detected - reloading messages');
+        async (payload) => {
+          console.log('New message detected:', payload);
+          
+          // Check if this message is relevant to current user
+          const newMsg = payload.new;
+          const isRelevant = 
+            newMsg.receiver_id === currentUserId || 
+            newMsg.sender_id === currentUserId ||
+            (currentUserRole === 'manager' && newMsg.property_id);
+
+          if (isRelevant && newMsg.sender_id !== currentUserId) {
+            // Fetch sender details for toast
+            const { data: sender } = await supabase
+              .from('profiles')
+              .select('full_name, role')
+              .eq('id', newMsg.sender_id)
+              .single();
+
+            const { data: property } = await supabase
+              .from('properties')
+              .select('name')
+              .eq('id', newMsg.property_id)
+              .maybeSingle();
+
+            toast({
+              title: `New Message from ${sender?.full_name || 'Unknown'}`,
+              description: property?.name 
+                ? `${property.name} - ${newMsg.content.substring(0, 50)}...`
+                : newMsg.content.substring(0, 50) + '...',
+              duration: 5000,
+            });
+          }
+          
           loadMessages();
         }
       )
@@ -65,13 +100,17 @@ const MessageCenter = ({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedPropertyId, selectedRoomId, currentUserId]);
+  }, [selectedPropertyId, selectedRoomId, currentUserId, currentUserRole, toast]);
 
   const loadMessages = async () => {
     try {
       let query = supabase
         .from('messages')
-        .select('*')
+        .select(`
+          *,
+          properties(name),
+          sender:profiles!messages_sender_id_fkey(full_name, role)
+        `)
         .not('content', 'ilike', '%MAINTENANCE REQUEST%')
         .order('created_at', { ascending: false });
 
@@ -104,7 +143,34 @@ const MessageCenter = ({
         return;
       }
 
-      setMessages(data || []);
+      // Fetch room numbers for messages sent by tenants
+      const messagesWithDetails = await Promise.all(
+        (data || []).map(async (msg: any) => {
+          let roomNumber = null;
+          
+          // Get room number if sender is a tenant
+          if (msg.sender?.role === 'tenant' && msg.property_id) {
+            const { data: room } = await supabase
+              .from('rooms')
+              .select('room_number')
+              .eq('property_id', msg.property_id)
+              .eq('tenant_id', msg.sender_id)
+              .maybeSingle();
+            
+            roomNumber = room?.room_number;
+          }
+
+          return {
+            ...msg,
+            property_name: msg.properties?.name,
+            room_number: roomNumber,
+            sender_name: msg.sender?.full_name,
+            sender_role: msg.sender?.role
+          };
+        })
+      );
+
+      setMessages(messagesWithDetails);
     } catch (error) {
       console.error('Error loading messages:', error);
       setMessages([]);
@@ -408,26 +474,75 @@ const MessageCenter = ({
         <CardContent>
           <div className="space-y-4 max-h-96 overflow-y-auto">
             {messages.length > 0 ? (
-              messages.map((message) => (
-                <div key={message.id} className="border rounded-lg p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">
-                        {message.sender_id === currentUserId ? 'You' : 'Other'}
-                      </Badge>
+              messages.map((message) => {
+                const isSentByMe = message.sender_id === currentUserId;
+                
+                return (
+                  <div 
+                    key={message.id} 
+                    className={`border rounded-lg p-4 space-y-3 ${
+                      isSentByMe ? 'bg-primary/5 border-primary/20' : 'bg-card'
+                    }`}
+                  >
+                    {/* Header with Property and Room Info */}
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        {/* Property Name Badge */}
+                        {message.property_name && (
+                          <Badge variant="outline" className="bg-primary/10 text-primary">
+                            <Building className="h-3 w-3 mr-1" />
+                            {message.property_name}
+                          </Badge>
+                        )}
+                        
+                        {/* Room Number Badge */}
+                        {message.room_number && (
+                          <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                            <Home className="h-3 w-3 mr-1" />
+                            Room {message.room_number}
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {/* Timestamp */}
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(message.created_at).toLocaleDateString()} {' '}
+                        {new Date(message.created_at).toLocaleTimeString([], { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}
+                      </span>
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(message.created_at).toLocaleDateString()} {new Date(message.created_at).toLocaleTimeString()}
-                    </span>
-                   </div>
-                   <p className="text-sm leading-relaxed">{message.content}</p>
-                 </div>
-              ))
+
+                    {/* Sender Info */}
+                    <div className="flex items-center gap-2">
+                      <Badge 
+                        variant={isSentByMe ? "default" : "secondary"}
+                        className={isSentByMe ? "" : getRoleColor(message.sender_role || '')}
+                      >
+                        {isSentByMe ? 'You' : message.sender_name || 'Unknown'}
+                      </Badge>
+                      {!isSentByMe && message.sender_role && (
+                        <span className="text-xs text-muted-foreground capitalize">
+                          ({message.sender_role})
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Message Content */}
+                    <p className="text-sm leading-relaxed pl-2 border-l-2 border-primary/20">
+                      {message.content}
+                    </p>
+                  </div>
+                );
+              })
             ) : (
               <div className="text-center py-8">
                 <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">No messages yet</p>
-                <p className="text-sm text-muted-foreground">Start a conversation by sending a message</p>
+                <p className="text-sm text-muted-foreground">
+                  Start a conversation by sending a message
+                </p>
               </div>
             )}
           </div>
