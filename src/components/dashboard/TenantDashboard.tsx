@@ -227,14 +227,27 @@ const TenantDashboard = () => {
         .on(
           'postgres_changes',
           {
-            event: '*',
+            event: 'UPDATE',
             schema: 'public',
             table: 'messages',
             filter: `sender_id=eq.${session.user.id}`
           },
-          () => {
-            console.log('Maintenance request updated');
-            fetchMaintenanceRequests();
+          async (payload) => {
+            console.log('Maintenance request updated (tenant view):', payload);
+            
+            // Check if status changed to Approved
+            const oldContent = payload.old?.content || '';
+            const newContent = payload.new?.content || '';
+            
+            if (newContent.includes('Status: Approved') && !oldContent.includes('Status: Approved')) {
+              toast({
+                title: "Request Approved ✓",
+                description: "Your maintenance request has been approved by the property owner.",
+                duration: 5000,
+              });
+            }
+            
+            await fetchMaintenanceRequests();
           }
         )
         .subscribe();
@@ -245,7 +258,7 @@ const TenantDashboard = () => {
     };
 
     setupListener();
-  }, [fetchMaintenanceRequests]);
+  }, [fetchMaintenanceRequests, toast]);
 
   const [maintenanceRequest, setMaintenanceRequest] = useState("");
   const [message, setMessage] = useState("");

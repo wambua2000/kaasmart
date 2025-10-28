@@ -301,6 +301,17 @@ const PropertyOwnerDashboard = () => {
       }, () => {
         fetchMaintenanceRequests();
       })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'messages'
+      }, (payload) => {
+        // Check if it's a maintenance request message
+        if (payload.new.content?.includes('MAINTENANCE REQUEST')) {
+          console.log('Maintenance request updated:', payload);
+          fetchMaintenanceRequests();
+        }
+      })
       .subscribe();
 
     return () => {
