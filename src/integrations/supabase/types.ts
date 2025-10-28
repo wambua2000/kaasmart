@@ -494,6 +494,10 @@ export type Database = {
         Returns: boolean
       }
       hash_password: { Args: { password: string }; Returns: string }
+      is_tenant_of_property: {
+        Args: { _property_id: string; _user_id: string }
+        Returns: boolean
+      }
       use_invitation: { Args: { invitation_id: string }; Returns: boolean }
       verify_invitation_login: {
         Args: { login_email: string; login_password: string }
