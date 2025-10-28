@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings, ExternalLink, Wrench, MessageSquare, Eye, Trash2, Pencil, KeyRound } from "lucide-react";
+import { Building2, Home, Users, DollarSign, Plus, MapPin, Mail, FileText, Settings, ExternalLink, Wrench, MessageSquare, Eye, Trash2, Pencil, KeyRound, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
   AlertDialog, 
@@ -86,6 +86,7 @@ const PropertyOwnerDashboard = () => {
   const [isLeaseAgreementsOpen, setIsLeaseAgreementsOpen] = useState(false);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
+  const [approvingRequestId, setApprovingRequestId] = useState<string | null>(null);
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.total_rooms, 0);
@@ -222,6 +223,13 @@ const PropertyOwnerDashboard = () => {
             .maybeSingle();
 
           const parsed = parseMaintenanceRequest(msg.content);
+
+          console.log('Maintenance Request Debug:', {
+            messageId: msg.id,
+            rawStatus: msg.content.match(/Status:\s*([^\n]+)/i)?.[1],
+            parsedStatus: parsed.status,
+            willShowButton: parsed.status === 'Pending Review'
+          });
 
           return {
             id: msg.id,
@@ -507,35 +515,52 @@ const PropertyOwnerDashboard = () => {
   };
 
   const handleApproveMaintenanceRequest = async (messageId: string, propertyName: string, roomNumber: string) => {
+    setApprovingRequestId(messageId);
     try {
-      // Get the message
       const message = maintenanceMessages.find(m => m.id === messageId);
-      if (!message) return;
+      if (!message) {
+        toast({
+          title: "Error",
+          description: "Message not found",
+          variant: "destructive",
+        });
+        return;
+      }
 
-      // Update the message status
       const updatedContent = updateMaintenanceStatus(message.fullContent, 'Approved');
+
+      console.log('Approving maintenance request:', {
+        messageId,
+        oldContent: message.fullContent.substring(0, 100),
+        newContent: updatedContent.substring(0, 100)
+      });
 
       const { error } = await supabase
         .from('messages')
         .update({ content: updatedContent })
         .eq('id', messageId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error approving maintenance request:', error);
+        throw error;
+      }
 
       toast({
-        title: "Request Approved",
+        title: "Request Approved ✓",
         description: `Maintenance request approved for ${propertyName} - Room ${roomNumber}`,
       });
 
-      // Refresh maintenance requests
+      // Force refresh the maintenance requests
       await fetchMaintenanceRequests();
     } catch (error) {
-      console.error('Error approving maintenance request:', error);
+      console.error('Error in handleApproveMaintenanceRequest:', error);
       toast({
         title: "Error",
         description: "Failed to approve maintenance request. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setApprovingRequestId(null);
     }
   };
 
@@ -862,14 +887,26 @@ const PropertyOwnerDashboard = () => {
                     <p className="text-sm border-t pt-2">{msg.message}</p>
                     <div className="flex items-center justify-between border-t pt-2">
                       <span className="text-xs text-muted-foreground">{msg.timestamp}</span>
-                      {msg.status === 'Pending Review' && (
+                      {msg.status === 'Pending Review' ? (
                         <Button 
                           size="sm" 
                           onClick={() => handleApproveMaintenanceRequest(msg.id, msg.property, msg.room)}
                           className="bg-gradient-hero hover:shadow-glow"
+                          disabled={approvingRequestId === msg.id}
                         >
-                          Approve Request
+                          {approvingRequestId === msg.id ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Approving...
+                            </>
+                          ) : (
+                            'Approve Request'
+                          )}
                         </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          Status: {msg.status}
+                        </span>
                       )}
                     </div>
                   </div>

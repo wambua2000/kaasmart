@@ -29,7 +29,8 @@ export function parseMaintenanceRequest(content: string): ParsedMaintenanceReque
 
   // Extract status (default to Pending Review)
   const statusMatch = content.match(/Status:\s*([^\n]+)/i);
-  const status = (statusMatch ? statusMatch[1].trim() : 'Pending Review') as ParsedMaintenanceRequest['status'];
+  const rawStatus = statusMatch ? statusMatch[1].trim() : 'Pending Review';
+  const status = rawStatus as ParsedMaintenanceRequest['status'];
 
   // Extract description (everything between header and status)
   const descriptionMatch = content.match(/Category:[^\n]+\n\n([\s\S]+?)(?:\n\nStatus:|$)/i);
