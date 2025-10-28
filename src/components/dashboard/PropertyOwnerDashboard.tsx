@@ -39,6 +39,7 @@ import InviteManagerModal from "@/components/manager/InviteManagerModal";
 import PasswordResetRequestsSheet from "@/components/property/PasswordResetRequestsSheet";
 import AllLeaseDocumentsViewer from "@/components/property/AllLeaseDocumentsViewer";
 import { supabase } from "@/integrations/supabase/client";
+import { parseMaintenanceRequest, getPriorityVariant, getStatusVariant, updateMaintenanceStatus } from "@/lib/maintenanceUtils";
 
 interface Property {
   id: string;
@@ -71,6 +72,10 @@ const PropertyOwnerDashboard = () => {
     tenant: string;
     message: string;
     timestamp: string;
+    priority: string;
+    category: string;
+    status: string;
+    fullContent: string;
   }>>([]);
   const [messageText, setMessageText] = useState("");
   const [selectedRecipient, setSelectedRecipient] = useState("all");
@@ -159,7 +164,7 @@ const PropertyOwnerDashboard = () => {
     }
   }, []);
 
-  // Fetch maintenance requests
+  // Fetch maintenance requests with property and room details
   const fetchMaintenanceRequests = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -180,16 +185,40 @@ const PropertyOwnerDashboard = () => {
 
       if (error) throw error;
 
-      const formattedMessages = messages?.map(msg => ({
-        id: msg.id,
-        property: 'Property',
-        room: 'N/A',
-        tenant: (msg.profiles as any)?.full_name || 'Unknown Tenant',
-        message: msg.content,
-        timestamp: new Date(msg.created_at).toLocaleString()
-      })) || [];
+      // Fetch room and property details for each message
+      const messagesWithDetails = await Promise.all(
+        (messages || []).map(async (msg) => {
+          // Fetch room details for the sender (tenant)
+          const { data: roomData } = await supabase
+            .from('rooms')
+            .select(`
+              room_number,
+              properties (
+                name
+              )
+            `)
+            .eq('tenant_id', msg.sender_id)
+            .eq('property_id', msg.property_id)
+            .maybeSingle();
 
-      setMaintenanceMessages(formattedMessages);
+          const parsed = parseMaintenanceRequest(msg.content);
+
+          return {
+            id: msg.id,
+            property: roomData?.properties?.name || 'Unknown Property',
+            room: roomData?.room_number || 'N/A',
+            tenant: (msg.profiles as any)?.full_name || 'Unknown Tenant',
+            message: parsed.description,
+            timestamp: new Date(msg.created_at).toLocaleString(),
+            priority: parsed.priority,
+            category: parsed.category,
+            status: parsed.status,
+            fullContent: msg.content
+          };
+        })
+      );
+
+      setMaintenanceMessages(messagesWithDetails);
     } catch (error) {
       console.error('Error fetching maintenance requests:', error);
     }
@@ -443,6 +472,39 @@ const PropertyOwnerDashboard = () => {
     if (property) {
       setSelectedProperty(property);
       setIsRoomManagementOpen(true);
+    }
+  };
+
+  const handleApproveMaintenanceRequest = async (messageId: string, propertyName: string, roomNumber: string) => {
+    try {
+      // Get the message
+      const message = maintenanceMessages.find(m => m.id === messageId);
+      if (!message) return;
+
+      // Update the message status
+      const updatedContent = updateMaintenanceStatus(message.fullContent, 'Approved');
+
+      const { error } = await supabase
+        .from('messages')
+        .update({ content: updatedContent })
+        .eq('id', messageId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Request Approved",
+        description: `Maintenance request approved for ${propertyName} - Room ${roomNumber}`,
+      });
+
+      // Refresh maintenance requests
+      await fetchMaintenanceRequests();
+    } catch (error) {
+      console.error('Error approving maintenance request:', error);
+      toast({
+        title: "Error",
+        description: "Failed to approve maintenance request. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -737,24 +799,52 @@ const PropertyOwnerDashboard = () => {
 
         {/* Maintenance Sheet */}
         <Sheet open={isMaintenanceOpen} onOpenChange={setIsMaintenanceOpen}>
-          <SheetContent>
+          <SheetContent className="w-[600px] sm:max-w-[600px]">
             <SheetHeader>
-              <SheetTitle>Maintenance Messages</SheetTitle>
+              <SheetTitle>Maintenance Requests</SheetTitle>
             </SheetHeader>
             <div className="mt-6 space-y-4">
               {maintenanceMessages.length > 0 ? (
                 maintenanceMessages.map((msg) => (
-                  <div key={msg.id} className="border rounded-lg p-4 space-y-2">
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>{msg.property} - {msg.room}</span>
-                      <span>{msg.timestamp}</span>
+                  <div key={msg.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant={getPriorityVariant(msg.priority as any)}>
+                            {msg.priority.toUpperCase()} PRIORITY
+                          </Badge>
+                          <Badge variant="outline">{msg.category}</Badge>
+                          <Badge variant={getStatusVariant(msg.status)}>
+                            {msg.status}
+                          </Badge>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-primary">
+                            {msg.property} - Room {msg.room}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Tenant: {msg.tenant}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <p className="font-medium">{msg.tenant}</p>
-                    <p className="text-sm">{msg.message}</p>
+                    <p className="text-sm border-t pt-2">{msg.message}</p>
+                    <div className="flex items-center justify-between border-t pt-2">
+                      <span className="text-xs text-muted-foreground">{msg.timestamp}</span>
+                      {msg.status === 'Pending Review' && (
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleApproveMaintenanceRequest(msg.id, msg.property, msg.room)}
+                          className="bg-gradient-hero hover:shadow-glow"
+                        >
+                          Approve Request
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))
               ) : (
-                <p className="text-muted-foreground text-center">No maintenance requests</p>
+                <p className="text-muted-foreground text-center py-8">No maintenance requests</p>
               )}
             </div>
           </SheetContent>

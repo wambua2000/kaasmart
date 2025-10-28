@@ -14,6 +14,7 @@ import LeaseUpload from "@/components/property/LeaseUpload";
 import MessageCenter from "@/components/messaging/MessageCenter";
 import MaintenanceRequestForm from "@/components/messaging/MaintenanceRequestForm";
 import beautifulTenantRoom from "@/assets/beautiful-tenant-room.jpg";
+import { parseMaintenanceRequest, getPriorityVariant, getStatusVariant } from "@/lib/maintenanceUtils";
 
 interface TenantInfo {
   name: string;
@@ -46,6 +47,14 @@ const TenantDashboard = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [maintenanceRequests, setMaintenanceRequests] = useState<Array<{
+    id: string;
+    content: string;
+    created_at: string;
+    priority: string;
+    category: string;
+    status: string;
+  }>>([]);
 
   // Fetch tenant's room and property info - wrapped in useCallback for stability
   const fetchTenantData = useCallback(async () => {
@@ -118,10 +127,43 @@ const TenantDashboard = () => {
     setIsLoading(false);
   }, [toast]);
 
+  // Fetch tenant's maintenance requests
+  const fetchMaintenanceRequests = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { data: messages, error } = await supabase
+      .from('messages')
+      .select('id, content, created_at')
+      .eq('sender_id', session.user.id)
+      .ilike('content', '%MAINTENANCE REQUEST%')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching maintenance requests:', error);
+      return;
+    }
+
+    const formattedRequests = messages?.map(msg => {
+      const parsed = parseMaintenanceRequest(msg.content);
+      return {
+        id: msg.id,
+        content: parsed.description,
+        created_at: new Date(msg.created_at).toLocaleDateString(),
+        priority: parsed.priority,
+        category: parsed.category,
+        status: parsed.status
+      };
+    }) || [];
+
+    setMaintenanceRequests(formattedRequests);
+  }, []);
+
   // Fetch tenant data on mount
   useEffect(() => {
     fetchTenantData();
-  }, [fetchTenantData]);
+    fetchMaintenanceRequests();
+  }, [fetchTenantData, fetchMaintenanceRequests]);
 
   // Set up real-time listener for tenant profile updates
   useEffect(() => {
@@ -173,6 +215,37 @@ const TenantDashboard = () => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [fetchTenantData]);
+
+  // Set up real-time listener for maintenance request updates
+  useEffect(() => {
+    const setupListener = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const channel = supabase
+        .channel('tenant-maintenance-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'messages',
+            filter: `sender_id=eq.${session.user.id}`
+          },
+          () => {
+            console.log('Maintenance request updated');
+            fetchMaintenanceRequests();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    };
+
+    setupListener();
+  }, [fetchMaintenanceRequests]);
 
   const [maintenanceRequest, setMaintenanceRequest] = useState("");
   const [message, setMessage] = useState("");
@@ -427,6 +500,9 @@ const TenantDashboard = () => {
                 tenantId={currentUserId}
                 propertyId={tenantInfo.propertyId}
                 roomId={tenantInfo.roomId}
+                onRequestSubmitted={() => {
+                  fetchMaintenanceRequests();
+                }}
               />
             )}
 
@@ -436,22 +512,35 @@ const TenantDashboard = () => {
                 <CardTitle>My Maintenance History</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  <div className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium">Leaking faucet in bathroom</span>
-                      <Badge variant="destructive">Pending</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Submitted on Jan 15, 2024</p>
+                {maintenanceRequests.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No maintenance requests yet. Submit a request above if you need assistance.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {maintenanceRequests.map((request) => (
+                      <div key={request.id} className="p-3 border rounded-lg">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge variant={getPriorityVariant(request.priority as any)}>
+                                {request.priority.toUpperCase()}
+                              </Badge>
+                              <Badge variant="outline">{request.category}</Badge>
+                            </div>
+                            <p className="font-medium text-sm mt-2">{request.content}</p>
+                          </div>
+                          <Badge variant={getStatusVariant(request.status)}>
+                            {request.status}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Submitted on {request.created_at}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium">Light bulb replacement</span>
-                      <Badge variant="secondary">Completed</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Submitted on Jan 10, 2024</p>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
