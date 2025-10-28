@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { FileText, Download, CheckCircle, AlertCircle, Clock, Building2, DoorClosed, User, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -28,6 +28,37 @@ const AllLeaseDocumentsViewer = () => {
   useEffect(() => {
     fetchAllLeaseDocuments();
   }, []);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('lease-documents-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'lease_documents'
+        },
+        async (payload) => {
+          console.log('Lease document changed:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            toast({
+              title: "New Lease Document Uploaded 📄",
+              description: "A tenant has uploaded a new lease document.",
+              duration: 5000,
+            });
+          }
+          
+          await fetchAllLeaseDocuments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [toast]);
 
   const fetchAllLeaseDocuments = async () => {
     try {
@@ -101,6 +132,30 @@ const AllLeaseDocumentsViewer = () => {
       toast({
         title: "Download Failed",
         description: "Failed to download the document. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleView = async (document: LeaseDocumentWithDetails) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('leases')
+        .createSignedUrl(document.file_path, 3600);
+
+      if (error) throw error;
+
+      window.open(data.signedUrl, '_blank');
+
+      toast({
+        title: "Opening Document",
+        description: "Document is opening in a new tab.",
+      });
+    } catch (error) {
+      console.error('View error:', error);
+      toast({
+        title: "View Failed",
+        description: "Failed to view the document. Please try downloading instead.",
         variant: "destructive",
       });
     }
@@ -199,11 +254,20 @@ const AllLeaseDocumentsViewer = () => {
                     <div className="min-w-0 flex-1 space-y-1">
                       <p className="font-medium">{document.file_name}</p>
                       <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-                        <span>{document.property_name}</span>
+                        <span className="flex items-center gap-1">
+                          <Building2 className="h-3 w-3" />
+                          {document.property_name}
+                        </span>
                         <span>•</span>
-                        <span>{document.room_number?.charAt(0).toUpperCase() + document.room_number?.slice(1)}</span>
+                        <span className="flex items-center gap-1">
+                          <DoorClosed className="h-3 w-3" />
+                          {document.room_number?.charAt(0).toUpperCase() + document.room_number?.slice(1)}
+                        </span>
                         <span>•</span>
-                        <span>{document.tenant_email}</span>
+                        <span className="flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          {document.tenant_email}
+                        </span>
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {(document.file_size / 1024 / 1024).toFixed(2)} MB • Uploaded {new Date(document.upload_date).toLocaleDateString()}
@@ -217,10 +281,21 @@ const AllLeaseDocumentsViewer = () => {
                         {document.status}
                       </Badge>
                     </div>
+                    {document.file_name.toLowerCase().endsWith('.pdf') && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleView(document)}
+                        title="View document"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => handleDownload(document)}
+                      title="Download document"
                     >
                       <Download className="h-4 w-4" />
                     </Button>
