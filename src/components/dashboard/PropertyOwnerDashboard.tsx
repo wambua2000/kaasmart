@@ -87,6 +87,8 @@ const PropertyOwnerDashboard = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [approvingRequestId, setApprovingRequestId] = useState<string | null>(null);
+  const [maintenanceCount, setMaintenanceCount] = useState(0);
+  const [messageCount, setMessageCount] = useState(0);
 
   const totalProperties = properties.length;
   const totalRooms = properties.reduce((sum, prop) => sum + prop.total_rooms, 0);
@@ -252,6 +254,79 @@ const PropertyOwnerDashboard = () => {
     }
   }, []);
 
+  // Fetch maintenance request count
+  const fetchMaintenanceCount = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get owner's property IDs
+      const { data: ownerProperties } = await supabase
+        .from('properties')
+        .select('id')
+        .eq('owner_id', user.id);
+
+      const propertyIds = ownerProperties?.map(p => p.id) || [];
+
+      if (propertyIds.length === 0) {
+        setMaintenanceCount(0);
+        return;
+      }
+
+      // Count maintenance messages with "Pending Review" status
+      const { data: messages } = await supabase
+        .from('messages')
+        .select('id, content')
+        .in('property_id', propertyIds)
+        .ilike('content', '%MAINTENANCE REQUEST%')
+        .ilike('content', '%Status: Pending Review%');
+
+      setMaintenanceCount(messages?.length || 0);
+    } catch (error) {
+      console.error('Error fetching maintenance count:', error);
+      setMaintenanceCount(0);
+    }
+  }, []);
+
+  // Fetch message count
+  const fetchMessageCount = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get owner's property IDs
+      const { data: ownerProperties } = await supabase
+        .from('properties')
+        .select('id')
+        .eq('owner_id', user.id);
+
+      const propertyIds = ownerProperties?.map(p => p.id) || [];
+
+      if (propertyIds.length === 0) {
+        setMessageCount(0);
+        return;
+      }
+
+      // Count regular messages (not maintenance requests) where owner is the receiver
+      const { data: messages } = await supabase
+        .from('messages')
+        .select('id, sender_id, profiles!messages_sender_id_fkey(role)')
+        .in('property_id', propertyIds)
+        .eq('receiver_id', user.id)
+        .not('content', 'ilike', '%MAINTENANCE REQUEST%');
+
+      // Only count messages from tenants (not from other owners/managers)
+      const tenantMessages = messages?.filter(
+        (msg: any) => msg.profiles?.role === 'tenant'
+      ) || [];
+
+      setMessageCount(tenantMessages.length);
+    } catch (error) {
+      console.error('Error fetching message count:', error);
+      setMessageCount(0);
+    }
+  }, []);
+
   // Fetch authenticated user and initial data on mount
   useEffect(() => {
     const initializeData = async () => {
@@ -261,11 +336,13 @@ const PropertyOwnerDashboard = () => {
         fetchProperties();
         fetchPendingResetCount();
         fetchMaintenanceRequests();
+        fetchMaintenanceCount();
+        fetchMessageCount();
       }
     };
     
     initializeData();
-  }, [fetchProperties, fetchPendingResetCount, fetchMaintenanceRequests]);
+  }, [fetchProperties, fetchPendingResetCount, fetchMaintenanceRequests, fetchMaintenanceCount, fetchMessageCount]);
 
   // Set up real-time listener for tenant profile updates
   useEffect(() => {
@@ -308,6 +385,7 @@ const PropertyOwnerDashboard = () => {
         filter: 'content=ilike.*MAINTENANCE REQUEST*'
       }, () => {
         fetchMaintenanceRequests();
+        fetchMaintenanceCount();
       })
       .on('postgres_changes', {
         event: 'UPDATE',
@@ -318,6 +396,7 @@ const PropertyOwnerDashboard = () => {
         if (payload.new.content?.includes('MAINTENANCE REQUEST')) {
           console.log('Maintenance request updated:', payload);
           fetchMaintenanceRequests();
+          fetchMaintenanceCount();
         }
       })
       .subscribe();
@@ -325,7 +404,58 @@ const PropertyOwnerDashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchMaintenanceRequests]);
+  }, [fetchMaintenanceRequests, fetchMaintenanceCount]);
+
+  // Set up real-time listener for new messages
+  useEffect(() => {
+    const setupMessageListener = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const channel = supabase
+        .channel('owner-message-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `receiver_id=eq.${user.id}`
+          },
+          async (payload) => {
+            // Check if it's NOT a maintenance request
+            if (!payload.new.content?.includes('MAINTENANCE REQUEST')) {
+              console.log('New message received:', payload);
+              
+              // Fetch sender details to show in toast
+              const { data: sender } = await supabase
+                .from('profiles')
+                .select('full_name, role')
+                .eq('id', payload.new.sender_id)
+                .single();
+
+              // Only show notification for tenant messages
+              if (sender?.role === 'tenant') {
+                toast({
+                  title: "New Message 📨",
+                  description: `You have a new message from ${sender.full_name}`,
+                  duration: 5000,
+                });
+                
+                fetchMessageCount();
+              }
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    };
+
+    setupMessageListener();
+  }, [toast, fetchMessageCount]);
 
   // Add visibility change listener to refresh data when user returns to tab
   useEffect(() => {
@@ -335,12 +465,14 @@ const PropertyOwnerDashboard = () => {
         fetchProperties();
         fetchPendingResetCount();
         fetchMaintenanceRequests();
+        fetchMaintenanceCount();
+        fetchMessageCount();
       }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [fetchProperties, fetchPendingResetCount, fetchMaintenanceRequests]);
+  }, [fetchProperties, fetchPendingResetCount, fetchMaintenanceRequests, fetchMaintenanceCount, fetchMessageCount]);
 
   // Set up real-time listener for password reset requests
   useEffect(() => {
@@ -564,20 +696,36 @@ const PropertyOwnerDashboard = () => {
     }
   };
 
+  const handleOpenMaintenance = () => {
+    setIsMaintenanceOpen(true);
+    setMaintenanceCount(0);
+  };
+
+  const handleOpenMessageCenter = () => {
+    setIsMessageCenterOpen(true);
+    setMessageCount(0);
+  };
+
+  const handlePasswordReset = () => {
+    setIsPasswordResetOpen(true);
+  };
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AppSidebar
           onOpenSheet={handleOpenSheet}
-          onOpenMaintenance={() => setIsMaintenanceOpen(true)}
-          onOpenMessageCenter={() => setIsMessageCenterOpen(true)}
+          onOpenMaintenance={handleOpenMaintenance}
+          onOpenMessageCenter={handleOpenMessageCenter}
           onGenerateReport={handleGenerateReport}
-          onPasswordReset={() => setIsPasswordResetOpen(true)}
+          onPasswordReset={handlePasswordReset}
           onInviteManager={handleInviteManager}
           onViewLeaseAgreements={() => setIsLeaseAgreementsOpen(true)}
           onAddProperty={handleAddProperty}
           userRole="owner"
           pendingResetCount={pendingResetCount}
+          maintenanceCount={maintenanceCount}
+          messageCount={messageCount}
         />
         
         <div className="flex-1 flex flex-col">

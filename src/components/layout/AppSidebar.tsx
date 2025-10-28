@@ -22,6 +22,8 @@ interface AppSidebarProps {
   onAddProperty?: () => void;
   userRole: "owner" | "manager";
   pendingResetCount?: number;
+  maintenanceCount?: number;
+  messageCount?: number;
 }
 
 export function AppSidebar({
@@ -35,6 +37,8 @@ export function AppSidebar({
   onAddProperty,
   userRole,
   pendingResetCount = 0,
+  maintenanceCount = 0,
+  messageCount = 0,
 }: AppSidebarProps) {
   const { state } = useSidebar();
   
@@ -55,16 +59,26 @@ export function AppSidebar({
               )}
 
               <SidebarMenuItem>
-                <SidebarMenuButton onClick={onOpenMaintenance} className="text-white hover:bg-blue-800 hover:text-white">
+                <SidebarMenuButton onClick={onOpenMaintenance} className="relative text-white hover:bg-blue-800 hover:text-white">
                   <Wrench className="h-4 w-4" />
                   <span>Maintenance</span>
+                  {maintenanceCount > 0 && (
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-bold text-destructive-foreground animate-pulse">
+                      {maintenanceCount}
+                    </span>
+                  )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton onClick={onOpenMessageCenter} className="text-white hover:bg-blue-800 hover:text-white">
+                <SidebarMenuButton onClick={onOpenMessageCenter} className="relative text-white hover:bg-blue-800 hover:text-white">
                   <MessageSquare className="h-4 w-4" />
                   <span>Message Centre</span>
+                  {messageCount > 0 && (
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-bold text-destructive-foreground animate-pulse">
+                      {messageCount}
+                    </span>
+                  )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
