@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -81,8 +81,8 @@ const PropertyOwnerDashboard = () => {
   const vacantRooms = totalRooms - occupiedRooms;
   const occupancyRate = totalRooms > 0 ? ((occupiedRooms / totalRooms) * 100).toFixed(1) : "0.0";
 
-  // Fetch properties from database
-  const fetchProperties = async () => {
+  // Fetch properties from database - wrapped in useCallback for stability
+  const fetchProperties = useCallback(async () => {
     try {
       setLoading(true);
       // Get authenticated user from Supabase
@@ -135,7 +135,7 @@ const PropertyOwnerDashboard = () => {
       console.error("Error fetching properties:", error);
       setLoading(false);
     }
-  };
+  }, []);
 
   // Fetch pending password reset count
   const fetchPendingResetCount = async () => {
@@ -194,7 +194,20 @@ const PropertyOwnerDashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [toast]);
+  }, [fetchProperties, toast]);
+
+  // Add visibility change listener to refresh data when user returns to tab
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('Tab became visible, refreshing properties');
+        fetchProperties();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [fetchProperties]);
 
   // Set up real-time listener for password reset requests
   useEffect(() => {

@@ -133,7 +133,7 @@ const TenantProfileEditor = ({
         }
       }
 
-      console.log("Tenant profile updated successfully");
+      console.log("Tenant profile updated successfully - triggering callbacks");
       
       toast({
         title: "Success",
@@ -143,8 +143,12 @@ const TenantProfileEditor = ({
 
       // Notify parent to refresh data
       if (onSaveSuccess) {
+        console.log("Calling onSaveSuccess callback");
         onSaveSuccess();
       }
+
+      // Small delay to allow real-time propagation
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       onClose();
     } catch (error) {

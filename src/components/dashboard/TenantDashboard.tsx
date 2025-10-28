@@ -137,46 +137,57 @@ const TenantDashboard = () => {
           async (payload) => {
             console.log('Tenant profile updated:', payload);
             
-            // Refetch complete room data to ensure sync
-            const { data: roomData } = await supabase
-              .from('rooms')
-              .select(`
-                id,
-                room_number,
-                rent_amount,
-                tenant_date_of_entry,
-                tenant_name,
-                tenant_email,
-                tenant_phone,
-                tenant_accessories,
-                properties (
+            try {
+              // Refetch complete room data to ensure sync
+              const { data: roomData, error } = await supabase
+                .from('rooms')
+                .select(`
                   id,
-                  name,
-                  location
-                )
-              `)
-              .eq('tenant_id', session.user.id)
-              .maybeSingle();
+                  room_number,
+                  rent_amount,
+                  tenant_date_of_entry,
+                  tenant_name,
+                  tenant_email,
+                  tenant_phone,
+                  tenant_accessories,
+                  properties (
+                    id,
+                    name,
+                    location
+                  )
+                `)
+                .eq('tenant_id', session.user.id)
+                .maybeSingle();
 
-            if (roomData && roomData.properties) {
-              setTenantInfo({
-                name: roomData.tenant_name || session.user.email || "Tenant",
-                email: roomData.tenant_email || session.user.email || "",
-                phone: roomData.tenant_phone || "+254 712 345 678",
-                room: roomData.room_number,
-                apartment: roomData.properties.name,
-                location: roomData.properties.location,
-                rentAmount: Number(roomData.rent_amount),
-                dateOfEntry: roomData.tenant_date_of_entry || new Date().toISOString().split('T')[0],
-                emergencyContact: "+254 701 234 567",
-                accessories: roomData.tenant_accessories || ["Bed", "Table", "Chair"],
-                roomId: roomData.id,
-                propertyId: roomData.properties.id,
-              });
-              
+              if (error) throw error;
+
+              if (roomData && roomData.properties) {
+                setTenantInfo({
+                  name: roomData.tenant_name || session.user.email || "Tenant",
+                  email: roomData.tenant_email || session.user.email || "",
+                  phone: roomData.tenant_phone || "+254 712 345 678",
+                  room: roomData.room_number,
+                  apartment: roomData.properties.name,
+                  location: roomData.properties.location,
+                  rentAmount: Number(roomData.rent_amount),
+                  dateOfEntry: roomData.tenant_date_of_entry || new Date().toISOString().split('T')[0],
+                  emergencyContact: "+254 701 234 567",
+                  accessories: roomData.tenant_accessories || ["Bed", "Table", "Chair"],
+                  roomId: roomData.id,
+                  propertyId: roomData.properties.id,
+                });
+                
+                toast({
+                  title: "Profile Updated",
+                  description: "Your tenant profile has been updated successfully.",
+                });
+              }
+            } catch (error) {
+              console.error('Error refreshing tenant data:', error);
               toast({
-                title: "Profile Updated",
-                description: "Your tenant profile has been updated successfully.",
+                title: "Sync Error",
+                description: "Failed to refresh your profile. Please reload the page.",
+                variant: "destructive",
               });
             }
           }
@@ -190,6 +201,57 @@ const TenantDashboard = () => {
 
     setupRealtimeListener();
   }, [toast]);
+
+  // Add visibility change listener to refresh data when user returns to tab
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (!document.hidden) {
+        console.log('Tab became visible, refreshing tenant data');
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        const { data: roomData } = await supabase
+          .from('rooms')
+          .select(`
+            id,
+            room_number,
+            rent_amount,
+            tenant_date_of_entry,
+            tenant_name,
+            tenant_email,
+            tenant_phone,
+            tenant_accessories,
+            properties (
+              id,
+              name,
+              location
+            )
+          `)
+          .eq('tenant_id', session.user.id)
+          .maybeSingle();
+
+        if (roomData && roomData.properties) {
+          setTenantInfo({
+            name: roomData.tenant_name || session.user.email || "Tenant",
+            email: roomData.tenant_email || session.user.email || "",
+            phone: roomData.tenant_phone || "+254 712 345 678",
+            room: roomData.room_number,
+            apartment: roomData.properties.name,
+            location: roomData.properties.location,
+            rentAmount: Number(roomData.rent_amount),
+            dateOfEntry: roomData.tenant_date_of_entry || new Date().toISOString().split('T')[0],
+            emergencyContact: "+254 701 234 567",
+            accessories: roomData.tenant_accessories || ["Bed", "Table", "Chair"],
+            roomId: roomData.id,
+            propertyId: roomData.properties.id,
+          });
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   const [maintenanceRequest, setMaintenanceRequest] = useState("");
   const [message, setMessage] = useState("");

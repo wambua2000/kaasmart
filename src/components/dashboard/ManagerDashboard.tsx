@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,64 +46,65 @@ const ManagerDashboard = () => {
   const vacantRooms = totalRooms - occupiedRooms;
   const occupancyRate = ((occupiedRooms / totalRooms) * 100).toFixed(1);
 
-  // Fetch properties from database - only those assigned to this manager
-  useEffect(() => {
-    const fetchProperties = async () => {
-      try {
-        // Get current user
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        
-        if (authError || !user) {
-          console.error('Authentication error:', authError);
-          toast({
-            title: "Error",
-            description: "Failed to authenticate",
-            variant: "destructive"
-          });
-          return;
-        }
-
-        // Use the optimized RPC function to get properties with stats in a single query
-        const { data: propertiesData, error } = await supabase
-          .rpc('get_manager_properties_with_stats', {
-            manager_user_id: user.id
-          });
-
-        if (error) {
-          console.error('Error fetching properties:', error);
-          toast({
-            title: "Error",
-            description: "Failed to load properties",
-            variant: "destructive"
-          });
-          return;
-        }
-
-        if (propertiesData) {
-          const formattedProperties = propertiesData.map((property: any) => ({
-            id: property.id,
-            name: property.name,
-            location: property.location,
-            rent_per_room: property.rent_per_room,
-            total_rooms: property.total_rooms,
-            occupiedRooms: Number(property.occupied_rooms),
-            image_url: property.image_url || undefined,
-          }));
-
-          setProperties(formattedProperties);
-        }
-      } catch (error) {
-        console.error('Unexpected error:', error);
+  // Fetch properties from database - wrapped in useCallback for stability
+  const fetchProperties = useCallback(async () => {
+    try {
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        console.error('Authentication error:', authError);
         toast({
           title: "Error",
-          description: "An unexpected error occurred",
+          description: "Failed to authenticate",
           variant: "destructive"
         });
+        return;
       }
-    };
 
-    fetchProperties();
+      // Use the optimized RPC function to get properties with stats in a single query
+      const { data: propertiesData, error } = await supabase
+        .rpc('get_manager_properties_with_stats', {
+          manager_user_id: user.id
+        });
+
+      if (error) {
+        console.error('Error fetching properties:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load properties",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (propertiesData) {
+        const formattedProperties = propertiesData.map((property: any) => ({
+          id: property.id,
+          name: property.name,
+          location: property.location,
+          rent_per_room: property.rent_per_room,
+          total_rooms: property.total_rooms,
+          occupiedRooms: Number(property.occupied_rooms),
+          image_url: property.image_url || undefined,
+        }));
+
+        setProperties(formattedProperties);
+      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    }
   }, [toast]);
+
+  // Fetch properties on mount
+  useEffect(() => {
+    fetchProperties();
+  }, [fetchProperties]);
 
   // Set up real-time listener for tenant profile updates
   useEffect(() => {
@@ -119,28 +120,8 @@ const ManagerDashboard = () => {
         async (payload) => {
           console.log('Room/tenant profile updated:', payload);
           
-          // Re-fetch properties with updated data
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
-          
-          const { data: propertiesData } = await supabase
-            .rpc('get_manager_properties_with_stats', {
-              manager_user_id: user.id
-            });
-          
-          if (propertiesData) {
-            const formattedProperties = propertiesData.map((property: any) => ({
-              id: property.id,
-              name: property.name,
-              location: property.location,
-              rent_per_room: property.rent_per_room,
-              total_rooms: property.total_rooms,
-              occupiedRooms: Number(property.occupied_rooms),
-              image_url: property.image_url || undefined,
-            }));
-            
-            setProperties(formattedProperties);
-          }
+          // Use the stable fetchProperties callback
+          await fetchProperties();
           
           toast({
             title: "Tenant Profile Updated",
@@ -153,7 +134,20 @@ const ManagerDashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [toast]);
+  }, [fetchProperties, toast]);
+
+  // Add visibility change listener to refresh data when user returns to tab
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('Tab became visible, refreshing properties');
+        fetchProperties();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [fetchProperties]);
 
   const handleAddProperty = () => {
     const newProperty: Property = {
