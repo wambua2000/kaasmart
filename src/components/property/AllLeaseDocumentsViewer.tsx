@@ -64,22 +64,51 @@ const AllLeaseDocumentsViewer = () => {
     try {
       setLoading(true);
       
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('User authentication error:', userError);
+        throw new Error('Authentication error');
+      }
+      
+      if (!user) {
+        throw new Error('No authenticated user');
+      }
+      
+      console.log('Fetching lease documents for user:', user.id);
+      
       const { data: leases, error } = await supabase
         .from('lease_documents')
         .select(`
           *,
-          rooms!inner(
+          rooms!left(
             room_number,
             property_id,
-            properties!inner(name)
+            properties!left(
+              name,
+              owner_id
+            )
           ),
-          profiles!inner(email)
+          profiles!left(email)
         `)
         .order('upload_date', { ascending: false });
 
-      if (error) throw error;
+      console.log('Query result:', { count: leases?.length, error });
 
-      const transformedData: LeaseDocumentWithDetails[] = (leases || []).map((doc: any) => ({
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
+
+      // Filter for properties owned by current user
+      const ownedLeases = (leases || []).filter(
+        (doc: any) => doc.rooms?.properties?.owner_id === user.id
+      );
+
+      console.log('Owned leases count:', ownedLeases.length);
+
+      const transformedData: LeaseDocumentWithDetails[] = ownedLeases.map((doc: any) => ({
         id: doc.id,
         file_name: doc.file_name,
         file_path: doc.file_path,
@@ -88,9 +117,9 @@ const AllLeaseDocumentsViewer = () => {
         status: doc.status as "pending" | "approved" | "rejected",
         notes: doc.notes,
         tenant_id: doc.tenant_id,
-        property_name: doc.rooms?.properties?.name,
-        room_number: doc.rooms?.room_number,
-        tenant_email: doc.profiles?.email,
+        property_name: doc.rooms?.properties?.name || 'Unknown Property',
+        room_number: doc.rooms?.room_number || 'unknown',
+        tenant_email: doc.profiles?.email || 'Unknown Tenant',
       }));
 
       setLeaseDocuments(transformedData);
@@ -98,7 +127,7 @@ const AllLeaseDocumentsViewer = () => {
       console.error('Error fetching lease documents:', error);
       toast({
         title: "Error",
-        description: "Failed to load lease documents.",
+        description: error instanceof Error ? error.message : "Failed to load lease documents.",
         variant: "destructive",
       });
     } finally {
