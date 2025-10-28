@@ -369,7 +369,7 @@ const TenantDashboard = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Room Number:</span>
-                    <span className="font-medium">{tenantInfo.room}</span>
+                    <span className="font-medium">{tenantInfo.room.toUpperCase()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Location:</span>

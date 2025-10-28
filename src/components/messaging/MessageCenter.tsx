@@ -499,7 +499,7 @@ const MessageCenter = ({
                         {message.room_number && (
                           <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                             <Home className="h-3 w-3 mr-1" />
-                            Room {message.room_number}
+                            Room {message.room_number.toUpperCase()}
                           </Badge>
                         )}
                       </div>

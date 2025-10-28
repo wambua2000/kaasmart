@@ -465,12 +465,12 @@ const ManagerDashboard = () => {
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Total rooms</span>
+                      <span className="text-sm text-muted-foreground">Total Rooms</span>
                       <span className="text-sm font-medium">{property.total_rooms}</span>
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Rent per room</span>
+                      <span className="text-sm text-muted-foreground">Rent Per Room</span>
                       <span className="text-lg font-bold text-primary">
                         KSh {property.rent_per_room.toLocaleString()}
                       </span>
@@ -551,14 +551,14 @@ const ManagerDashboard = () => {
                           <Badge variant={getPriorityVariant(msg.priority as any)}>
                             {msg.priority.toUpperCase()} PRIORITY
                           </Badge>
-                          <Badge variant="outline">{msg.category}</Badge>
+                          <Badge variant="outline">{msg.category.charAt(0).toUpperCase() + msg.category.slice(1)}</Badge>
                           <Badge variant={getStatusVariant(msg.status)}>
                             {msg.status}
                           </Badge>
                         </div>
                         <div className="space-y-1">
                           <p className="text-sm font-semibold text-primary">
-                            {msg.property} - Room {msg.room}
+                            {msg.property} - Room {msg.room.toUpperCase()}
                           </p>
                           <p className="text-sm text-muted-foreground">
                             Tenant: {msg.tenant}

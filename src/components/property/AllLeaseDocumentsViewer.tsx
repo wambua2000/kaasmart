@@ -201,7 +201,7 @@ const AllLeaseDocumentsViewer = () => {
                       <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
                         <span>{document.property_name}</span>
                         <span>•</span>
-                        <span>Room {document.room_number}</span>
+                        <span>Room {document.room_number?.toUpperCase()}</span>
                         <span>•</span>
                         <span>{document.tenant_email}</span>
                       </div>
