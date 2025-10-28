@@ -116,13 +116,13 @@ const TenantProfileEditor = ({
       }
 
       // If there's a tenant_id, update their profile as well for full sync
+      // Note: We don't update email as it's tied to authentication
       if (roomData?.tenant_id) {
         console.log("Syncing profile for tenant:", roomData.tenant_id);
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
             full_name: formData.tenant_name,
-            email: formData.tenant_email,
             phone: formData.tenant_phone,
           })
           .eq('id', roomData.tenant_id);

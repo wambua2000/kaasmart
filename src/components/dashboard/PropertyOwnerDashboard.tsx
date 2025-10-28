@@ -177,25 +177,16 @@ const PropertyOwnerDashboard = () => {
           schema: 'public',
           table: 'rooms'
         },
-        (payload) => {
+        async (payload) => {
           console.log('Room/tenant profile updated:', payload);
           
-          // Update properties with new tenant data
-          setProperties(prevProperties => 
-            prevProperties.map(property => {
-              // Find if any rooms in this property were updated
-              const updatedRoom = payload.new;
-              if (updatedRoom.property_id === property.id) {
-                // This would ideally refresh room data from the database
-                // For now, we'll show a toast notification
-                toast({
-                  title: "Tenant Profile Updated",
-                  description: `A tenant profile in ${property.name} has been updated.`,
-                });
-              }
-              return property;
-            })
-          );
+          // Refresh all properties data from database
+          await fetchProperties();
+          
+          toast({
+            title: "Tenant Profile Updated",
+            description: "A tenant profile has been updated.",
+          });
         }
       )
       .subscribe();

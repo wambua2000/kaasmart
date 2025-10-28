@@ -116,22 +116,36 @@ const ManagerDashboard = () => {
           schema: 'public',
           table: 'rooms'
         },
-        (payload) => {
+        async (payload) => {
           console.log('Room/tenant profile updated:', payload);
           
-          // Update properties with new tenant data
-          setProperties(prevProperties => 
-            prevProperties.map(property => {
-              const updatedRoom = payload.new;
-              if (updatedRoom.property_id === property.id) {
-                toast({
-                  title: "Tenant Profile Updated",
-                  description: `A tenant profile in ${property.name} has been updated.`,
-                });
-              }
-              return property;
-            })
-          );
+          // Re-fetch properties with updated data
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+          
+          const { data: propertiesData } = await supabase
+            .rpc('get_manager_properties_with_stats', {
+              manager_user_id: user.id
+            });
+          
+          if (propertiesData) {
+            const formattedProperties = propertiesData.map((property: any) => ({
+              id: property.id,
+              name: property.name,
+              location: property.location,
+              rent_per_room: property.rent_per_room,
+              total_rooms: property.total_rooms,
+              occupiedRooms: Number(property.occupied_rooms),
+              image_url: property.image_url || undefined,
+            }));
+            
+            setProperties(formattedProperties);
+          }
+          
+          toast({
+            title: "Tenant Profile Updated",
+            description: "A tenant profile has been updated.",
+          });
         }
       )
       .subscribe();

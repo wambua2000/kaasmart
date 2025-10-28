@@ -120,41 +120,76 @@ const TenantDashboard = () => {
 
   // Set up real-time listener for tenant profile updates
   useEffect(() => {
-    const channel = supabase
-      .channel('tenant-profile-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'rooms',
-          filter: `tenant_email=eq.${tenantInfo.email}`
-        },
-        (payload) => {
-          console.log('Tenant profile updated:', payload);
-          // Update local state with new tenant data
-          const updatedRoom = payload.new;
-          setTenantInfo(prev => ({
-            ...prev,
-            name: updatedRoom.tenant_name || prev.name,
-            email: updatedRoom.tenant_email || prev.email,
-            phone: updatedRoom.tenant_phone || prev.phone,
-            accessories: updatedRoom.tenant_accessories || prev.accessories,
-            dateOfEntry: updatedRoom.tenant_date_of_entry || prev.dateOfEntry
-          }));
-          
-          toast({
-            title: "Profile Updated",
-            description: "Your tenant profile has been updated successfully.",
-          });
-        }
-      )
-      .subscribe();
+    const setupRealtimeListener = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
 
-    return () => {
-      supabase.removeChannel(channel);
+      const channel = supabase
+        .channel('tenant-profile-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'rooms',
+            filter: `tenant_id=eq.${session.user.id}`
+          },
+          async (payload) => {
+            console.log('Tenant profile updated:', payload);
+            
+            // Refetch complete room data to ensure sync
+            const { data: roomData } = await supabase
+              .from('rooms')
+              .select(`
+                id,
+                room_number,
+                rent_amount,
+                tenant_date_of_entry,
+                tenant_name,
+                tenant_email,
+                tenant_phone,
+                tenant_accessories,
+                properties (
+                  id,
+                  name,
+                  location
+                )
+              `)
+              .eq('tenant_id', session.user.id)
+              .maybeSingle();
+
+            if (roomData && roomData.properties) {
+              setTenantInfo({
+                name: roomData.tenant_name || session.user.email || "Tenant",
+                email: roomData.tenant_email || session.user.email || "",
+                phone: roomData.tenant_phone || "+254 712 345 678",
+                room: roomData.room_number,
+                apartment: roomData.properties.name,
+                location: roomData.properties.location,
+                rentAmount: Number(roomData.rent_amount),
+                dateOfEntry: roomData.tenant_date_of_entry || new Date().toISOString().split('T')[0],
+                emergencyContact: "+254 701 234 567",
+                accessories: roomData.tenant_accessories || ["Bed", "Table", "Chair"],
+                roomId: roomData.id,
+                propertyId: roomData.properties.id,
+              });
+              
+              toast({
+                title: "Profile Updated",
+                description: "Your tenant profile has been updated successfully.",
+              });
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     };
-  }, [tenantInfo.email, toast]);
+
+    setupRealtimeListener();
+  }, [toast]);
 
   const [maintenanceRequest, setMaintenanceRequest] = useState("");
   const [message, setMessage] = useState("");
