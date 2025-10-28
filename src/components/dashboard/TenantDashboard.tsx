@@ -45,6 +45,7 @@ const TenantDashboard = () => {
     accessories: [],
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
 
   // Fetch tenant's room and property info - wrapped in useCallback for stability
   const fetchTenantData = useCallback(async () => {
@@ -53,6 +54,9 @@ const TenantDashboard = () => {
       setIsLoading(false);
       return;
     }
+
+    // Store the authenticated user ID
+    setCurrentUserId(session.user.id);
 
     const { data: roomData, error } = await supabase
       .from('rooms')
@@ -418,11 +422,13 @@ const TenantDashboard = () => {
           </TabsContent>
 
           <TabsContent value="maintenance" className="space-y-6">
-            <MaintenanceRequestForm
-              tenantId="mock-tenant-id"
-              propertyId={tenantInfo.propertyId}
-              roomId={tenantInfo.roomId}
-            />
+            {currentUserId && (
+              <MaintenanceRequestForm
+                tenantId={currentUserId}
+                propertyId={tenantInfo.propertyId}
+                roomId={tenantInfo.roomId}
+              />
+            )}
 
             {/* Previous Requests */}
             <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
@@ -451,12 +457,14 @@ const TenantDashboard = () => {
           </TabsContent>
 
           <TabsContent value="messages" className="space-y-6">
-            <MessageCenter
-              currentUserId="mock-tenant-id"
-              currentUserRole="tenant"
-              roomId={tenantInfo.roomId}
-              propertyId={tenantInfo.propertyId}
-            />
+            {currentUserId && (
+              <MessageCenter
+                currentUserId={currentUserId}
+                currentUserRole="tenant"
+                roomId={tenantInfo.roomId}
+                propertyId={tenantInfo.propertyId}
+              />
+            )}
           </TabsContent>
         </Tabs>
       </div>
