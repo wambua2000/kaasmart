@@ -164,7 +164,7 @@ const PropertyOwnerDashboard = () => {
     };
     
     initializeData();
-  }, []);
+  }, [fetchProperties]);
 
   // Set up real-time listener for tenant profile updates
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,77 +46,78 @@ const TenantDashboard = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch tenant's room and property info on mount
-  useEffect(() => {
-    const fetchTenantData = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setIsLoading(false);
-        return;
-      }
-
-      const { data: roomData, error } = await supabase
-        .from('rooms')
-        .select(`
-          id,
-          room_number,
-          rent_amount,
-          tenant_date_of_entry,
-          tenant_name,
-          tenant_email,
-          tenant_phone,
-          tenant_accessories,
-          properties (
-            id,
-            name,
-            location
-          )
-        `)
-        .eq('tenant_id', session.user.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching tenant room data:', error);
-        toast({
-          title: "Error Loading Room Data",
-          description: "Could not load your room information. Please contact support.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      if (!roomData) {
-        console.warn('No room data found for tenant');
-        toast({
-          title: "No Room Assigned",
-          description: "You don't have a room assigned yet. Please contact your property owner.",
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      if (roomData && roomData.properties) {
-        setTenantInfo({
-          name: roomData.tenant_name || session.user.email || "Tenant",
-          email: roomData.tenant_email || session.user.email || "",
-          phone: roomData.tenant_phone || "+254 712 345 678",
-          room: roomData.room_number,
-          apartment: roomData.properties.name,
-          location: roomData.properties.location,
-          rentAmount: Number(roomData.rent_amount),
-          dateOfEntry: roomData.tenant_date_of_entry || new Date().toISOString().split('T')[0],
-          emergencyContact: "+254 701 234 567",
-          accessories: roomData.tenant_accessories || ["Bed", "Table", "Chair"],
-          roomId: roomData.id,
-          propertyId: roomData.properties.id,
-        });
-      }
+  // Fetch tenant's room and property info - wrapped in useCallback for stability
+  const fetchTenantData = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
       setIsLoading(false);
-    };
+      return;
+    }
 
+    const { data: roomData, error } = await supabase
+      .from('rooms')
+      .select(`
+        id,
+        room_number,
+        rent_amount,
+        tenant_date_of_entry,
+        tenant_name,
+        tenant_email,
+        tenant_phone,
+        tenant_accessories,
+        properties (
+          id,
+          name,
+          location
+        )
+      `)
+      .eq('tenant_id', session.user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching tenant room data:', error);
+      toast({
+        title: "Error Loading Room Data",
+        description: "Could not load your room information. Please contact support.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    if (!roomData) {
+      console.warn('No room data found for tenant');
+      toast({
+        title: "No Room Assigned",
+        description: "You don't have a room assigned yet. Please contact your property owner.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    if (roomData && roomData.properties) {
+      setTenantInfo({
+        name: roomData.tenant_name || session.user.email || "Tenant",
+        email: roomData.tenant_email || session.user.email || "",
+        phone: roomData.tenant_phone || "+254 712 345 678",
+        room: roomData.room_number,
+        apartment: roomData.properties.name,
+        location: roomData.properties.location,
+        rentAmount: Number(roomData.rent_amount),
+        dateOfEntry: roomData.tenant_date_of_entry || new Date().toISOString().split('T')[0],
+        emergencyContact: "+254 701 234 567",
+        accessories: roomData.tenant_accessories || ["Bed", "Table", "Chair"],
+        roomId: roomData.id,
+        propertyId: roomData.properties.id,
+      });
+    }
+    setIsLoading(false);
+  }, [toast]);
+
+  // Fetch tenant data on mount
+  useEffect(() => {
     fetchTenantData();
-  }, []);
+  }, [fetchTenantData]);
 
   // Set up real-time listener for tenant profile updates
   useEffect(() => {
@@ -137,59 +138,13 @@ const TenantDashboard = () => {
           async (payload) => {
             console.log('Tenant profile updated:', payload);
             
-            try {
-              // Refetch complete room data to ensure sync
-              const { data: roomData, error } = await supabase
-                .from('rooms')
-                .select(`
-                  id,
-                  room_number,
-                  rent_amount,
-                  tenant_date_of_entry,
-                  tenant_name,
-                  tenant_email,
-                  tenant_phone,
-                  tenant_accessories,
-                  properties (
-                    id,
-                    name,
-                    location
-                  )
-                `)
-                .eq('tenant_id', session.user.id)
-                .maybeSingle();
-
-              if (error) throw error;
-
-              if (roomData && roomData.properties) {
-                setTenantInfo({
-                  name: roomData.tenant_name || session.user.email || "Tenant",
-                  email: roomData.tenant_email || session.user.email || "",
-                  phone: roomData.tenant_phone || "+254 712 345 678",
-                  room: roomData.room_number,
-                  apartment: roomData.properties.name,
-                  location: roomData.properties.location,
-                  rentAmount: Number(roomData.rent_amount),
-                  dateOfEntry: roomData.tenant_date_of_entry || new Date().toISOString().split('T')[0],
-                  emergencyContact: "+254 701 234 567",
-                  accessories: roomData.tenant_accessories || ["Bed", "Table", "Chair"],
-                  roomId: roomData.id,
-                  propertyId: roomData.properties.id,
-                });
-                
-                toast({
-                  title: "Profile Updated",
-                  description: "Your tenant profile has been updated successfully.",
-                });
-              }
-            } catch (error) {
-              console.error('Error refreshing tenant data:', error);
-              toast({
-                title: "Sync Error",
-                description: "Failed to refresh your profile. Please reload the page.",
-                variant: "destructive",
-              });
-            }
+            // Use the shared fetch function to refresh data
+            await fetchTenantData();
+            
+            toast({
+              title: "Profile Updated",
+              description: "Your tenant profile has been updated successfully.",
+            });
           }
         )
         .subscribe();
@@ -200,58 +155,20 @@ const TenantDashboard = () => {
     };
 
     setupRealtimeListener();
-  }, [toast]);
+  }, [fetchTenantData, toast]);
 
   // Add visibility change listener to refresh data when user returns to tab
   useEffect(() => {
-    const handleVisibilityChange = async () => {
+    const handleVisibilityChange = () => {
       if (!document.hidden) {
         console.log('Tab became visible, refreshing tenant data');
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
-
-        const { data: roomData } = await supabase
-          .from('rooms')
-          .select(`
-            id,
-            room_number,
-            rent_amount,
-            tenant_date_of_entry,
-            tenant_name,
-            tenant_email,
-            tenant_phone,
-            tenant_accessories,
-            properties (
-              id,
-              name,
-              location
-            )
-          `)
-          .eq('tenant_id', session.user.id)
-          .maybeSingle();
-
-        if (roomData && roomData.properties) {
-          setTenantInfo({
-            name: roomData.tenant_name || session.user.email || "Tenant",
-            email: roomData.tenant_email || session.user.email || "",
-            phone: roomData.tenant_phone || "+254 712 345 678",
-            room: roomData.room_number,
-            apartment: roomData.properties.name,
-            location: roomData.properties.location,
-            rentAmount: Number(roomData.rent_amount),
-            dateOfEntry: roomData.tenant_date_of_entry || new Date().toISOString().split('T')[0],
-            emergencyContact: "+254 701 234 567",
-            accessories: roomData.tenant_accessories || ["Bed", "Table", "Chair"],
-            roomId: roomData.id,
-            propertyId: roomData.properties.id,
-          });
-        }
+        fetchTenantData();
       }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
+  }, [fetchTenantData]);
 
   const [maintenanceRequest, setMaintenanceRequest] = useState("");
   const [message, setMessage] = useState("");
