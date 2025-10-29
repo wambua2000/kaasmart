@@ -105,10 +105,9 @@ export function RoleChatbot({ role, userId, userName, position = 'bottom-right' 
           </div>
           <Button
             onClick={() => setIsOpen(true)}
-            className={`${roleColors[role]} rounded-full h-14 w-14 shadow-lg p-2`}
+            className={`${roleColors[role]} rounded-full h-14 w-14 shadow-lg`}
             size="icon"
           >
-            <img src={kaasmartLogo} alt="Kaasmart" className="h-8 w-8 object-contain" />
           </Button>
         </>
       )}
