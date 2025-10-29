@@ -578,7 +578,7 @@ const TenantDashboard = () => {
           role="tenant"
           userId={currentUserId}
           userName="Tenant"
-          position="bottom-left"
+          position="bottom-right"
         />
       )}
       
