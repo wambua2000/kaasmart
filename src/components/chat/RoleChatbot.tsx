@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, X, Loader2 } from 'lucide-react';
+import { Send, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
-import { streamChat, getRoleIcon, getRoleTitle } from '@/lib/chatUtils';
+import { streamChat, getRoleTitle } from '@/lib/chatUtils';
 import { useToast } from '@/hooks/use-toast';
+import kaasmartLogo from '@/assets/kaasmart-logo.png';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -96,15 +97,20 @@ export function RoleChatbot({ role, userId, userName, position = 'bottom-right' 
     : 'left-4 bottom-4';
 
   return (
-    <div className={`fixed ${positionClasses} z-50`}>
+    <div className={`fixed ${positionClasses} z-50 flex flex-col items-center gap-2`}>
       {!isOpen && (
-        <Button
-          onClick={() => setIsOpen(true)}
-          className={`${roleColors[role]} rounded-full h-14 w-14 shadow-lg`}
-          size="icon"
-        >
-          <MessageSquare className="h-6 w-6" />
-        </Button>
+        <>
+          <div className={`${roleColors[role]} text-white px-4 py-2 rounded-lg shadow-md text-sm font-medium whitespace-nowrap`}>
+            How can I help you?
+          </div>
+          <Button
+            onClick={() => setIsOpen(true)}
+            className={`${roleColors[role]} rounded-full h-14 w-14 shadow-lg p-2`}
+            size="icon"
+          >
+            <img src={kaasmartLogo} alt="Kaasmart" className="h-8 w-8 object-contain" />
+          </Button>
+        </>
       )}
 
       {isOpen && (
@@ -112,7 +118,9 @@ export function RoleChatbot({ role, userId, userName, position = 'bottom-right' 
           {/* Header */}
           <div className={`${roleColors[role]} text-white px-4 py-3 flex items-center justify-between rounded-t-lg`}>
             <div className="flex items-center gap-2">
-              <span className="text-2xl">{getRoleIcon(role)}</span>
+              <div className="bg-white rounded-full p-1.5 flex items-center justify-center">
+                <img src={kaasmartLogo} alt="Kaasmart" className="h-6 w-6 object-contain" />
+              </div>
               <div>
                 <h3 className="font-semibold text-sm">{getRoleTitle(role)}</h3>
                 {userName && <p className="text-xs opacity-90">{userName}</p>}
@@ -142,8 +150,8 @@ export function RoleChatbot({ role, userId, userName, position = 'bottom-right' 
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   {msg.role === 'assistant' && (
-                    <div className={`${roleIconBg[role]} rounded-full h-8 w-8 flex items-center justify-center mr-2 flex-shrink-0`}>
-                      <span className="text-sm">{getRoleIcon(role)}</span>
+                    <div className={`${roleIconBg[role]} rounded-full h-8 w-8 flex items-center justify-center mr-2 flex-shrink-0 p-1`}>
+                      <img src={kaasmartLogo} alt="Kaasmart" className="h-5 w-5 object-contain" />
                     </div>
                   )}
                   <div
@@ -159,8 +167,8 @@ export function RoleChatbot({ role, userId, userName, position = 'bottom-right' 
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className={`${roleIconBg[role]} rounded-full h-8 w-8 flex items-center justify-center mr-2`}>
-                    <span className="text-sm">{getRoleIcon(role)}</span>
+                  <div className={`${roleIconBg[role]} rounded-full h-8 w-8 flex items-center justify-center mr-2 p-1`}>
+                    <img src={kaasmartLogo} alt="Kaasmart" className="h-5 w-5 object-contain" />
                   </div>
                   <div className="bg-muted rounded-lg px-4 py-2 flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
