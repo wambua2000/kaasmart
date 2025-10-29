@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, X, Loader2 } from 'lucide-react';
+import { Send, X, Loader2, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -108,6 +108,7 @@ export function RoleChatbot({ role, userId, userName, position = 'bottom-right' 
             className={`${roleColors[role]} rounded-full h-14 w-14 shadow-lg`}
             size="icon"
           >
+            <MessageCircle className="h-6 w-6 text-white" />
           </Button>
         </>
       )}
