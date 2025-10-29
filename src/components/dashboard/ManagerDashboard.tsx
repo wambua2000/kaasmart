@@ -10,6 +10,7 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppFooter } from "@/components/layout/AppFooter";
 import MessageCenter from "@/components/messaging/MessageCenter";
 import AllLeaseDocumentsViewer from "@/components/property/AllLeaseDocumentsViewer";
+import { RoleChatbot } from "@/components/chat/RoleChatbot";
 import apartmentInterior from "@/assets/apartment-interior.jpg";
 import skylineApartment from "@/assets/skyline-apartment.jpg";
 import yellowHouse from "@/assets/yellow-house.jpg";
@@ -608,6 +609,16 @@ const ManagerDashboard = () => {
             </div>
           </SheetContent>
         </Sheet>
+
+        {/* AI Chatbot */}
+        {currentUserId && (
+          <RoleChatbot
+            role="manager"
+            userId={currentUserId}
+            userName="Manager"
+            position="bottom-right"
+          />
+        )}
       </div>
     </SidebarProvider>
   );

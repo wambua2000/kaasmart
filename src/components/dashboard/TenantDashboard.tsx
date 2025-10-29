@@ -13,6 +13,7 @@ import { AppFooter } from "@/components/layout/AppFooter";
 import LeaseUpload from "@/components/property/LeaseUpload";
 import MessageCenter from "@/components/messaging/MessageCenter";
 import MaintenanceRequestForm from "@/components/messaging/MaintenanceRequestForm";
+import { RoleChatbot } from "@/components/chat/RoleChatbot";
 import beautifulTenantRoom from "@/assets/beautiful-tenant-room.jpg";
 import { parseMaintenanceRequest, getPriorityVariant, getStatusVariant } from "@/lib/maintenanceUtils";
 
@@ -570,6 +571,16 @@ const TenantDashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
+      
+      {/* AI Chatbot */}
+      {currentUserId && (
+        <RoleChatbot
+          role="tenant"
+          userId={currentUserId}
+          userName="Tenant"
+          position="bottom-left"
+        />
+      )}
       
       <AppFooter />
     </div>

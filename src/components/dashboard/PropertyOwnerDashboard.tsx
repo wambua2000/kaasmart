@@ -38,6 +38,7 @@ import DocumentReport from "@/components/property/DocumentReport";
 import InviteManagerModal from "@/components/manager/InviteManagerModal";
 import PasswordResetRequestsSheet from "@/components/property/PasswordResetRequestsSheet";
 import AllLeaseDocumentsViewer from "@/components/property/AllLeaseDocumentsViewer";
+import { RoleChatbot } from "@/components/chat/RoleChatbot";
 import { supabase } from "@/integrations/supabase/client";
 import { parseMaintenanceRequest, getPriorityVariant, getStatusVariant, updateMaintenanceStatus } from "@/lib/maintenanceUtils";
 
@@ -1095,6 +1096,16 @@ const PropertyOwnerDashboard = () => {
             </div>
           </SheetContent>
         </Sheet>
+
+        {/* AI Chatbot */}
+        {currentUserId && (
+          <RoleChatbot
+            role="owner"
+            userId={currentUserId}
+            userName="Property Owner"
+            position="bottom-right"
+          />
+        )}
       </div>
     </SidebarProvider>
   );
