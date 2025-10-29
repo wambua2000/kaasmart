@@ -1,5 +1,5 @@
 import LoginForm, { UserRole } from "@/components/auth/LoginForm";
-import africanApartmentComplex from "@/assets/african-apartment-complex.jpg";
+import modernApartmentsLogin from "@/assets/modern-apartments-login.jpg";
 import kaasmartLogo from "@/assets/kaasmart-logo.png";
 
 interface LoginProps {
@@ -12,7 +12,7 @@ const Login = ({ onLogin }: LoginProps) => {
       {/* Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${africanApartmentComplex})` }}
+        style={{ backgroundImage: `url(${modernApartmentsLogin})` }}
       >
         <div className="absolute inset-0 bg-black/40" />
       </div>
