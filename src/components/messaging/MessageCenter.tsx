@@ -109,7 +109,7 @@ const MessageCenter = ({
         .select(`
           *,
           properties(name),
-          sender_profile:profiles!messages_sender_id_fkey(full_name, role)
+          sender_profile:profiles(full_name, role)
         `)
         .not('content', 'ilike', '%MAINTENANCE REQUEST%')
         .order('created_at', { ascending: false });
