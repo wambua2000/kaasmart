@@ -109,7 +109,7 @@ const MessageCenter = ({
         .select(`
           *,
           properties(name),
-          sender:profiles!messages_sender_id_fkey(full_name, role)
+          sender_profile:profiles!messages_sender_id_fkey(full_name, role)
         `)
         .not('content', 'ilike', '%MAINTENANCE REQUEST%')
         .order('created_at', { ascending: false });
@@ -149,7 +149,7 @@ const MessageCenter = ({
           let roomNumber = null;
           
           // Get room number if sender is a tenant
-          if (msg.sender?.role === 'tenant' && msg.property_id) {
+          if (msg.sender_profile?.role === 'tenant' && msg.property_id) {
             const { data: room } = await supabase
               .from('rooms')
               .select('room_number')
@@ -164,8 +164,8 @@ const MessageCenter = ({
             ...msg,
             property_name: msg.properties?.name,
             room_number: roomNumber,
-            sender_name: msg.sender?.full_name,
-            sender_role: msg.sender?.role
+            sender_name: msg.sender_profile?.full_name,
+            sender_role: msg.sender_profile?.role
           };
         })
       );
