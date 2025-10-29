@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, X, Loader2 } from 'lucide-react';
+import { Send, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
 import { streamChat, getRoleIcon, getRoleTitle } from '@/lib/chatUtils';
 import { useToast } from '@/hooks/use-toast';
+import kaasmartLogo from '@/assets/kaasmart-logo.png';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -98,13 +99,18 @@ export function RoleChatbot({ role, userId, userName, position = 'bottom-right' 
   return (
     <div className={`fixed ${positionClasses} z-50`}>
       {!isOpen && (
-        <Button
-          onClick={() => setIsOpen(true)}
-          className={`${roleColors[role]} rounded-full h-14 w-14 shadow-lg`}
-          size="icon"
-        >
-          <MessageSquare className="h-6 w-6" />
-        </Button>
+        <div className="flex flex-col items-center gap-2">
+          <div className={`${roleColors[role]} text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium whitespace-nowrap`}>
+            How can I help you?
+          </div>
+          <Button
+            onClick={() => setIsOpen(true)}
+            className={`${roleColors[role]} rounded-full h-14 w-14 shadow-lg p-2`}
+            size="icon"
+          >
+            <img src={kaasmartLogo} alt="Kaasmart" className="h-8 w-8 object-contain" />
+          </Button>
+        </div>
       )}
 
       {isOpen && (
