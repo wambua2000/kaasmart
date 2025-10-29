@@ -348,6 +348,15 @@ const MessageCenter = ({
     }
   };
 
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case 'owner': return 'Property Owner';
+      case 'manager': return 'Property Manager';
+      case 'tenant': return 'Tenant';
+      default: return 'User';
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Message Filters */}
@@ -520,13 +529,13 @@ const MessageCenter = ({
                         variant={isSentByMe ? "default" : "secondary"}
                         className={isSentByMe ? "" : getRoleColor(message.sender_role || '')}
                       >
-                        {isSentByMe ? 'You' : message.sender_name || 'Unknown'}
+                        {isSentByMe 
+                          ? 'You' 
+                          : message.sender_role 
+                            ? `${getRoleDisplayName(message.sender_role)}${message.sender_name ? ' - ' + message.sender_name : ''}`
+                            : message.sender_name || 'Unknown'
+                        }
                       </Badge>
-                      {!isSentByMe && message.sender_role && (
-                        <span className="text-xs text-muted-foreground capitalize">
-                          ({message.sender_role})
-                        </span>
-                      )}
                     </div>
 
                     {/* Message Content */}
