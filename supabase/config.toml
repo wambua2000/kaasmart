@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.chat]
 verify_jwt = true
+
+[functions.create-invited-user]
+verify_jwt = true

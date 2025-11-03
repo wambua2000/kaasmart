@@ -588,9 +588,32 @@ const PropertyOwnerDashboard = () => {
         return;
       }
 
+      // Call edge function to create the actual auth user
+      const { error: authError } = await supabase.functions.invoke('create-invited-user', {
+        body: {
+          email: managerData.email,
+          password: managerData.password,
+          role: 'manager',
+          property_id: managerData.scope === 'single' ? managerData.propertyId : null,
+          room_id: null
+        }
+      });
+
+      if (authError) {
+        console.error('Error creating manager account:', authError);
+        toast({
+          title: "Warning",
+          description: "Invitation created but manager account creation may have failed.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Manager account created successfully');
+
       toast({
         title: "Manager Invited Successfully",
-        description: `Credentials generated for ${managerData.propertyName || 'all properties'}. Share the credentials with the manager.`,
+        description: `Account created for ${managerData.propertyName || 'all properties'}. Manager can login immediately.`,
       });
     } catch (error) {
       console.error('Error inviting manager:', error);

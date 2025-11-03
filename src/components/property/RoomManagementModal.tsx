@@ -347,6 +347,28 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
         });
       }
 
+      // Call edge function to create the actual auth user
+      const { error: authError } = await supabase.functions.invoke('create-invited-user', {
+        body: {
+          email: tenantData.email,
+          password: tenantData.password,
+          role: 'tenant',
+          property_id: property.id,
+          room_id: selectedRoom.id
+        }
+      });
+
+      if (authError) {
+        console.error('Error creating user account:', authError);
+        toast({
+          title: "Warning",
+          description: "Invitation created but user account creation may have failed. Please check logs.",
+          variant: "destructive",
+        });
+      } else {
+        console.log('User account created successfully');
+      }
+
       // Refresh rooms list to show updated data
       const { data: roomsData } = await supabase
         .from('rooms')
