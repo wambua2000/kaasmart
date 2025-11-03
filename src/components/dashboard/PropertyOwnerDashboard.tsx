@@ -16,6 +16,7 @@ import {
   AlertDialogTitle, 
   AlertDialogTrigger 
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -1090,13 +1091,19 @@ const PropertyOwnerDashboard = () => {
           </SheetContent>
         </Sheet>
 
-        {/* Message Center Sheet */}
-        <Sheet open={isMessageCenterOpen} onOpenChange={setIsMessageCenterOpen}>
-          <SheetContent className="w-[600px] sm:max-w-[600px]">
-            <SheetHeader>
-              <SheetTitle>Message Center</SheetTitle>
-            </SheetHeader>
-            <div className="mt-6">
+        {/* Message Center Dialog */}
+        <Dialog open={isMessageCenterOpen} onOpenChange={setIsMessageCenterOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-primary" />
+                Message Center
+              </DialogTitle>
+              <DialogDescription>
+                View and send messages to your tenants and staff
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto px-1">
               {currentUserId && (
                 <MessageCenter
                   currentUserId={currentUserId}
@@ -1105,8 +1112,8 @@ const PropertyOwnerDashboard = () => {
                 />
               )}
             </div>
-          </SheetContent>
-        </Sheet>
+          </DialogContent>
+        </Dialog>
 
         {/* Lease Agreements Sheet */}
         <Sheet open={isLeaseAgreementsOpen} onOpenChange={setIsLeaseAgreementsOpen}>

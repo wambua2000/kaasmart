@@ -481,7 +481,7 @@ const MessageCenter = ({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4 max-h-96 overflow-y-auto">
+          <div className="space-y-4 max-h-[600px] lg:max-h-[700px] overflow-y-auto">
             {messages.length > 0 ? (
               messages.map((message) => {
                 const isSentByMe = message.sender_id === currentUserId;
