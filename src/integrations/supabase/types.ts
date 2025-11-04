@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_properties: {
+        Row: {
+          agent_id: string
+          assigned_at: string | null
+          assigned_by: string | null
+          can_manage_all: boolean | null
+          id: string
+          property_id: string | null
+        }
+        Insert: {
+          agent_id: string
+          assigned_at?: string | null
+          assigned_by?: string | null
+          can_manage_all?: boolean | null
+          id?: string
+          property_id?: string | null
+        }
+        Update: {
+          agent_id?: string
+          assigned_at?: string | null
+          assigned_by?: string | null
+          can_manage_all?: boolean | null
+          id?: string
+          property_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_properties_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           created_at: string | null
@@ -178,6 +213,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          message_type: string | null
           property_id: string | null
           receiver_id: string
           sender_id: string
@@ -186,6 +222,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          message_type?: string | null
           property_id?: string | null
           receiver_id: string
           sender_id: string
@@ -194,6 +231,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          message_type?: string | null
           property_id?: string | null
           receiver_id?: string
           sender_id?: string
@@ -254,6 +292,132 @@ export type Database = {
           user_role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: []
+      }
+      payment_reminders: {
+        Row: {
+          amount_due: number
+          created_at: string | null
+          due_date: string
+          id: string
+          message: string | null
+          property_id: string
+          reminder_date: string
+          room_id: string
+          sent_by: string | null
+          status: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount_due: number
+          created_at?: string | null
+          due_date: string
+          id?: string
+          message?: string | null
+          property_id: string
+          reminder_date: string
+          room_id: string
+          sent_by?: string | null
+          status?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount_due?: number
+          created_at?: string | null
+          due_date?: string
+          id?: string
+          message?: string | null
+          property_id?: string
+          reminder_date?: string
+          room_id?: string
+          sent_by?: string | null
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_reminders_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_reminders_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          notes: string | null
+          payment_date: string
+          payment_method: string | null
+          property_id: string
+          receipt_url: string | null
+          recorded_by: string | null
+          reference_number: string | null
+          room_id: string
+          status: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          payment_date: string
+          payment_method?: string | null
+          property_id: string
+          receipt_url?: string | null
+          recorded_by?: string | null
+          reference_number?: string | null
+          room_id: string
+          status?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string | null
+          property_id?: string
+          receipt_url?: string | null
+          recorded_by?: string | null
+          reference_number?: string | null
+          room_id?: string
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -438,6 +602,10 @@ export type Database = {
         Args: { _property_id: string; _user_id: string }
         Returns: boolean
       }
+      can_manage_property_as_agent: {
+        Args: { _property_id: string; _user_id: string }
+        Returns: boolean
+      }
       generate_invitation_credentials: {
         Args: {
           invitation_email: string
@@ -461,6 +629,20 @@ export type Database = {
           total_rooms_param: number
         }
         Returns: undefined
+      }
+      get_agent_properties_with_stats: {
+        Args: { agent_user_id: string }
+        Returns: {
+          id: string
+          image_url: string
+          location: string
+          name: string
+          occupied_rooms: number
+          pending_amount: number
+          rent_per_room: number
+          total_collected: number
+          total_rooms: number
+        }[]
       }
       get_invitation_credentials: {
         Args: { invitation_email: string }
