@@ -25,7 +25,7 @@ interface Message {
 
 interface MessageCenterProps {
   currentUserId: string;
-  currentUserRole: 'owner' | 'manager' | 'tenant';
+  currentUserRole: 'owner' | 'manager' | 'tenant' | 'agent';
   properties?: Array<{ id: string; name: string }>;
   roomId?: string;
   propertyId?: string;

@@ -37,6 +37,7 @@ import RoomManagementModal from "@/components/property/RoomManagementModal";
 import ReportModal from "@/components/property/ReportModal";
 import DocumentReport from "@/components/property/DocumentReport";
 import InviteManagerModal from "@/components/manager/InviteManagerModal";
+import { InviteAgentModal } from "@/components/agent/InviteAgentModal";
 import PasswordResetRequestsSheet from "@/components/property/PasswordResetRequestsSheet";
 import AllLeaseDocumentsViewer from "@/components/property/AllLeaseDocumentsViewer";
 import { RoleChatbot } from "@/components/chat/RoleChatbot";
@@ -65,6 +66,7 @@ const PropertyOwnerDashboard = () => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isDocumentReportOpen, setIsDocumentReportOpen] = useState(false);
   const [isInviteManagerOpen, setIsInviteManagerOpen] = useState(false);
+  const [isInviteAgentOpen, setIsInviteAgentOpen] = useState(false);
   const [isPasswordResetOpen, setIsPasswordResetOpen] = useState(false);
   const [pendingResetCount, setPendingResetCount] = useState(0);
   const [maintenanceMessages, setMaintenanceMessages] = useState<Array<{
@@ -626,6 +628,63 @@ const PropertyOwnerDashboard = () => {
     }
   };
 
+  const handleAgentInvited = async (agentData: {
+    email: string;
+    password: string;
+    scope: 'all' | 'single';
+    propertyId?: string;
+    propertyName?: string;
+  }) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Generate invitation credentials
+      const { data: invitationData, error: invitationError } = await supabase
+        .rpc('generate_invitation_credentials', {
+          invitation_email: agentData.email,
+          invitation_role: 'agent',
+          invite_property_id: agentData.scope === 'single' ? agentData.propertyId : null,
+          invite_room_id: null,
+          invited_by_user: user.id
+        });
+
+      if (invitationError) throw invitationError;
+
+      // Call edge function to create the user account
+      const { data, error } = await supabase.functions.invoke('create-invited-user', {
+        body: {
+          email: agentData.email,
+          password: agentData.password,
+          role: 'agent',
+          property_id: agentData.scope === 'single' ? agentData.propertyId : null
+        }
+      });
+
+      if (error) throw error;
+
+      const scopeDescription = agentData.scope === 'all'
+        ? 'all properties'
+        : `${agentData.propertyName}`;
+
+      toast({
+        title: "Agent Invited Successfully",
+        description: `Agent has been assigned to ${scopeDescription}.`,
+      });
+
+      setIsInviteAgentOpen(false);
+    } catch (error) {
+      console.error('Error inviting agent:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleGenerateReport = () => {
     setIsDocumentReportOpen(true);
   };
@@ -993,8 +1052,15 @@ const PropertyOwnerDashboard = () => {
         <InviteManagerModal
           isOpen={isInviteManagerOpen}
           onClose={() => setIsInviteManagerOpen(false)}
-          properties={properties.map(p => ({ id: p.id, name: p.name }))}
+          properties={properties.map(p => ({ id: p.id, name: p.name, location: p.location }))}
           onManagerInvited={handleManagerInvited}
+        />
+
+        <InviteAgentModal
+          isOpen={isInviteAgentOpen}
+          onClose={() => setIsInviteAgentOpen(false)}
+          properties={properties.map(p => ({ id: p.id, name: p.name, location: p.location }))}
+          onAgentInvited={handleAgentInvited}
         />
 
         <PasswordResetRequestsSheet

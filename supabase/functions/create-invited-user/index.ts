@@ -214,6 +214,51 @@ serve(async (req) => {
       }
     }
 
+    // If agent, create agent-property relationship
+    if (role === 'agent') {
+      const { data: invitation } = await supabaseAdmin
+        .from('invitations')
+        .select('invited_by')
+        .eq('email', email)
+        .eq('is_used', false)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (property_id) {
+        // Single property assignment
+        const { error: agentError } = await supabaseAdmin
+          .from('agent_properties')
+          .insert({
+            agent_id: newUser.user.id,
+            property_id,
+            assigned_by: invitation?.invited_by
+          });
+
+        if (agentError && !agentError.message.includes('duplicate key')) {
+          console.error('Error creating agent-property relationship:', agentError);
+          throw agentError;
+        }
+        console.log('Agent assigned to property:', property_id);
+      } else {
+        // All properties access
+        const { error: agentError } = await supabaseAdmin
+          .from('agent_properties')
+          .insert({
+            agent_id: newUser.user.id,
+            property_id: null,
+            can_manage_all: true,
+            assigned_by: invitation?.invited_by
+          });
+
+        if (agentError && !agentError.message.includes('duplicate key')) {
+          console.error('Error creating agent all-properties access:', agentError);
+          throw agentError;
+        }
+        console.log('Agent granted access to all properties');
+      }
+    }
+
     // Mark invitation as used
     const { error: inviteError } = await supabaseAdmin
       .from('invitations')

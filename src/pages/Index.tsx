@@ -4,6 +4,7 @@ import PropertyOwnerDashboard from "@/components/dashboard/PropertyOwnerDashboar
 import ManagerDashboard from "@/components/dashboard/ManagerDashboard";
 import TenantDashboard from "@/components/dashboard/TenantDashboard";
 import DeveloperDashboard from "@/components/dashboard/DeveloperDashboard";
+import AgentDashboard from "@/components/dashboard/AgentDashboard";
 import { UserRole } from "@/components/auth/LoginForm";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
@@ -128,10 +129,11 @@ const Index = () => {
       </div>
 
       {/* Dashboard based on role */}
-      {user.role === "developer" && <DeveloperDashboard />}
-      {user.role === "owner" && <PropertyOwnerDashboard />}
-      {user.role === "manager" && <ManagerDashboard />}
-      {user.role === "tenant" && <TenantDashboard />}
+        {user.role === "developer" && <DeveloperDashboard />}
+        {user.role === "owner" && <PropertyOwnerDashboard />}
+        {user.role === "manager" && <ManagerDashboard />}
+        {user.role === "agent" && <AgentDashboard />}
+        {user.role === "tenant" && <TenantDashboard />}
     </div>
   );
 };

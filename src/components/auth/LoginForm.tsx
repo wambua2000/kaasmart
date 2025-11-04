@@ -4,13 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, User, Lock, Mail, Eye, EyeOff, Settings } from "lucide-react";
+import { Building2, User, Lock, Mail, Eye, EyeOff, Settings, DollarSign, Code } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import kaasmartLogo from "@/assets/kaasmart-logo.png";
 import ForgotPasswordDialog from "./ForgotPasswordDialog";
 import { supabase } from "@/integrations/supabase/client";
 
-export type UserRole = "owner" | "manager" | "tenant" | "developer";
+export type UserRole = "owner" | "manager" | "tenant" | "developer" | "agent";
 
 interface LoginFormProps {
   onLogin: (email: string, role: UserRole) => void;
@@ -212,6 +212,18 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4" />
                         Tenant
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="agent">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4" />
+                        Financial Agent
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="developer">
+                      <div className="flex items-center gap-2">
+                        <Code className="h-4 w-4" />
+                        Developer
                       </div>
                     </SelectItem>
                   </SelectContent>

@@ -12,15 +12,16 @@ import {
 } from "@/components/ui/sidebar";
 
 interface AppSidebarProps {
-  onOpenSheet: () => void;
-  onOpenMaintenance: () => void;
-  onOpenMessageCenter: () => void;
-  onGenerateReport: () => void;
+  onOpenSheet?: () => void;
+  onOpenMaintenance?: () => void;
+  onOpenMessageCenter?: () => void;
+  onGenerateReport?: () => void;
   onPasswordReset?: () => void;
   onInviteManager?: () => void;
+  onInviteAgent?: () => void;
   onViewLeaseAgreements?: () => void;
   onAddProperty?: () => void;
-  userRole: "owner" | "manager";
+  userRole: "owner" | "manager" | "agent";
   pendingResetCount?: number;
   maintenanceCount?: number;
   messageCount?: number;
@@ -33,6 +34,7 @@ export function AppSidebar({
   onGenerateReport,
   onPasswordReset,
   onInviteManager,
+  onInviteAgent,
   onViewLeaseAgreements,
   onAddProperty,
   userRole,
@@ -114,19 +116,32 @@ export function AppSidebar({
                     </SidebarMenuButton>
                   </SidebarMenuItem>
 
-                  <SidebarMenuItem>
-                    <SidebarMenuButton onClick={onInviteManager} className="text-white hover:bg-blue-800 hover:text-white">
-                      <Mail className="h-4 w-4" />
-                      <span>Invite Manager</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  {onInviteManager && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton onClick={onInviteManager} className="text-white hover:bg-blue-800 hover:text-white">
+                        <Mail className="h-4 w-4" />
+                        <span>Invite Manager</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
 
-                  <SidebarMenuItem>
-                    <SidebarMenuButton onClick={onAddProperty} className="text-white hover:bg-blue-800 hover:text-white font-medium">
-                      <Plus className="h-4 w-4" />
-                      <span>Add Property</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  {onInviteAgent && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton onClick={onInviteAgent} className="text-white hover:bg-blue-800 hover:text-white">
+                        <Mail className="h-4 w-4" />
+                        <span>Invite Agent</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+
+                  {onAddProperty && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton onClick={onAddProperty} className="text-white hover:bg-blue-800 hover:text-white font-medium">
+                        <Plus className="h-4 w-4" />
+                        <span>Add Property</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
                 </>
               )}
             </SidebarMenu>
