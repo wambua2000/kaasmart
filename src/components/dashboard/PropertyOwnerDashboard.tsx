@@ -565,6 +565,10 @@ const PropertyOwnerDashboard = () => {
     setIsInviteManagerOpen(true);
   };
 
+  const handleInviteAgent = () => {
+    setIsInviteAgentOpen(true);
+  };
+
   const handleManagerInvited = async (managerData: {
     email: string;
     password: string;
@@ -804,6 +808,7 @@ const PropertyOwnerDashboard = () => {
           onGenerateReport={handleGenerateReport}
           onPasswordReset={handlePasswordReset}
           onInviteManager={handleInviteManager}
+          onInviteAgent={handleInviteAgent}
           onViewLeaseAgreements={() => setIsLeaseAgreementsOpen(true)}
           onAddProperty={handleAddProperty}
           userRole="owner"
