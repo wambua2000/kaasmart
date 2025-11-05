@@ -202,6 +202,12 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
                         Property Owner
                       </div>
                     </SelectItem>
+                    <SelectItem value="agent">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4" />
+                        Agent
+                      </div>
+                    </SelectItem>
                     <SelectItem value="manager">
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4" />
@@ -212,18 +218,6 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4" />
                         Tenant
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="agent">
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4" />
-                        Financial Agent
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="developer">
-                      <div className="flex items-center gap-2">
-                        <Code className="h-4 w-4" />
-                        Developer
                       </div>
                     </SelectItem>
                   </SelectContent>
