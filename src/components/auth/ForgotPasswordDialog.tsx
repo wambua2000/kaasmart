@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Mail, User, Building2, Settings } from "lucide-react";
+import { Mail, User, Building2, Settings, DollarSign } from "lucide-react";
 import { UserRole } from "./LoginForm";
 
 interface ForgotPasswordDialogProps {
@@ -100,6 +100,12 @@ const ForgotPasswordDialog = ({ open, onOpenChange }: ForgotPasswordDialogProps)
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4" />
                       Tenant
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="agent">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4" />
+                      Financial Agent
                     </div>
                   </SelectItem>
                 </SelectContent>

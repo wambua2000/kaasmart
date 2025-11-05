@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MessageSquare, Send, Users, AlertCircle, Building, Home } from "lucide-react";
+import { MessageSquare, Send, Users, AlertCircle, Building, Home, Building2, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -45,6 +45,7 @@ const MessageCenter = ({
   const [selectedRoomId, setSelectedRoomId] = useState<string>(roomId || "");
   const [loading, setLoading] = useState(false);
   const [sendingToAll, setSendingToAll] = useState(false);
+  const [recipientType, setRecipientType] = useState<'owner' | 'agent'>('owner');
 
   useEffect(() => {
     loadMessages();
@@ -267,18 +268,48 @@ const MessageCenter = ({
       let recipientName = "recipient";
       
       if (currentUserRole === 'tenant') {
-        // Tenant sending to owner - get property owner
+        // Tenant sending to owner or agent based on selection
         if (propertyId || (selectedPropertyId && selectedPropertyId !== 'all')) {
           const targetPropertyId = propertyId || selectedPropertyId;
-          const { data: property, error: propError } = await supabase
-            .from('properties')
-            .select('owner_id, profiles!properties_owner_id_fkey(full_name)')
-            .eq('id', targetPropertyId)
-            .single();
           
-          if (propError) throw propError;
-          receiverId = property?.owner_id;
-          recipientName = property?.profiles?.full_name || "property owner";
+          if (recipientType === 'agent') {
+            // Find agent assigned to this property
+            const { data: agentAssignment, error: agentError } = await supabase
+              .from('agent_properties')
+              .select(`
+                agent_id,
+                profiles:agent_id(full_name)
+              `)
+              .or(`can_manage_all.eq.true,property_id.eq.${targetPropertyId}`)
+              .limit(1)
+              .maybeSingle();
+            
+            if (agentError) throw agentError;
+            
+            if (!agentAssignment) {
+              toast({
+                title: "No Agent Assigned",
+                description: "No financial agent is assigned to this property yet. Please contact the property owner or send the message to Property Owner instead.",
+                variant: "destructive",
+              });
+              setLoading(false);
+              return;
+            }
+            
+            receiverId = agentAssignment.agent_id;
+            recipientName = (agentAssignment.profiles as any)?.full_name || "Financial Agent";
+          } else {
+            // Send to property owner (existing logic)
+            const { data: property, error: propError } = await supabase
+              .from('properties')
+              .select('owner_id, profiles!properties_owner_id_fkey(full_name)')
+              .eq('id', targetPropertyId)
+              .single();
+            
+            if (propError) throw propError;
+            receiverId = property?.owner_id;
+            recipientName = property?.profiles?.full_name || "property owner";
+          }
         }
       } else if (currentUserRole === 'owner') {
         // Owner sending to tenant - MUST have a room selected
@@ -405,6 +436,33 @@ const MessageCenter = ({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {currentUserRole === 'tenant' && (
+              <div className="space-y-2">
+                <Label htmlFor="recipient-select">Send To:</Label>
+                <Select value={recipientType} onValueChange={(value: 'owner' | 'agent') => setRecipientType(value)}>
+                  <SelectTrigger id="recipient-select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="owner">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        Property Owner (via Manager)
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="agent">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4" />
+                        Financial Agent
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Choose Owner for general property matters, Agent for rent/payment issues
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="message">Message</Label>
               <Textarea

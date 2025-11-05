@@ -51,7 +51,7 @@ export function AppSidebar({
           <SidebarGroupLabel className="text-white font-semibold">Actions</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {userRole === "owner" && (
+              {(userRole === "owner" || userRole === "agent") && (
                 <SidebarMenuItem>
                   <SidebarMenuButton onClick={onOpenSheet} className="text-white hover:bg-blue-800 hover:text-white">
                     <ExternalLink className="h-4 w-4" />

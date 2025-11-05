@@ -55,6 +55,10 @@ const AgentDashboard = () => {
     fetchAgentData();
   }, []);
 
+  const handleOpenSheet = () => {
+    window.open("https://docs.google.com/spreadsheets/d/1zi_wSIlvUlOoaJH9kcn1DjbzJnnHi8a1tOUps2z3BK4/edit?gid=0#gid=0", "_blank");
+  };
+
   const fetchAgentData = async () => {
     try {
       setIsLoading(true);
@@ -235,6 +239,7 @@ const AgentDashboard = () => {
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar 
           userRole="agent"
+          onOpenSheet={handleOpenSheet}
           onInviteManager={() => {}}
           onInviteAgent={() => {}}
         />
