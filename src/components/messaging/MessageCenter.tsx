@@ -133,6 +133,14 @@ const MessageCenter = ({
           query = query.eq('property_id', selectedPropertyId);
         }
         // Don't add sender/receiver filter - let RLS policies handle authorization
+      } else if (currentUserRole === 'agent') {
+        // Agents see: messages sent to them OR messages they sent
+        query = query.or(`receiver_id.eq.${currentUserId},sender_id.eq.${currentUserId}`);
+        
+        // Optional: Add property filter if specific property selected
+        if (selectedPropertyId && selectedPropertyId !== 'all') {
+          query = query.eq('property_id', selectedPropertyId);
+        }
       }
 
       const { data, error } = await query;
@@ -331,6 +339,41 @@ const MessageCenter = ({
         
         receiverId = room.tenant_id;
         recipientName = room.tenant_name || "tenant";
+      } else if (currentUserRole === 'agent') {
+        // Agent sending to tenant or owner
+        if (!selectedRoomId && !propertyId && (!selectedPropertyId || selectedPropertyId === 'all')) {
+          throw new Error("Please select a property or room to send a message");
+        }
+        
+        // If room selected, send to tenant
+        if (selectedRoomId) {
+          const { data: room, error: roomError } = await supabase
+            .from('rooms')
+            .select('tenant_id, tenant_name, property_id')
+            .eq('id', selectedRoomId)
+            .single();
+          
+          if (roomError) throw roomError;
+          
+          if (!room?.tenant_id) {
+            throw new Error("This room doesn't have a tenant assigned yet");
+          }
+          
+          receiverId = room.tenant_id;
+          recipientName = room.tenant_name || "tenant";
+        } else {
+          // Send to property owner
+          const targetPropertyId = propertyId || selectedPropertyId;
+          const { data: property, error: propError } = await supabase
+            .from('properties')
+            .select('owner_id, profiles!properties_owner_id_fkey(full_name)')
+            .eq('id', targetPropertyId)
+            .single();
+          
+          if (propError) throw propError;
+          receiverId = property?.owner_id;
+          recipientName = property?.profiles?.full_name || "property owner";
+        }
       }
 
       if (!receiverId) {
@@ -375,6 +418,7 @@ const MessageCenter = ({
       case 'owner': return 'bg-blue-100 text-blue-800';
       case 'manager': return 'bg-green-100 text-green-800';
       case 'tenant': return 'bg-yellow-100 text-yellow-800';
+      case 'agent': return 'bg-emerald-100 text-emerald-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -384,6 +428,7 @@ const MessageCenter = ({
       case 'owner': return 'Property Owner';
       case 'manager': return 'Property Manager';
       case 'tenant': return 'Tenant';
+      case 'agent': return 'Financial Agent';
       default: return 'User';
     }
   };
@@ -428,12 +473,14 @@ const MessageCenter = ({
               <Send className="h-5 w-5 text-primary" />
               Send Message
             </CardTitle>
-            <CardDescription>
-              {currentUserRole === 'tenant' 
-                ? "Send a message to property management. SMS notifications will be sent automatically."
-                : "Send messages to tenants or staff. SMS notifications will be sent automatically to recipients with registered phone numbers."
-              }
-            </CardDescription>
+          <CardDescription>
+            {currentUserRole === 'tenant' 
+              ? "Send a message to property management. SMS notifications will be sent automatically."
+              : currentUserRole === 'agent'
+              ? "Send messages to tenants about rent and payment matters. SMS notifications will be sent automatically."
+              : "Send messages to tenants or staff. SMS notifications will be sent automatically to recipients with registered phone numbers."
+            }
+          </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {currentUserRole === 'tenant' && (
