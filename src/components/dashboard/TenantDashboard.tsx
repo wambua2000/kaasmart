@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, User, Phone, Mail, MessageSquare, Wrench, FileText, MapPin, DollarSign } from "lucide-react";
+import { Home, User, Phone, Mail, MessageSquare, Wrench, FileText, MapPin, DollarSign, Bell, AlertCircle, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { AppFooter } from "@/components/layout/AppFooter";
@@ -55,6 +55,16 @@ const TenantDashboard = () => {
     priority: string;
     category: string;
     status: string;
+  }>>([]);
+  const [paymentReminders, setPaymentReminders] = useState<Array<{
+    id: string;
+    amount_due: number;
+    due_date: string;
+    message: string;
+    status: string;
+    reminder_date: string;
+    room_id: string;
+    property_id: string;
   }>>([]);
 
   // Fetch tenant's room and property info - wrapped in useCallback for stability
@@ -160,11 +170,31 @@ const TenantDashboard = () => {
     setMaintenanceRequests(formattedRequests);
   }, []);
 
+  // Fetch payment reminders
+  const fetchPaymentReminders = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { data: reminders, error } = await supabase
+      .from('payment_reminders')
+      .select('*')
+      .eq('tenant_id', session.user.id)
+      .order('due_date', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching payment reminders:', error);
+      return;
+    }
+
+    setPaymentReminders(reminders || []);
+  }, []);
+
   // Fetch tenant data on mount
   useEffect(() => {
     fetchTenantData();
     fetchMaintenanceRequests();
-  }, [fetchTenantData, fetchMaintenanceRequests]);
+    fetchPaymentReminders();
+  }, [fetchTenantData, fetchMaintenanceRequests, fetchPaymentReminders]);
 
   // Set up real-time listener for tenant profile updates
   useEffect(() => {
@@ -210,12 +240,13 @@ const TenantDashboard = () => {
       if (!document.hidden) {
         console.log('Tab became visible, refreshing tenant data');
         fetchTenantData();
+        fetchPaymentReminders();
       }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [fetchTenantData]);
+  }, [fetchTenantData, fetchPaymentReminders]);
 
   // Set up real-time listener for maintenance request updates
   useEffect(() => {
@@ -260,6 +291,56 @@ const TenantDashboard = () => {
 
     setupListener();
   }, [fetchMaintenanceRequests, toast]);
+
+  // Set up real-time listener for payment reminders
+  useEffect(() => {
+    const setupReminderListener = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const channel = supabase
+        .channel('tenant-payment-reminders')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'payment_reminders',
+            filter: `tenant_id=eq.${session.user.id}`
+          },
+          async (payload) => {
+            console.log('New payment reminder received:', payload);
+            await fetchPaymentReminders();
+            
+            toast({
+              title: "New Payment Reminder 🔔",
+              description: `You have a payment due: KSh ${payload.new.amount_due}`,
+              duration: 6000,
+            });
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'payment_reminders',
+            filter: `tenant_id=eq.${session.user.id}`
+          },
+          async (payload) => {
+            console.log('Payment reminder updated:', payload);
+            await fetchPaymentReminders();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    };
+
+    setupReminderListener();
+  }, [fetchPaymentReminders, toast]);
 
   const [maintenanceRequest, setMaintenanceRequest] = useState("");
   const [message, setMessage] = useState("");
@@ -346,10 +427,14 @@ const TenantDashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="details" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="details">Room Details</TabsTrigger>
             <TabsTrigger value="profile">My Profile</TabsTrigger>
             <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
+            <TabsTrigger value="reminders">
+              <Bell className="h-4 w-4 mr-1" />
+              Reminders
+            </TabsTrigger>
             <TabsTrigger value="messages">Messages</TabsTrigger>
           </TabsList>
 
@@ -553,6 +638,135 @@ const TenantDashboard = () => {
                         </p>
                       </div>
                     ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="reminders" className="space-y-6">
+            {/* Summary Card */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Due</p>
+                      <p className="text-2xl font-bold text-primary">
+                        KSh {paymentReminders.reduce((sum, r) => sum + Number(r.amount_due), 0).toLocaleString()}
+                      </p>
+                    </div>
+                    <DollarSign className="h-8 w-8 text-primary/50" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Pending</p>
+                      <p className="text-2xl font-bold">
+                        {paymentReminders.filter(r => r.status === 'pending').length}
+                      </p>
+                    </div>
+                    <Bell className="h-8 w-8 text-primary/50" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Next Due</p>
+                      <p className="text-lg font-bold">
+                        {paymentReminders.length > 0 
+                          ? new Date(paymentReminders[0].due_date).toLocaleDateString()
+                          : 'None'}
+                      </p>
+                    </div>
+                    <Calendar className="h-8 w-8 text-primary/50" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Payment Reminders List */}
+            <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bell className="h-5 w-5 text-primary" />
+                  Payment Reminders
+                </CardTitle>
+                <CardDescription>
+                  View all payment reminders from your property agent
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {paymentReminders.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Bell className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+                    <p className="text-muted-foreground">
+                      No payment reminders at the moment. You're all caught up! 🎉
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {paymentReminders.map((reminder) => {
+                      const dueDate = new Date(reminder.due_date);
+                      const today = new Date();
+                      const isOverdue = dueDate < today;
+                      const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                      const isUpcoming = daysUntilDue <= 7 && daysUntilDue >= 0;
+                      
+                      return (
+                        <div 
+                          key={reminder.id} 
+                          className={`p-4 border rounded-lg ${
+                            isOverdue ? 'border-destructive bg-destructive/5' : 
+                            isUpcoming ? 'border-yellow-500 bg-yellow-500/5' : 
+                            'border-border'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              {isOverdue && <AlertCircle className="h-5 w-5 text-destructive" />}
+                              <div>
+                                <p className="text-2xl font-bold text-primary">
+                                  KSh {Number(reminder.amount_due).toLocaleString()}
+                                </p>
+                                <p className="text-sm text-muted-foreground">Amount Due</p>
+                              </div>
+                            </div>
+                            <Badge variant={reminder.status === 'pending' ? 'default' : 'secondary'}>
+                              {reminder.status}
+                            </Badge>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              <span className={isOverdue ? 'text-destructive font-medium' : ''}>
+                                Due: {dueDate.toLocaleDateString()} 
+                                {isOverdue && ' (Overdue)'}
+                                {isUpcoming && !isOverdue && ` (${daysUntilDue} days left)`}
+                              </span>
+                            </div>
+                            
+                            {reminder.message && (
+                              <div className="p-3 bg-muted/50 rounded-md">
+                                <p className="text-sm">{reminder.message}</p>
+                              </div>
+                            )}
+                            
+                            <p className="text-xs text-muted-foreground">
+                              Reminder sent: {new Date(reminder.reminder_date).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
