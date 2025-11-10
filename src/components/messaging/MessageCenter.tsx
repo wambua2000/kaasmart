@@ -303,28 +303,35 @@ const MessageCenter = ({
             // Find agent assigned to this property
             const { data: agentAssignment, error: agentError } = await supabase
               .from('agent_properties')
-              .select(`
-                agent_id,
-                profiles:agent_id(full_name)
-              `)
+              .select('agent_id')
               .or(`can_manage_all.eq.true,property_id.eq.${targetPropertyId}`)
               .limit(1)
               .maybeSingle();
             
-            if (agentError) throw agentError;
+            if (agentError) {
+              console.error('Error fetching agent:', agentError);
+              throw agentError;
+            }
             
             if (!agentAssignment) {
               toast({
                 title: "No Agent Assigned",
-                description: "No financial agent is assigned to this property yet. Please contact the property owner or send the message to Property Owner instead.",
+                description: "No financial agent is assigned to this property yet. Please contact the property owner or select 'Property Owner (via Manager)' instead.",
                 variant: "destructive",
               });
               setLoading(false);
               return;
             }
             
+            // Fetch agent's profile details
+            const { data: agentProfile } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', agentAssignment.agent_id)
+              .single();
+            
             receiverId = agentAssignment.agent_id;
-            recipientName = (agentAssignment.profiles as any)?.full_name || "Financial Agent";
+            recipientName = agentProfile?.full_name || "Financial Agent";
           } else {
             // Send to property owner (existing logic)
             const { data: property, error: propError } = await supabase
