@@ -410,6 +410,7 @@ const AgentDashboard = () => {
               <MessageCenter
                 currentUserId={currentUserId}
                 currentUserRole="agent"
+                properties={properties.map(p => ({ id: p.id, name: p.name }))}
               />
             )}
           </div>

@@ -46,6 +46,24 @@ const MessageCenter = ({
   const [loading, setLoading] = useState(false);
   const [sendingToAll, setSendingToAll] = useState(false);
   const [recipientType, setRecipientType] = useState<'owner' | 'agent'>('owner');
+  const [availableRooms, setAvailableRooms] = useState<Array<{ id: string; room_number: string; tenant_name?: string }>>([]);
+
+  const fetchRoomsForProperty = async (propertyId: string) => {
+    if (!propertyId || propertyId === 'all') {
+      setAvailableRooms([]);
+      return;
+    }
+    
+    const { data, error } = await supabase
+      .from('rooms')
+      .select('id, room_number, tenant_id, tenant_name')
+      .eq('property_id', propertyId)
+      .eq('is_occupied', true);
+    
+    if (!error && data) {
+      setAvailableRooms(data);
+    }
+  };
 
   useEffect(() => {
     loadMessages();
@@ -68,7 +86,8 @@ const MessageCenter = ({
           const isRelevant = 
             newMsg.receiver_id === currentUserId || 
             newMsg.sender_id === currentUserId ||
-            (currentUserRole === 'manager' && newMsg.property_id);
+            (currentUserRole === 'manager' && newMsg.property_id) ||
+            (currentUserRole === 'agent' && newMsg.property_id);
 
           if (isRelevant && newMsg.sender_id !== currentUserId) {
             // Fetch sender details for toast
@@ -542,6 +561,68 @@ const MessageCenter = ({
                     {loading ? 'Sending...' : 'Send to Selected Room'}
                   </Button>
                 )}
+              </div>
+            )}
+            {currentUserRole === 'agent' && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="agent-property-select">Select Property</Label>
+                  <Select 
+                    value={selectedPropertyId} 
+                    onValueChange={(value) => {
+                      setSelectedPropertyId(value);
+                      setSelectedRoomId("");
+                      if (value !== 'all') {
+                        fetchRoomsForProperty(value);
+                      } else {
+                        setAvailableRooms([]);
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="agent-property-select">
+                      <SelectValue placeholder="Select a property" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Properties</SelectItem>
+                      {properties?.map((property) => (
+                        <SelectItem key={property.id} value={property.id}>
+                          {property.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {selectedPropertyId && selectedPropertyId !== 'all' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="agent-room-select">Send to (Optional)</Label>
+                    <Select value={selectedRoomId} onValueChange={setSelectedRoomId}>
+                      <SelectTrigger id="agent-room-select">
+                        <SelectValue placeholder="Property Owner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Property Owner</SelectItem>
+                        {availableRooms.map((room) => (
+                          <SelectItem key={room.id} value={room.id}>
+                            {room.room_number} - {room.tenant_name || 'Tenant'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Leave as "Property Owner" to message owner, or select a room to message the tenant
+                    </p>
+                  </div>
+                )}
+                
+                <Button 
+                  onClick={sendMessage}
+                  disabled={!newMessage.trim() || loading || (!selectedRoomId && (!selectedPropertyId || selectedPropertyId === 'all'))}
+                  className="bg-emerald-600 hover:bg-emerald-700 w-full"
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  {loading ? 'Sending...' : 'Send Message'}
+                </Button>
               </div>
             )}
             {currentUserRole === 'tenant' && (
