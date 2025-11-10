@@ -42,7 +42,7 @@ const MessageCenter = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>(propertyId || "all");
-  const [selectedRoomId, setSelectedRoomId] = useState<string>(roomId || "");
+  const [selectedRoomId, setSelectedRoomId] = useState<string>(roomId || "owner");
   const [loading, setLoading] = useState(false);
   const [sendingToAll, setSendingToAll] = useState(false);
   const [recipientType, setRecipientType] = useState<'owner' | 'agent'>('owner');
@@ -371,8 +371,8 @@ const MessageCenter = ({
           throw new Error("Please select a property or room to send a message");
         }
         
-        // If room selected, send to tenant
-        if (selectedRoomId) {
+        // If room selected (and not "owner"), send to tenant
+        if (selectedRoomId && selectedRoomId !== 'owner') {
           const { data: room, error: roomError } = await supabase
             .from('rooms')
             .select('tenant_id, tenant_name, property_id')
@@ -578,7 +578,7 @@ const MessageCenter = ({
                     value={selectedPropertyId} 
                     onValueChange={(value) => {
                       setSelectedPropertyId(value);
-                      setSelectedRoomId("");
+                      setSelectedRoomId("owner");
                       if (value !== 'all') {
                         fetchRoomsForProperty(value);
                       } else {
@@ -608,7 +608,7 @@ const MessageCenter = ({
                         <SelectValue placeholder="Property Owner" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Property Owner</SelectItem>
+                        <SelectItem value="owner">Property Owner</SelectItem>
                         {availableRooms.map((room) => (
                           <SelectItem key={room.id} value={room.id}>
                             {room.room_number} - {room.tenant_name || 'Tenant'}
@@ -624,7 +624,7 @@ const MessageCenter = ({
                 
                 <Button 
                   onClick={sendMessage}
-                  disabled={!newMessage.trim() || loading || (!selectedRoomId && (!selectedPropertyId || selectedPropertyId === 'all'))}
+                  disabled={!newMessage.trim() || loading || (!selectedPropertyId || selectedPropertyId === 'all')}
                   className="bg-emerald-600 hover:bg-emerald-700 w-full"
                 >
                   <Send className="mr-2 h-4 w-4" />
