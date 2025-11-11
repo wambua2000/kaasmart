@@ -21,6 +21,7 @@ interface Message {
   room_number?: string;
   sender_name?: string;
   sender_role?: string;
+  sender_email?: string;
 }
 
 interface MessageCenterProps {
@@ -93,7 +94,7 @@ const MessageCenter = ({
             // Fetch sender details for toast
             const { data: sender } = await supabase
               .from('profiles')
-              .select('full_name, role')
+              .select('full_name, role, email')
               .eq('id', newMsg.sender_id)
               .single();
 
@@ -104,10 +105,8 @@ const MessageCenter = ({
               .maybeSingle();
 
             toast({
-              title: `New Message from ${sender?.full_name || 'Unknown'}`,
-              description: property?.name 
-                ? `${property.name} - ${newMsg.content.substring(0, 50)}...`
-                : newMsg.content.substring(0, 50) + '...',
+              title: `New Message from ${getRoleDisplayName(sender?.role || '')}`,
+              description: `${sender?.full_name || 'Unknown'} (${sender?.email || 'No email'})\n${property?.name ? `${property.name} - ` : ''}${newMsg.content.substring(0, 50)}...`,
               duration: 5000,
             });
           }
@@ -129,7 +128,7 @@ const MessageCenter = ({
         .select(`
           *,
           properties(name),
-          sender_profile:profiles!messages_sender_id_fkey(full_name, role)
+          sender_profile:profiles!messages_sender_id_fkey(full_name, role, email)
         `)
         .not('content', 'ilike', '%MAINTENANCE REQUEST%')
         .order('created_at', { ascending: false });
@@ -193,7 +192,8 @@ const MessageCenter = ({
             property_name: msg.properties?.name,
             room_number: roomNumber,
             sender_name: msg.sender_profile?.full_name,
-            sender_role: msg.sender_profile?.role
+            sender_role: msg.sender_profile?.role,
+            sender_email: msg.sender_profile?.email
           };
         })
       );
@@ -716,19 +716,34 @@ const MessageCenter = ({
                       </span>
                     </div>
 
-                    {/* Sender Info */}
-                    <div className="flex items-center gap-2">
-                      <Badge 
-                        variant={isSentByMe ? "default" : "secondary"}
-                        className={isSentByMe ? "" : getRoleColor(message.sender_role || '')}
-                      >
-                        {isSentByMe 
-                          ? 'You' 
-                          : message.sender_role 
-                            ? `${getRoleDisplayName(message.sender_role)}${message.sender_name ? ' - ' + message.sender_name : ''}`
-                            : message.sender_name || 'Unknown'
-                        }
-                      </Badge>
+                    {/* Sender Info - Enhanced with Role and Email */}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge 
+                          variant={isSentByMe ? "default" : "secondary"}
+                          className={isSentByMe ? "" : getRoleColor(message.sender_role || '')}
+                        >
+                          {isSentByMe 
+                            ? 'You' 
+                            : getRoleDisplayName(message.sender_role || 'User')
+                          }
+                        </Badge>
+                        
+                        {!isSentByMe && (
+                          <>
+                            {message.sender_name && (
+                              <span className="text-sm font-medium text-foreground">
+                                {message.sender_name}
+                              </span>
+                            )}
+                            {message.sender_email && (
+                              <Badge variant="outline" className="text-xs text-muted-foreground bg-muted">
+                                {message.sender_email}
+                              </Badge>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
 
                     {/* Message Content */}
