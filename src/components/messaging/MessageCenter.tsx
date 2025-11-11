@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MessageSquare, Send, Users, AlertCircle, Building, Home, Building2, DollarSign } from "lucide-react";
+import { MessageSquare, Send, Users, AlertCircle, Building, Home, Building2, DollarSign, Check, CheckCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,6 +22,8 @@ interface Message {
   sender_name?: string;
   sender_role?: string;
   sender_email?: string;
+  is_read?: boolean;
+  read_at?: string;
 }
 
 interface MessageCenterProps {
@@ -121,6 +123,21 @@ const MessageCenter = ({
     };
   }, [selectedPropertyId, selectedRoomId, currentUserId, currentUserRole, toast]);
 
+  const markMessagesAsRead = async (messageIds: string[]) => {
+    if (messageIds.length === 0) return;
+    
+    const { error } = await supabase
+      .from('messages')
+      .update({ is_read: true, read_at: new Date().toISOString() })
+      .in('id', messageIds)
+      .eq('receiver_id', currentUserId)
+      .eq('is_read', false);
+    
+    if (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  };
+
   const loadMessages = async () => {
     try {
       let query = supabase
@@ -199,6 +216,15 @@ const MessageCenter = ({
       );
 
       setMessages(messagesWithDetails);
+      
+      // Mark unread messages that were sent to current user as read
+      const unreadMessageIds = messagesWithDetails
+        .filter(msg => msg.receiver_id === currentUserId && !msg.is_read)
+        .map(msg => msg.id);
+      
+      if (unreadMessageIds.length > 0) {
+        markMessagesAsRead(unreadMessageIds);
+      }
     } catch (error) {
       console.error('Error loading messages:', error);
       setMessages([]);
@@ -668,9 +694,16 @@ const MessageCenter = ({
               <MessageSquare className="h-5 w-5 text-primary" />
               Messages
             </div>
-            <Badge variant="secondary">
-              {messages.length} messages
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">
+                {messages.length} total
+              </Badge>
+              {messages.filter(m => m.receiver_id === currentUserId && !m.is_read).length > 0 && (
+                <Badge variant="default" className="bg-primary">
+                  {messages.filter(m => m.receiver_id === currentUserId && !m.is_read).length} unread
+                </Badge>
+              )}
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -683,7 +716,11 @@ const MessageCenter = ({
                   <div 
                     key={message.id} 
                     className={`border rounded-lg p-4 space-y-3 ${
-                      isSentByMe ? 'bg-primary/5 border-primary/20' : 'bg-card'
+                      isSentByMe 
+                        ? 'bg-primary/5 border-primary/20' 
+                        : message.is_read 
+                        ? 'bg-card' 
+                        : 'bg-accent/20 border-accent/30'
                     }`}
                   >
                     {/* Header with Property and Room Info */}
@@ -706,14 +743,34 @@ const MessageCenter = ({
                         )}
                       </div>
                       
-                      {/* Timestamp */}
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(message.created_at).toLocaleDateString()} {' '}
-                        {new Date(message.created_at).toLocaleTimeString([], { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        })}
-                      </span>
+                      {/* Timestamp and Read Receipt */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(message.created_at).toLocaleDateString()} {' '}
+                          {new Date(message.created_at).toLocaleTimeString([], { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </span>
+                        
+                        {/* Read Receipt for sent messages */}
+                        {isSentByMe && (
+                          <div className="flex items-center gap-1">
+                            {message.is_read ? (
+                              <CheckCheck className="h-4 w-4 text-primary" title={`Read ${message.read_at ? new Date(message.read_at).toLocaleString() : ''}`} />
+                            ) : (
+                              <Check className="h-4 w-4 text-muted-foreground" title="Sent" />
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Unread indicator for received messages */}
+                        {!isSentByMe && !message.is_read && (
+                          <Badge variant="default" className="bg-primary text-xs">
+                            New
+                          </Badge>
+                        )}
+                      </div>
                     </div>
 
                     {/* Sender Info - Enhanced with Role and Email */}

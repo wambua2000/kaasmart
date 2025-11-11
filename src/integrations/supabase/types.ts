@@ -213,8 +213,10 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          is_read: boolean | null
           message_type: string | null
           property_id: string | null
+          read_at: string | null
           receiver_id: string
           sender_id: string
         }
@@ -222,8 +224,10 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          is_read?: boolean | null
           message_type?: string | null
           property_id?: string | null
+          read_at?: string | null
           receiver_id: string
           sender_id: string
         }
@@ -231,8 +235,10 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          is_read?: boolean | null
           message_type?: string | null
           property_id?: string | null
+          read_at?: string | null
           receiver_id?: string
           sender_id?: string
         }
