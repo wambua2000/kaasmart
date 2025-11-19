@@ -48,8 +48,10 @@ const MessageCenter = ({
   const [selectedRoomId, setSelectedRoomId] = useState<string>(roomId || "owner");
   const [loading, setLoading] = useState(false);
   const [sendingToAll, setSendingToAll] = useState(false);
-  const [recipientType, setRecipientType] = useState<'owner' | 'agent'>('owner');
+  const [recipientType, setRecipientType] = useState<'owner' | 'agent' | 'tenant'>('owner');
   const [availableRooms, setAvailableRooms] = useState<Array<{ id: string; room_number: string; tenant_name?: string }>>([]);
+  const [availableAgents, setAvailableAgents] = useState<Array<{ id: string; full_name: string }>>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
 
   const fetchRoomsForProperty = async (propertyId: string) => {
     if (!propertyId || propertyId === 'all') {
@@ -65,6 +67,42 @@ const MessageCenter = ({
     
     if (!error && data) {
       setAvailableRooms(data);
+    }
+  };
+
+  const fetchAgentsForProperty = async (propertyId: string) => {
+    if (!propertyId || propertyId === 'all') {
+      setAvailableAgents([]);
+      return;
+    }
+    
+    // First fetch agent assignments
+    const { data: agentAssignments, error: agentError } = await supabase
+      .from('agent_properties')
+      .select('agent_id')
+      .or(`can_manage_all.eq.true,property_id.eq.${propertyId}`);
+    
+    if (agentError || !agentAssignments || agentAssignments.length === 0) {
+      setAvailableAgents([]);
+      return;
+    }
+    
+    // Then fetch profiles for those agents
+    const agentIds = agentAssignments.map(a => a.agent_id);
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', agentIds)
+      .eq('role', 'agent');
+    
+    if (!profilesError && profiles) {
+      setAvailableAgents(profiles.map(p => ({
+        id: p.id,
+        full_name: p.full_name || 'Unknown Agent'
+      })));
+      if (profiles.length > 0) {
+        setSelectedAgentId(profiles[0].id);
+      }
     }
   };
 
@@ -372,25 +410,42 @@ const MessageCenter = ({
           }
         }
       } else if (currentUserRole === 'owner') {
-        // Owner sending to tenant - MUST have a room selected
-        if (!selectedRoomId) {
-          throw new Error("Please select a room to send a message to a specific tenant");
+        // Owner sending to tenant or agent
+        if (recipientType === 'agent') {
+          // Owner sending to agent
+          if (!selectedAgentId) {
+            throw new Error("Please select an agent");
+          }
+          
+          const { data: agentProfile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', selectedAgentId)
+            .single();
+          
+          receiverId = selectedAgentId;
+          recipientName = agentProfile?.full_name || "Financial Agent";
+        } else {
+          // Owner sending to tenant - MUST have a room selected
+          if (!selectedRoomId) {
+            throw new Error("Please select a room to send a message to a specific tenant");
+          }
+          
+          const { data: room, error: roomError } = await supabase
+            .from('rooms')
+            .select('tenant_id, tenant_name, property_id')
+            .eq('id', selectedRoomId)
+            .single();
+          
+          if (roomError) throw roomError;
+          
+          if (!room?.tenant_id) {
+            throw new Error("This room doesn't have a tenant assigned yet");
+          }
+          
+          receiverId = room.tenant_id;
+          recipientName = room.tenant_name || "tenant";
         }
-        
-        const { data: room, error: roomError } = await supabase
-          .from('rooms')
-          .select('tenant_id, tenant_name, property_id')
-          .eq('id', selectedRoomId)
-          .single();
-        
-        if (roomError) throw roomError;
-        
-        if (!room?.tenant_id) {
-          throw new Error("This room doesn't have a tenant assigned yet");
-        }
-        
-        receiverId = room.tenant_id;
-        recipientName = room.tenant_name || "tenant";
       } else if (currentUserRole === 'agent') {
         // Agent sending to tenant or owner
         if (!selectedRoomId && !propertyId && (!selectedPropertyId || selectedPropertyId === 'all')) {
@@ -499,7 +554,20 @@ const MessageCenter = ({
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="property">Property</Label>
-              <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+              <Select value={selectedPropertyId} onValueChange={(value) => {
+                setSelectedPropertyId(value);
+                if (currentUserRole === 'owner') {
+                  if (value !== 'all') {
+                    fetchRoomsForProperty(value);
+                    if (recipientType === 'agent') {
+                      fetchAgentsForProperty(value);
+                    }
+                  } else {
+                    setAvailableRooms([]);
+                    setAvailableAgents([]);
+                  }
+                }
+              }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select property" />
                 </SelectTrigger>
@@ -562,6 +630,83 @@ const MessageCenter = ({
                 </p>
               </div>
             )}
+            {currentUserRole === 'owner' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="owner-recipient-select">Send To:</Label>
+                  <Select value={recipientType} onValueChange={(value: 'tenant' | 'agent') => {
+                    setRecipientType(value);
+                    if (value === 'agent' && selectedPropertyId && selectedPropertyId !== 'all') {
+                      fetchAgentsForProperty(selectedPropertyId);
+                    }
+                  }}>
+                    <SelectTrigger id="owner-recipient-select">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="tenant">
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          Tenant
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="agent">
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4" />
+                          Financial Agent
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {recipientType === 'agent' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="agent-select">Select Agent:</Label>
+                    <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                      <SelectTrigger id="agent-select">
+                        <SelectValue placeholder="Select an agent" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableAgents.length > 0 ? (
+                          availableAgents.map(agent => (
+                            <SelectItem key={agent.id} value={agent.id}>
+                              {agent.full_name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>
+                            No agents available for this property
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {recipientType === 'tenant' && selectedPropertyId && selectedPropertyId !== 'all' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="room-select">Select Room:</Label>
+                    <Select value={selectedRoomId} onValueChange={setSelectedRoomId}>
+                      <SelectTrigger id="room-select">
+                        <SelectValue placeholder="Select a room" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableRooms.length > 0 ? (
+                          availableRooms.map(room => (
+                            <SelectItem key={room.id} value={room.id}>
+                              {room.room_number} - {room.tenant_name || 'Tenant'}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>
+                            No occupied rooms in this property
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </>
+            )}
             <div className="space-y-2">
               <Label htmlFor="message">Message</Label>
               <Textarea
@@ -575,23 +720,37 @@ const MessageCenter = ({
             </div>
             {currentUserRole === 'owner' && (
               <div className="flex gap-2">
-                <Button 
-                  onClick={sendToAllTenants}
-                  disabled={!newMessage.trim() || sendingToAll}
-                  className="bg-gradient-hero hover:shadow-glow flex-1"
-                >
-                  <Users className="mr-2 h-4 w-4" />
-                  {sendingToAll ? 'Sending...' : 'Send to All Tenants'}
-                </Button>
-                {selectedRoomId && (
+                {recipientType === 'tenant' && (
+                  <>
+                    <Button 
+                      onClick={sendToAllTenants}
+                      disabled={!newMessage.trim() || sendingToAll}
+                      className="bg-gradient-hero hover:shadow-glow flex-1"
+                    >
+                      <Users className="mr-2 h-4 w-4" />
+                      {sendingToAll ? 'Sending...' : 'Send to All Tenants'}
+                    </Button>
+                    {selectedRoomId && selectedRoomId !== 'owner' && (
+                      <Button 
+                        onClick={sendMessage}
+                        disabled={!newMessage.trim() || loading}
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        <Send className="mr-2 h-4 w-4" />
+                        {loading ? 'Sending...' : 'Send to Selected Room'}
+                      </Button>
+                    )}
+                  </>
+                )}
+                {recipientType === 'agent' && (
                   <Button 
                     onClick={sendMessage}
-                    disabled={!newMessage.trim() || loading}
-                    variant="outline"
-                    className="flex-1"
+                    disabled={!newMessage.trim() || loading || !selectedAgentId}
+                    className="bg-gradient-hero hover:shadow-glow w-full"
                   >
                     <Send className="mr-2 h-4 w-4" />
-                    {loading ? 'Sending...' : 'Send to Selected Room'}
+                    {loading ? 'Sending...' : 'Send to Agent'}
                   </Button>
                 )}
               </div>
@@ -757,9 +916,9 @@ const MessageCenter = ({
                         {isSentByMe && (
                           <div className="flex items-center gap-1">
                             {message.is_read ? (
-                              <CheckCheck className="h-4 w-4 text-primary" title={`Read ${message.read_at ? new Date(message.read_at).toLocaleString() : ''}`} />
+                              <CheckCheck className="h-4 w-4 text-primary" />
                             ) : (
-                              <Check className="h-4 w-4 text-muted-foreground" title="Sent" />
+                              <Check className="h-4 w-4 text-muted-foreground" />
                             )}
                           </div>
                         )}
