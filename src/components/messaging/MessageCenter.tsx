@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MessageSquare, Send, Users, AlertCircle, Building, Home, Building2, DollarSign, Check, CheckCheck } from "lucide-react";
+import { MessageSquare, Send, Users, AlertCircle, Building, Home, Building2, DollarSign, Check, CheckCheck, Wrench, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -49,6 +49,7 @@ const MessageCenter = ({
   const [loading, setLoading] = useState(false);
   const [sendingToAll, setSendingToAll] = useState(false);
   const [recipientType, setRecipientType] = useState<'owner' | 'agent' | 'tenant'>('owner');
+  const [agentRecipientType, setAgentRecipientType] = useState<'owner' | 'tenant'>('owner');
   const [availableRooms, setAvailableRooms] = useState<Array<{ id: string; room_number: string; tenant_name?: string }>>([]);
   const [availableAgents, setAvailableAgents] = useState<Array<{ id: string; full_name: string }>>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
@@ -597,7 +598,7 @@ const MessageCenter = ({
             {currentUserRole === 'tenant' 
               ? "Send a message to property management. SMS notifications will be sent automatically."
               : currentUserRole === 'agent'
-              ? "Send messages to tenants about rent and payment matters. SMS notifications will be sent automatically."
+              ? "Send messages to property owners or tenants. Choose recipient type and property to start messaging."
               : "Send messages to tenants or staff. SMS notifications will be sent automatically to recipients with registered phone numbers."
             }
           </CardDescription>
@@ -757,6 +758,27 @@ const MessageCenter = ({
             )}
             {currentUserRole === 'agent' && (
               <div className="space-y-4">
+                {/* Recipient Type Selector */}
+                <div className="space-y-2">
+                  <Label htmlFor="agent-recipient-type">Send To</Label>
+                  <Select 
+                    value={agentRecipientType} 
+                    onValueChange={(value: 'owner' | 'tenant') => {
+                      setAgentRecipientType(value);
+                      setSelectedRoomId("owner");
+                    }}
+                  >
+                    <SelectTrigger id="agent-recipient-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="owner">Property Owner</SelectItem>
+                      <SelectItem value="tenant">Tenant</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Property Selection */}
                 <div className="space-y-2">
                   <Label htmlFor="agent-property-select">Select Property</Label>
                   <Select 
@@ -764,7 +786,7 @@ const MessageCenter = ({
                     onValueChange={(value) => {
                       setSelectedPropertyId(value);
                       setSelectedRoomId("owner");
-                      if (value !== 'all') {
+                      if (value !== 'all' && agentRecipientType === 'tenant') {
                         fetchRoomsForProperty(value);
                       } else {
                         setAvailableRooms([]);
@@ -785,35 +807,38 @@ const MessageCenter = ({
                   </Select>
                 </div>
                 
-                {selectedPropertyId && selectedPropertyId !== 'all' && (
+                {/* Room Selection - Only for Tenant Recipient Type */}
+                {selectedPropertyId && selectedPropertyId !== 'all' && agentRecipientType === 'tenant' && (
                   <div className="space-y-2">
-                    <Label htmlFor="agent-room-select">Send to (Optional)</Label>
+                    <Label htmlFor="agent-room-select">Select Room</Label>
                     <Select value={selectedRoomId} onValueChange={setSelectedRoomId}>
                       <SelectTrigger id="agent-room-select">
-                        <SelectValue placeholder="Property Owner" />
+                        <SelectValue placeholder="Select a room" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="owner">Property Owner</SelectItem>
                         {availableRooms.map((room) => (
                           <SelectItem key={room.id} value={room.id}>
-                            {room.room_number} - {room.tenant_name || 'Tenant'}
+                            Room {room.room_number} - {room.tenant_name || 'Tenant'}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Leave as "Property Owner" to message owner, or select a room to message the tenant
-                    </p>
                   </div>
                 )}
                 
                 <Button 
                   onClick={sendMessage}
-                  disabled={!newMessage.trim() || loading || (!selectedPropertyId || selectedPropertyId === 'all')}
+                  disabled={
+                    !newMessage.trim() || 
+                    loading || 
+                    !selectedPropertyId || 
+                    selectedPropertyId === 'all' ||
+                    (agentRecipientType === 'tenant' && (!selectedRoomId || selectedRoomId === 'owner'))
+                  }
                   className="bg-emerald-600 hover:bg-emerald-700 w-full"
                 >
                   <Send className="mr-2 h-4 w-4" />
-                  {loading ? 'Sending...' : 'Send Message'}
+                  {loading ? 'Sending...' : `Send to ${agentRecipientType === 'owner' ? 'Property Owner' : 'Tenant'}`}
                 </Button>
               </div>
             )}
@@ -932,9 +957,22 @@ const MessageCenter = ({
                       </div>
                     </div>
 
-                    {/* Sender Info - Enhanced with Role and Email */}
+                    {/* Sender Info - Enhanced with Role, Name, and Context */}
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
+                        {/* Role Icon */}
+                        {!isSentByMe && message.sender_role === 'agent' && <DollarSign className="h-4 w-4 text-emerald-600" />}
+                        {!isSentByMe && message.sender_role === 'owner' && <Building2 className="h-4 w-4 text-blue-600" />}
+                        {!isSentByMe && message.sender_role === 'tenant' && <User className="h-4 w-4 text-yellow-600" />}
+                        
+                        {/* Maintenance Request Indicator */}
+                        {message.content.includes('[MAINTENANCE REQUEST') && (
+                          <Badge variant="destructive" className="bg-orange-500">
+                            <Wrench className="h-3 w-3 mr-1" />
+                            Maintenance
+                          </Badge>
+                        )}
+                        
                         <Badge 
                           variant={isSentByMe ? "default" : "secondary"}
                           className={isSentByMe ? "" : getRoleColor(message.sender_role || '')}
@@ -948,14 +986,25 @@ const MessageCenter = ({
                         {!isSentByMe && (
                           <>
                             {message.sender_name && (
-                              <span className="text-sm font-medium text-foreground">
+                              <span className="text-sm font-semibold text-foreground">
                                 {message.sender_name}
                               </span>
                             )}
-                            {message.sender_email && (
-                              <Badge variant="outline" className="text-xs text-muted-foreground bg-muted">
-                                {message.sender_email}
-                              </Badge>
+                            {/* Enhanced Context Display */}
+                            {message.sender_role === 'tenant' && message.room_number && message.property_name && (
+                              <span className="text-xs text-muted-foreground">
+                                from Room {message.room_number}, {message.property_name}
+                              </span>
+                            )}
+                            {message.sender_role === 'agent' && message.property_name && (
+                              <span className="text-xs text-muted-foreground">
+                                for {message.property_name}
+                              </span>
+                            )}
+                            {message.sender_role === 'owner' && message.property_name && (
+                              <span className="text-xs text-muted-foreground">
+                                regarding {message.property_name}
+                              </span>
                             )}
                           </>
                         )}

@@ -43,7 +43,7 @@ const AgentDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [isMessageCenterOpen, setIsMessageCenterOpen] = useState(false);
-  const [isMaintenanceOpen, setIsMaintenanceOpen] = useState(false);
+  
   const [isReminderOpen, setIsReminderOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<string>("");
@@ -261,10 +261,6 @@ const AgentDashboard = () => {
               <AlertCircle className="mr-2 h-4 w-4" />
               Send Reminder
             </Button>
-            <Button variant="outline" onClick={() => setIsMaintenanceOpen(true)}>
-              <Wrench className="mr-2 h-4 w-4" />
-              Maintenance
-            </Button>
             <Button variant="outline" onClick={() => setIsMessageCenterOpen(true)}>
               <MessageSquare className="mr-2 h-4 w-4" />
               Messages
@@ -417,26 +413,6 @@ const AgentDashboard = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Maintenance Request Dialog */}
-      <Dialog open={isMaintenanceOpen} onOpenChange={setIsMaintenanceOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Wrench className="h-5 w-5 text-emerald-600" />
-              Submit Maintenance Request
-            </DialogTitle>
-            <DialogDescription>
-              Report maintenance issues for properties
-            </DialogDescription>
-          </DialogHeader>
-          {currentUserId && (
-            <MaintenanceRequestForm
-              tenantId={currentUserId}
-              onRequestSubmitted={() => setIsMaintenanceOpen(false)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Send Reminder Dialog */}
       <Dialog open={isReminderOpen} onOpenChange={setIsReminderOpen}>
