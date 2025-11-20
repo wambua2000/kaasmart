@@ -496,11 +496,28 @@ const MessageCenter = ({
         created_at: new Date().toISOString()
       };
 
-      const { error } = await supabase
+      const { data: insertedMessage, error } = await supabase
         .from('messages')
-        .insert([messagePayload]);
+        .insert([messagePayload])
+        .select('id, sender_id, receiver_id, content, created_at')
+        .single();
 
       if (error) throw error;
+
+      // Send SMS notification in the background (don't wait for it or block on errors)
+      if (insertedMessage) {
+        supabase.functions.invoke('send-sms-notification', {
+          body: {
+            message_id: insertedMessage.id,
+            sender_id: insertedMessage.sender_id,
+            receiver_id: insertedMessage.receiver_id,
+            content: insertedMessage.content,
+            created_at: insertedMessage.created_at
+          }
+        }).catch((smsError) => {
+          console.warn('SMS notification failed (non-blocking):', smsError);
+        });
+      }
 
       setNewMessage("");
       loadMessages();
