@@ -50,7 +50,7 @@ const MessageCenter = ({
   const [sendingToAll, setSendingToAll] = useState(false);
   const [recipientType, setRecipientType] = useState<'owner' | 'agent' | 'tenant'>('owner');
   const [agentRecipientType, setAgentRecipientType] = useState<'owner' | 'tenant'>('owner');
-  const [availableRooms, setAvailableRooms] = useState<Array<{ id: string; room_number: string; tenant_name?: string }>>([]);
+  const [availableRooms, setAvailableRooms] = useState<Array<{ id: string; room_number: string; tenant_name?: string; tenant_id?: string }>>([]);
   const [availableAgents, setAvailableAgents] = useState<Array<{ id: string; full_name: string }>>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
 
@@ -471,6 +471,62 @@ const MessageCenter = ({
           throw new Error("Please select a property or room to send a message");
         }
         
+        // Handle "Send to All Tenants" option
+        if (selectedRoomId === 'all' && agentRecipientType === 'tenant') {
+          const tenantIds = availableRooms
+            .filter(room => room.tenant_id)
+            .map(room => room.tenant_id);
+
+          if (tenantIds.length === 0) {
+            throw new Error("No tenants found in the selected property");
+          }
+
+          // Send message to all tenants
+          const messages = tenantIds.map(tenantId => ({
+            content: newMessage,
+            sender_id: currentUserId,
+            receiver_id: tenantId,
+            property_id: selectedPropertyId || null,
+          }));
+
+          const { data: insertedMessages, error: insertError } = await supabase
+            .from("messages")
+            .insert(messages)
+            .select('id, sender_id, receiver_id, content, created_at');
+
+          if (insertError) throw insertError;
+
+          // Send SMS notifications for all messages
+          if (insertedMessages) {
+            insertedMessages.forEach((msg) => {
+              supabase.functions
+                .invoke('send-sms-notification', {
+                  body: {
+                    message_id: msg.id,
+                    sender_id: msg.sender_id,
+                    receiver_id: msg.receiver_id,
+                    content: msg.content,
+                    created_at: msg.created_at,
+                  },
+                })
+                .catch((error) => {
+                  console.warn('SMS notification failed (non-blocking):', error);
+                });
+            });
+          }
+
+          setNewMessage("");
+          loadMessages();
+
+          toast({
+            title: "Messages Sent",
+            description: `Message sent to ${tenantIds.length} tenant(s). SMS notifications will be sent to available phone numbers.`
+          });
+          
+          setLoading(false);
+          return;
+        }
+        
         // If room selected (and not "owner"), send to tenant
         if (selectedRoomId && selectedRoomId !== 'owner') {
           const { data: room, error: roomError } = await supabase
@@ -851,6 +907,12 @@ const MessageCenter = ({
                         <SelectValue placeholder="Select a room" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="all">
+                          <div className="flex items-center gap-2 font-semibold">
+                            <Users className="h-4 w-4" />
+                            Send to All Tenants
+                          </div>
+                        </SelectItem>
                         {availableRooms.map((room) => (
                           <SelectItem key={room.id} value={room.id}>
                             Room {room.room_number} - {room.tenant_name || 'Tenant'}
@@ -868,7 +930,7 @@ const MessageCenter = ({
                     loading || 
                     !selectedPropertyId || 
                     selectedPropertyId === 'all' ||
-                    (agentRecipientType === 'tenant' && (!selectedRoomId || selectedRoomId === 'owner'))
+                    (agentRecipientType === 'tenant' && !selectedRoomId)
                   }
                   className="bg-emerald-600 hover:bg-emerald-700 w-full"
                 >
