@@ -66,8 +66,26 @@ const MessageCenter = ({
       .eq('property_id', propertyId)
       .eq('is_occupied', true);
     
-    if (!error && data) {
+    if (error) {
+      console.error('Error fetching rooms:', error);
+      toast({
+        title: "Error",
+        description: "Could not load rooms for this property",
+        variant: "destructive"
+      });
+      setAvailableRooms([]);
+      return;
+    }
+    
+    if (data && data.length > 0) {
       setAvailableRooms(data);
+    } else {
+      setAvailableRooms([]);
+      toast({
+        title: "No Occupied Rooms",
+        description: "This property has no occupied rooms yet",
+        variant: "default"
+      });
     }
   };
 

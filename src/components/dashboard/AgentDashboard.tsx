@@ -80,26 +80,37 @@ const AgentDashboard = () => {
         .from('payments')
         .select(`
           *,
-          rooms!inner(room_number, tenant_id),
-          profiles!payments_tenant_id_fkey(full_name)
+          rooms!inner(room_number, tenant_id)
         `)
         .order('payment_date', { ascending: false })
         .limit(10);
 
       if (paymentsError) throw paymentsError;
       
-      const formattedPayments = (paymentsData || []).map((payment: any) => ({
-        id: payment.id,
-        tenant_id: payment.tenant_id,
-        amount: payment.amount,
-        payment_date: payment.payment_date,
-        payment_method: payment.payment_method || 'N/A',
-        status: payment.status,
-        tenant_name: payment.profiles?.full_name || 'Unknown',
-        room_number: payment.rooms?.room_number || 'N/A'
-      }));
+      // Fetch tenant names separately
+      const paymentsWithNames = await Promise.all(
+        (paymentsData || []).map(async (payment: any) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', payment.tenant_id)
+            .maybeSingle();
+          
+          return {
+            id: payment.id,
+            tenant_id: payment.tenant_id,
+            amount: payment.amount,
+            payment_date: payment.payment_date,
+            payment_method: payment.payment_method || 'N/A',
+            status: payment.status,
+            tenant_name: profile?.full_name || 'Unknown',
+            room_number: payment.rooms?.room_number || 'N/A'
+          };
+        })
+      );
+      
+      setRecentPayments(paymentsWithNames);
 
-      setRecentPayments(formattedPayments);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -116,12 +127,30 @@ const AgentDashboard = () => {
     
     const { data, error } = await supabase
       .from('rooms')
-      .select('*, profiles!rooms_tenant_id_fkey(full_name)')
+      .select('*')
       .eq('property_id', propertyId)
       .eq('is_occupied', true);
     
     if (!error && data) {
-      setRooms(data);
+      // Fetch tenant names separately
+      const roomsWithNames = await Promise.all(
+        data.map(async (room: any) => {
+          if (room.tenant_id) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', room.tenant_id)
+              .maybeSingle();
+            
+            return {
+              ...room,
+              profiles: { full_name: profile?.full_name || 'Unknown' }
+            };
+          }
+          return room;
+        })
+      );
+      setRooms(roomsWithNames);
     }
   };
 
