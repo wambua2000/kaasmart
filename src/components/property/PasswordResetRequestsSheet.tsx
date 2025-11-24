@@ -44,13 +44,37 @@ const PasswordResetRequestsSheet = ({ open, onOpenChange, onRequestsUpdated }: P
 
   const fetchRequests = async () => {
     try {
-      const { data, error } = await supabase
+      // Get current user's ID
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Fetch password reset requests
+      const { data: allRequests, error: requestsError } = await supabase
         .from('password_reset_requests')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setRequests(data || []);
+      if (requestsError) throw requestsError;
+
+      // For each request, check if the current user invited them
+      const filteredRequests = await Promise.all(
+        (allRequests || []).map(async (request) => {
+          // Check invitations table to see if current user invited this person
+          const { data: invitation } = await supabase
+            .from('invitations')
+            .select('invited_by')
+            .eq('email', request.email)
+            .eq('invited_by', user.id)
+            .maybeSingle();
+          
+          return invitation ? request : null;
+        })
+      );
+
+      // Remove null values (requests not invited by current user)
+      const userRequests = filteredRequests.filter(req => req !== null) as PasswordResetRequest[];
+      
+      setRequests(userRequests);
     } catch (error) {
       console.error('Error fetching password reset requests:', error);
       toast({
