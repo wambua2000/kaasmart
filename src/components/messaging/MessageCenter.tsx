@@ -856,7 +856,7 @@ const MessageCenter = ({
                     value={agentRecipientType} 
                     onValueChange={(value: 'owner' | 'tenant') => {
                       setAgentRecipientType(value);
-                      setSelectedRoomId("owner");
+                      setSelectedRoomId("");
                     }}
                   >
                     <SelectTrigger id="agent-recipient-type">
@@ -876,7 +876,7 @@ const MessageCenter = ({
                     value={selectedPropertyId} 
                     onValueChange={(value) => {
                       setSelectedPropertyId(value);
-                      setSelectedRoomId("owner");
+                      setSelectedRoomId("");
                       if (value !== 'all' && agentRecipientType === 'tenant') {
                         fetchRoomsForProperty(value);
                       } else {
@@ -901,10 +901,10 @@ const MessageCenter = ({
                 {/* Room Selection - Only for Tenant Recipient Type */}
                 {selectedPropertyId && selectedPropertyId !== 'all' && agentRecipientType === 'tenant' && (
                   <div className="space-y-2">
-                    <Label htmlFor="agent-room-select">Select Room</Label>
+                    <Label htmlFor="agent-room-select">Select Recipient</Label>
                     <Select value={selectedRoomId} onValueChange={setSelectedRoomId}>
                       <SelectTrigger id="agent-room-select">
-                        <SelectValue placeholder="Select a room" />
+                        <SelectValue placeholder="Choose recipient" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">
@@ -915,7 +915,11 @@ const MessageCenter = ({
                         </SelectItem>
                         {availableRooms.map((room) => (
                           <SelectItem key={room.id} value={room.id}>
-                            Room {room.room_number} - {room.tenant_name || 'Tenant'}
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4" />
+                              Room {room.room_number}
+                              {room.tenant_name && ` - ${room.tenant_name}`}
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
