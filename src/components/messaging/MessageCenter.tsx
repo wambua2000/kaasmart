@@ -163,9 +163,27 @@ const MessageCenter = ({
               .eq('id', newMsg.property_id)
               .maybeSingle();
 
+            // Fetch room info if sender is a tenant (for agents/owners to see room context)
+            let roomInfo = '';
+            if (sender?.role === 'tenant' && (currentUserRole === 'agent' || currentUserRole === 'owner')) {
+              const { data: room } = await supabase
+                .from('rooms')
+                .select('room_number')
+                .eq('tenant_id', newMsg.sender_id)
+                .maybeSingle();
+              
+              if (room?.room_number) {
+                roomInfo = ` • Room ${room.room_number}`;
+              }
+            }
+
+            const senderTitle = sender?.role === 'agent' 
+              ? `Financial Agent: ${sender?.full_name || 'Unknown'}` 
+              : sender?.full_name || 'Unknown';
+
             toast({
-              title: `New Message from ${getRoleDisplayName(sender?.role || '')}`,
-              description: `${sender?.full_name || 'Unknown'} (${sender?.email || 'No email'})\n${property?.name ? `${property.name} - ` : ''}${newMsg.content.substring(0, 50)}...`,
+              title: `New Message from ${getRoleDisplayName(sender?.role || '')}${roomInfo}`,
+              description: `${senderTitle} (${sender?.email || 'No email'})\n${property?.name ? `${property.name} - ` : ''}${newMsg.content.substring(0, 50)}...`,
               duration: 5000,
             });
           }
@@ -1086,15 +1104,34 @@ const MessageCenter = ({
                         
                         {!isSentByMe && (
                           <>
-                            {message.sender_name && (
+                            {/* Agent Title Display - Prominent for tenants viewing agent messages */}
+                            {message.sender_role === 'agent' && (
+                              <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                                Agent: {message.sender_name || 'Unknown'}
+                              </span>
+                            )}
+                            
+                            {/* Non-agent sender name */}
+                            {message.sender_role !== 'agent' && message.sender_name && (
                               <span className="text-sm font-semibold text-foreground">
                                 {message.sender_name}
                               </span>
                             )}
-                            {/* Enhanced Context Display */}
-                            {message.sender_role === 'tenant' && message.room_number && message.property_name && (
+                            
+                            {/* Enhanced Room Context for Tenant Messages - Prominent for agents/owners */}
+                            {message.sender_role === 'tenant' && message.room_number && (currentUserRole === 'agent' || currentUserRole === 'owner') && (
+                              <Badge variant="outline" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 font-medium">
+                                <Home className="h-3 w-3 mr-1" />
+                                Room {message.room_number}
+                              </Badge>
+                            )}
+                            
+                            {/* Context Display */}
+                            {message.sender_role === 'tenant' && message.property_name && (
                               <span className="text-xs text-muted-foreground">
-                                from Room {message.room_number}, {message.property_name}
+                                {message.room_number && (currentUserRole === 'agent' || currentUserRole === 'owner') 
+                                  ? `at ${message.property_name}` 
+                                  : `from Room ${message.room_number || 'N/A'}, ${message.property_name}`}
                               </span>
                             )}
                             {message.sender_role === 'agent' && message.property_name && (
