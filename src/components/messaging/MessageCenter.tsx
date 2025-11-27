@@ -875,6 +875,12 @@ const MessageCenter = ({
                     onValueChange={(value: 'owner' | 'tenant') => {
                       setAgentRecipientType(value);
                       setSelectedRoomId("");
+                      // Fetch rooms when switching to tenant if property already selected
+                      if (value === 'tenant' && selectedPropertyId && selectedPropertyId !== 'all') {
+                        fetchRoomsForProperty(selectedPropertyId);
+                      } else if (value === 'owner') {
+                        setAvailableRooms([]);
+                      }
                     }}
                   >
                     <SelectTrigger id="agent-recipient-type">
