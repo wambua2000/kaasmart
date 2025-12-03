@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, User, Lock, Mail, Eye, EyeOff, Settings, DollarSign, Code } from "lucide-react";
+import { Building2, User, Lock, Mail, Eye, EyeOff, Settings, DollarSign, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import kaasmartLogo from "@/assets/kaasmart-logo.png";
 import ForgotPasswordDialog from "./ForgotPasswordDialog";
@@ -21,6 +21,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("owner");
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const { toast } = useToast();
 
@@ -36,14 +37,53 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
       return;
     }
 
+    setIsLoading(true);
+    console.log('🔐 Login attempt:', { email, selectedRole: role });
+
     // Try Supabase authentication first for all roles
     try {
+      console.log('📡 Attempting Supabase auth...');
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: email,
         password: password
       });
 
+      console.log('📡 Auth result:', { 
+        success: !!authData?.user, 
+        userId: authData?.user?.id,
+        errorCode: authError?.status,
+        errorMessage: authError?.message 
+      });
+
+      if (authError) {
+        // Handle specific auth errors
+        if (authError.message.includes('Invalid login credentials')) {
+          console.log('❌ Invalid credentials - wrong email or password');
+          toast({
+            title: "Wrong Email or Password",
+            description: "The email or password you entered is incorrect. Please try again.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        } else if (authError.message.includes('Email not confirmed')) {
+          console.log('❌ Email not confirmed');
+          toast({
+            title: "Email Not Confirmed",
+            description: "Please check your email and confirm your account first.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        } else {
+          console.log('❌ Other auth error:', authError.message);
+          // Don't return yet - try invitation login
+        }
+      }
+
       if (authData?.user && !authError) {
+        console.log('✅ Auth successful, fetching profile...');
+        
         // Fetch user profile to verify role
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
@@ -51,9 +91,30 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
           .eq('id', authData.user.id)
           .single();
 
-        if (!profileError && profile) {
+        console.log('📋 Profile result:', { 
+          found: !!profile, 
+          profileRole: profile?.role,
+          selectedRole: role,
+          error: profileError?.message 
+        });
+
+        if (profileError) {
+          console.log('❌ Profile fetch error:', profileError.message);
+          toast({
+            title: "Profile Error",
+            description: "Could not fetch your profile. Please try again.",
+            variant: "destructive",
+          });
+          await supabase.auth.signOut();
+          setIsLoading(false);
+          return;
+        }
+
+        if (profile) {
           // Verify the role matches what user selected
           if (profile.role === role) {
+            console.log('✅ Role matches! Logging in...');
+            
             // For tenants, fetch their room/property info
             if (role === 'tenant') {
               const { data: roomData } = await supabase
@@ -80,31 +141,43 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
               });
             }
             onLogin(email, role);
+            setIsLoading(false);
             return;
           } else {
+            console.log('❌ Role mismatch! Profile role:', profile.role, 'Selected role:', role);
             toast({
-              title: "Invalid Role",
-              description: `This account is registered as ${profile.role}, not ${role}.`,
+              title: "Wrong Role Selected",
+              description: `This account is registered as "${profile.role}". Please select "${profile.role}" from the dropdown.`,
               variant: "destructive",
             });
             await supabase.auth.signOut();
+            setIsLoading(false);
             return;
           }
         }
       }
     } catch (error) {
-      console.error('Supabase auth error:', error);
+      console.error('❌ Supabase auth exception:', error);
     }
 
     // Check invitations table for new users
+    console.log('🔍 Checking invitations table...');
     try {
       const { data, error } = await supabase.rpc('verify_invitation_login', {
         login_email: email,
         login_password: password
       });
 
+      console.log('📧 Invitation check result:', { 
+        found: data && data.length > 0,
+        invitationRole: data?.[0]?.user_role,
+        selectedRole: role,
+        error: error?.message 
+      });
+
       if (!error && data && data.length > 0 && data[0].user_role === role) {
         const invitationData = data[0];
+        console.log('✅ Valid invitation found, creating account...');
         
         // Try to sign in first (in case account already exists)
         let authResult = await supabase.auth.signInWithPassword({
@@ -114,6 +187,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
 
         // If sign in fails, create new Supabase auth account
         if (authResult.error) {
+          console.log('📝 Creating new auth account...');
           authResult = await supabase.auth.signUp({
             email: email,
             password: password,
@@ -133,31 +207,46 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
             invitation_id: invitationData.invitation_id
           });
 
+          console.log('✅ Invitation login successful!');
           toast({
             title: "Welcome to KaaSmart!",
             description: `Logged in as ${role.charAt(0).toUpperCase() + role.slice(1)}`,
           });
           onLogin(email, role);
+          setIsLoading(false);
           return;
         } else if (authResult.error) {
+          console.log('❌ Auth error during invitation login:', authResult.error.message);
           toast({
             title: "Authentication Error",
             description: authResult.error.message,
             variant: "destructive",
           });
+          setIsLoading(false);
           return;
         }
+      } else if (data && data.length > 0 && data[0].user_role !== role) {
+        console.log('❌ Invitation role mismatch! Invitation role:', data[0].user_role, 'Selected role:', role);
+        toast({
+          title: "Wrong Role Selected",
+          description: `Your invitation is for "${data[0].user_role}". Please select that role from the dropdown.`,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
       }
     } catch (error) {
-      console.error('Invitation login error:', error);
+      console.error('❌ Invitation login exception:', error);
     }
 
     // If we get here, authentication failed
+    console.log('❌ All authentication methods failed');
     toast({
-      title: "Invalid Credentials",
-      description: "Please check your email, password, and selected role.",
+      title: "Login Failed",
+      description: "Invalid email, password, or role. Please check your credentials and try again.",
       variant: "destructive",
     });
+    setIsLoading(false);
   };
 
   return (
@@ -185,7 +274,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="role">Login as</Label>
-                <Select value={role} onValueChange={(value: UserRole) => setRole(value)}>
+                <Select value={role} onValueChange={(value: UserRole) => setRole(value)} disabled={isLoading}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -235,6 +324,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-9"
                     placeholder="Enter your email"
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -250,12 +340,14 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-9 pr-9"
                     placeholder="Enter your password"
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors"
                     aria-label={showPassword ? "Hide password" : "Show password"}
+                    disabled={isLoading}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -269,8 +361,16 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
               <Button 
                 type="submit" 
                 className="w-full bg-gradient-hero hover:shadow-glow transition-all duration-300"
+                disabled={isLoading}
               >
-                Sign In
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing In...
+                  </>
+                ) : (
+                  "Sign In"
+                )}
               </Button>
 
               <div className="text-center">
@@ -279,6 +379,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
                   variant="link" 
                   className="text-primary hover:text-primary-glow"
                   onClick={() => setIsForgotPasswordOpen(true)}
+                  disabled={isLoading}
                 >
                   Forgot Password?
                 </Button>
