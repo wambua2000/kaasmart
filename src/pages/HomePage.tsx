@@ -22,7 +22,7 @@ const HomePage = () => {
   return (
     <PublicLayout>
       {/* SECTION 1: HERO */}
-      <section className="relative py-20 lg:py-32 overflow-hidden">
+      <section className="relative py-16 lg:py-24 overflow-hidden">
         <div 
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(${heroApartment})` }}
@@ -31,8 +31,8 @@ const HomePage = () => {
         </div>
         
         <div className="container relative z-10">
-          <div className="max-w-3xl space-y-6">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground">
+          <div className="max-w-3xl space-y-5">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-primary">
               Property Management Made Simple
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl">
@@ -40,7 +40,7 @@ const HomePage = () => {
               managers, financial agents, and tenants manage rent, maintenance, communication, 
               and reporting from one secure system.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <Button size="lg" asChild>
                 <Link to="/login">Get Started</Link>
               </Button>
@@ -51,27 +51,27 @@ const HomePage = () => {
           </div>
 
           {/* Dashboard Preview Card */}
-          <div className="mt-12 lg:mt-16">
-            <Card className="bg-card/80 backdrop-blur border-2 shadow-xl max-w-4xl">
-              <CardContent className="p-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-4 rounded-lg bg-primary/10">
-                    <Building2 className="h-8 w-8 mx-auto text-primary mb-2" />
+          <div className="mt-10 lg:mt-12">
+            <Card className="bg-card/80 backdrop-blur border-2 border-primary/20 shadow-xl max-w-4xl">
+              <CardContent className="p-5">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="text-center p-3 rounded-lg bg-primary/10">
+                    <Building2 className="h-7 w-7 mx-auto text-primary mb-2" />
                     <p className="text-2xl font-bold text-foreground">12</p>
                     <p className="text-sm text-muted-foreground">Total Properties</p>
                   </div>
-                  <div className="text-center p-4 rounded-lg bg-green-500/10">
-                    <TrendingUp className="h-8 w-8 mx-auto text-green-600 mb-2" />
+                  <div className="text-center p-3 rounded-lg bg-primary/10">
+                    <TrendingUp className="h-7 w-7 mx-auto text-primary mb-2" />
                     <p className="text-2xl font-bold text-foreground">94%</p>
                     <p className="text-sm text-muted-foreground">Occupancy Rate</p>
                   </div>
-                  <div className="text-center p-4 rounded-lg bg-amber-500/10">
-                    <Wallet className="h-8 w-8 mx-auto text-amber-600 mb-2" />
+                  <div className="text-center p-3 rounded-lg bg-primary/10">
+                    <Wallet className="h-7 w-7 mx-auto text-primary mb-2" />
                     <p className="text-2xl font-bold text-foreground">KES 2.4M</p>
                     <p className="text-sm text-muted-foreground">Rent Collected</p>
                   </div>
-                  <div className="text-center p-4 rounded-lg bg-red-500/10">
-                    <Wrench className="h-8 w-8 mx-auto text-red-600 mb-2" />
+                  <div className="text-center p-3 rounded-lg bg-primary/10">
+                    <Wrench className="h-7 w-7 mx-auto text-primary mb-2" />
                     <p className="text-2xl font-bold text-foreground">3</p>
                     <p className="text-sm text-muted-foreground">Pending Requests</p>
                   </div>
@@ -83,10 +83,10 @@ const HomePage = () => {
       </section>
 
       {/* SECTION 2: THE REAL PROBLEM */}
-      <section className="py-16 lg:py-24 bg-muted/30">
+      <section className="py-12 lg:py-16 bg-muted/30">
         <div className="container">
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <div className="text-center max-w-3xl mx-auto mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">
               The Challenges of Traditional Property Management
             </h2>
             <p className="text-muted-foreground">
@@ -94,7 +94,7 @@ const HomePage = () => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
               {
                 icon: AlertTriangle,
@@ -128,8 +128,8 @@ const HomePage = () => {
               }
             ].map((problem, index) => (
               <Card key={index} className="border-destructive/20 bg-destructive/5">
-                <CardContent className="p-6">
-                  <problem.icon className="h-10 w-10 text-destructive mb-4" />
+                <CardContent className="p-5">
+                  <problem.icon className="h-9 w-9 text-destructive mb-3" />
                   <h3 className="text-lg font-semibold text-foreground mb-2">{problem.title}</h3>
                   <p className="text-sm text-muted-foreground">{problem.description}</p>
                 </CardContent>
@@ -137,17 +137,17 @@ const HomePage = () => {
             ))}
           </div>
 
-          <p className="text-center text-muted-foreground mt-8 text-lg">
+          <p className="text-center text-muted-foreground mt-6 text-lg">
             <strong>These challenges grow worse as properties scale.</strong>
           </p>
         </div>
       </section>
 
       {/* SECTION 3: THE KAASMART SOLUTION */}
-      <section className="py-16 lg:py-24">
+      <section className="py-12 lg:py-16">
         <div className="container">
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <div className="text-center max-w-3xl mx-auto mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">
               A Centralized, Automated Property Management System
             </h2>
             <p className="text-muted-foreground text-lg">
@@ -156,7 +156,7 @@ const HomePage = () => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
               {
                 icon: Building2,
@@ -190,8 +190,8 @@ const HomePage = () => {
               }
             ].map((feature, index) => (
               <Card key={index} className="border-primary/20 bg-primary/5 hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <feature.icon className="h-10 w-10 text-primary mb-4" />
+                <CardContent className="p-5">
+                  <feature.icon className="h-9 w-9 text-primary mb-3" />
                   <h3 className="text-lg font-semibold text-foreground mb-2">{feature.title}</h3>
                   <p className="text-sm text-muted-foreground">{feature.description}</p>
                 </CardContent>
@@ -202,10 +202,10 @@ const HomePage = () => {
       </section>
 
       {/* SECTION 4: WHO USES KAASMART */}
-      <section className="py-16 lg:py-24 bg-muted/30">
+      <section className="py-12 lg:py-16 bg-muted/30">
         <div className="container">
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <div className="text-center max-w-3xl mx-auto mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">
               Who Uses KaaSmart
             </h2>
             <p className="text-muted-foreground">
@@ -213,7 +213,7 @@ const HomePage = () => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid md:grid-cols-2 gap-5">
             {[
               {
                 title: "Property Owners",
@@ -253,8 +253,8 @@ const HomePage = () => {
               }
             ].map((user, index) => (
               <Card key={index} className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-3 mb-4">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-3 mb-3">
                     <div className="p-2 rounded-lg bg-primary/10">
                       <user.icon className="h-6 w-6 text-primary" />
                     </div>
@@ -263,7 +263,7 @@ const HomePage = () => {
                   <ul className="space-y-2">
                     {user.points.map((point, i) => (
                       <li key={i} className="flex items-start gap-2 text-muted-foreground">
-                        <CheckCircle className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+                        <CheckCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                         <span>{point}</span>
                       </li>
                     ))}
@@ -276,15 +276,15 @@ const HomePage = () => {
       </section>
 
       {/* SECTION 5: BENEFITS SUMMARY */}
-      <section className="py-16 lg:py-24">
+      <section className="py-12 lg:py-16">
         <div className="container">
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <div className="text-center max-w-3xl mx-auto mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">
               Why Choose KaaSmart
             </h2>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {[
               "Reduced administrative workload",
               "Improved accountability",
@@ -292,9 +292,9 @@ const HomePage = () => {
               "Better tenant satisfaction",
               "Scalable property operations"
             ].map((benefit, index) => (
-              <Card key={index} className="text-center hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <CheckCircle className="h-10 w-10 text-primary mx-auto mb-3" />
+              <Card key={index} className="text-center hover:shadow-lg transition-shadow border-primary/20">
+                <CardContent className="p-5">
+                  <CheckCircle className="h-9 w-9 text-primary mx-auto mb-2" />
                   <p className="font-medium text-foreground">{benefit}</p>
                 </CardContent>
               </Card>
@@ -304,15 +304,15 @@ const HomePage = () => {
       </section>
 
       {/* SECTION 6: FINAL CTA */}
-      <section className="py-16 lg:py-24 bg-primary">
+      <section className="py-12 lg:py-16 bg-primary">
         <div className="container text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-3">
             Start Managing Properties the Smart Way
           </h2>
-          <p className="text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
+          <p className="text-primary-foreground/80 mb-6 max-w-2xl mx-auto">
             Join property owners and managers across Africa who are modernizing their operations with KaaSmart.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button size="lg" variant="secondary" asChild>
               <Link to="/login">Get Started</Link>
             </Button>

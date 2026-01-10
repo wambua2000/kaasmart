@@ -18,13 +18,13 @@ const SupportPage = () => {
   return (
     <PublicLayout>
       {/* HEADER */}
-      <section className="py-16 lg:py-24 bg-gradient-to-b from-primary/5 to-background">
+      <section className="py-12 lg:py-16 bg-gradient-to-b from-primary/5 to-background">
         <div className="container">
           <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-flex p-4 rounded-full bg-primary/10 mb-6">
-              <Headphones className="h-12 w-12 text-primary" />
+            <div className="inline-flex p-3 rounded-full bg-primary/10 mb-4">
+              <Headphones className="h-10 w-10 text-primary" />
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
+            <h1 className="text-4xl md:text-5xl font-bold text-primary mb-4">
               We're Here to Help
             </h1>
             <p className="text-lg text-muted-foreground">
@@ -35,10 +35,10 @@ const SupportPage = () => {
       </section>
 
       {/* SECTION 1: SUPPORT CHANNELS */}
-      <section className="py-16 lg:py-24">
+      <section className="py-12 lg:py-16">
         <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">
               Support Channels
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -46,14 +46,14 @@ const SupportPage = () => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <Card className="text-center hover:shadow-lg transition-shadow">
-              <CardContent className="p-8">
-                <div className="p-4 rounded-full bg-primary/10 inline-flex mb-4">
-                  <MessageCircle className="h-8 w-8 text-primary" />
+          <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
+            <Card className="text-center hover:shadow-lg transition-shadow border-primary/20">
+              <CardContent className="p-6">
+                <div className="p-3 rounded-full bg-primary/10 inline-flex mb-3">
+                  <MessageCircle className="h-7 w-7 text-primary" />
                 </div>
                 <h3 className="text-xl font-semibold text-foreground mb-2">AI Chatbot</h3>
-                <p className="text-muted-foreground text-sm mb-4">
+                <p className="text-muted-foreground text-sm mb-3">
                   Get instant answers to common questions 24/7. Our AI assistant can help 
                   with basic troubleshooting and navigation.
                 </p>
@@ -62,12 +62,12 @@ const SupportPage = () => {
             </Card>
 
             <Card className="text-center hover:shadow-lg transition-shadow border-primary">
-              <CardContent className="p-8">
-                <div className="p-4 rounded-full bg-primary/10 inline-flex mb-4">
-                  <Mail className="h-8 w-8 text-primary" />
+              <CardContent className="p-6">
+                <div className="p-3 rounded-full bg-primary/10 inline-flex mb-3">
+                  <Mail className="h-7 w-7 text-primary" />
                 </div>
                 <h3 className="text-xl font-semibold text-foreground mb-2">Email Support</h3>
-                <p className="text-muted-foreground text-sm mb-4">
+                <p className="text-muted-foreground text-sm mb-3">
                   For complex issues or detailed inquiries, our support team is ready 
                   to help via email.
                 </p>
@@ -80,13 +80,13 @@ const SupportPage = () => {
               </CardContent>
             </Card>
 
-            <Card className="text-center hover:shadow-lg transition-shadow">
-              <CardContent className="p-8">
-                <div className="p-4 rounded-full bg-primary/10 inline-flex mb-4">
-                  <BookOpen className="h-8 w-8 text-primary" />
+            <Card className="text-center hover:shadow-lg transition-shadow border-primary/20">
+              <CardContent className="p-6">
+                <div className="p-3 rounded-full bg-primary/10 inline-flex mb-3">
+                  <BookOpen className="h-7 w-7 text-primary" />
                 </div>
                 <h3 className="text-xl font-semibold text-foreground mb-2">Help Center</h3>
-                <p className="text-muted-foreground text-sm mb-4">
+                <p className="text-muted-foreground text-sm mb-3">
                   Browse our comprehensive knowledge base with guides, tutorials, 
                   and best practices.
                 </p>
@@ -98,11 +98,11 @@ const SupportPage = () => {
       </section>
 
       {/* SECTION 2: ONBOARDING SUPPORT */}
-      <section className="py-16 lg:py-24 bg-muted/30">
+      <section className="py-12 lg:py-16 bg-muted/30">
         <div className="container">
           <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">
                 Onboarding Support
               </h2>
               <p className="text-muted-foreground">
@@ -110,16 +110,16 @@ const SupportPage = () => {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-8">
-              <Card>
-                <CardHeader>
+            <div className="grid md:grid-cols-2 gap-5">
+              <Card className="border-primary/20">
+                <CardHeader className="pb-2">
                   <div className="flex items-center gap-3">
                     <GraduationCap className="h-6 w-6 text-primary" />
                     <CardTitle>Step-by-Step Setup</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground text-sm mb-4">
+                  <p className="text-muted-foreground text-sm mb-3">
                     Our guided setup process walks you through:
                   </p>
                   <ul className="space-y-2 text-sm text-muted-foreground">
@@ -138,15 +138,15 @@ const SupportPage = () => {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
+              <Card className="border-primary/20">
+                <CardHeader className="pb-2">
                   <div className="flex items-center gap-3">
                     <BookOpen className="h-6 w-6 text-primary" />
                     <CardTitle>Tutorials & Guides</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground text-sm mb-4">
+                  <p className="text-muted-foreground text-sm mb-3">
                     Learn at your own pace with our resources:
                   </p>
                   <ul className="space-y-2 text-sm text-muted-foreground">
@@ -165,8 +165,8 @@ const SupportPage = () => {
                 </CardContent>
               </Card>
 
-              <Card className="md:col-span-2">
-                <CardHeader>
+              <Card className="md:col-span-2 border-primary/20">
+                <CardHeader className="pb-2">
                   <div className="flex items-center gap-3">
                     <FileQuestion className="h-6 w-6 text-primary" />
                     <CardTitle>Frequently Asked Questions</CardTitle>
@@ -185,11 +185,11 @@ const SupportPage = () => {
       </section>
 
       {/* SECTION 3: ISSUE RESOLUTION PROCESS */}
-      <section className="py-16 lg:py-24">
+      <section className="py-12 lg:py-16">
         <div className="container">
           <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">
                 Issue Resolution Process
               </h2>
               <p className="text-muted-foreground">
@@ -197,7 +197,7 @@ const SupportPage = () => {
               </p>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-4">
               {[
                 {
                   step: 1,
@@ -226,10 +226,10 @@ const SupportPage = () => {
                 }
               ].map((item, index) => (
                 <div key={index} className="flex gap-4 items-start">
-                  <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground font-bold flex items-center justify-center shrink-0">
+                  <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground font-bold flex items-center justify-center shrink-0">
                     {item.step}
                   </div>
-                  <Card className="flex-1">
+                  <Card className="flex-1 border-primary/20">
                     <CardContent className="p-4">
                       <h3 className="font-semibold text-foreground mb-1">{item.title}</h3>
                       <p className="text-sm text-muted-foreground">{item.description}</p>
@@ -239,9 +239,9 @@ const SupportPage = () => {
               ))}
             </div>
 
-            <Card className="mt-12 border-primary/20 bg-primary/5">
-              <CardContent className="p-6 flex items-center gap-4">
-                <Clock className="h-8 w-8 text-primary shrink-0" />
+            <Card className="mt-8 border-primary/20 bg-primary/5">
+              <CardContent className="p-5 flex items-center gap-4">
+                <Clock className="h-7 w-7 text-primary shrink-0" />
                 <div>
                   <h4 className="font-semibold text-foreground">Response Times</h4>
                   <p className="text-sm text-muted-foreground">
@@ -255,12 +255,12 @@ const SupportPage = () => {
       </section>
 
       {/* CTA */}
-      <section className="py-16 lg:py-24 bg-primary">
+      <section className="py-12 lg:py-16 bg-primary">
         <div className="container text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-3">
             Need a Demo?
           </h2>
-          <p className="text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
+          <p className="text-primary-foreground/80 mb-6 max-w-2xl mx-auto">
             Schedule a personalized walkthrough with our team to see KaaSmart in action.
           </p>
           <Button size="lg" variant="secondary" asChild>
