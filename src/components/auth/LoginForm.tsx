@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, User, Lock, Mail, Eye, EyeOff, Settings, DollarSign, Loader2 } from "lucide-react";
+import { Building2, User, Lock, Mail, Eye, EyeOff, Settings, DollarSign, Loader2, Home } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import kaasmartLogo from "@/assets/kaasmart-logo.png";
 import ForgotPasswordDialog from "./ForgotPasswordDialog";
@@ -24,6 +25,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -373,7 +375,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
                 )}
               </Button>
 
-              <div className="text-center">
+              <div className="text-center space-y-2">
                 <Button 
                   type="button"
                   variant="link" 
@@ -383,6 +385,19 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
                 >
                   Forgot Password?
                 </Button>
+                <div>
+                  <Button 
+                    type="button"
+                    variant="ghost" 
+                    size="sm"
+                    className="text-muted-foreground hover:text-foreground"
+                    onClick={() => navigate("/")}
+                    disabled={isLoading}
+                  >
+                    <Home className="mr-1 h-3 w-3" />
+                    Return to Home Page
+                  </Button>
+                </div>
               </div>
             </form>
 
