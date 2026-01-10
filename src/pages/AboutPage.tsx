@@ -11,7 +11,6 @@ import {
   CreditCard,
   Wifi,
   Home,
-  ArrowRight,
   CheckCircle
 } from "lucide-react";
 
@@ -19,13 +18,13 @@ const AboutPage = () => {
   return (
     <PublicLayout>
       {/* SECTION 1: ABOUT KAASMART */}
-      <section className="py-16 lg:py-24 bg-gradient-to-b from-primary/5 to-background">
+      <section className="py-12 lg:py-16 bg-gradient-to-b from-primary/5 to-background">
         <div className="container">
           <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
+            <h1 className="text-4xl md:text-5xl font-bold text-primary mb-4">
               About KaaSmart
             </h1>
-            <p className="text-lg text-muted-foreground mb-8">
+            <p className="text-lg text-muted-foreground mb-4">
               KaaSmart was built to modernize property management in regions where manual 
               systems still dominate. We believe technology should simplify operations, 
               not complicate them.
@@ -41,14 +40,14 @@ const AboutPage = () => {
       </section>
 
       {/* SECTION 2: MISSION & VISION */}
-      <section className="py-16 lg:py-24">
+      <section className="py-12 lg:py-16">
         <div className="container">
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-5 max-w-5xl mx-auto">
             <Card className="border-primary/20 bg-primary/5">
-              <CardContent className="p-8">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-3 rounded-lg bg-primary/10">
-                    <Target className="h-8 w-8 text-primary" />
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Target className="h-7 w-7 text-primary" />
                   </div>
                   <h2 className="text-2xl font-bold text-foreground">Our Mission</h2>
                 </div>
@@ -62,10 +61,10 @@ const AboutPage = () => {
             </Card>
 
             <Card className="border-primary/20 bg-primary/5">
-              <CardContent className="p-8">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-3 rounded-lg bg-primary/10">
-                    <Eye className="h-8 w-8 text-primary" />
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Eye className="h-7 w-7 text-primary" />
                   </div>
                   <h2 className="text-2xl font-bold text-foreground">Our Vision</h2>
                 </div>
@@ -78,17 +77,17 @@ const AboutPage = () => {
             </Card>
           </div>
 
-          <div className="max-w-4xl mx-auto mt-12">
-            <h3 className="text-xl font-semibold text-foreground text-center mb-6">Our Core Values</h3>
-            <div className="grid sm:grid-cols-3 gap-6">
+          <div className="max-w-4xl mx-auto mt-8">
+            <h3 className="text-xl font-semibold text-primary text-center mb-5">Our Core Values</h3>
+            <div className="grid sm:grid-cols-3 gap-4">
               {[
                 { title: "Transparency", desc: "Clear visibility into all operations" },
                 { title: "Simplicity", desc: "Powerful features, easy to use" },
                 { title: "Reliability", desc: "Dependable systems you can trust" }
               ].map((value, index) => (
-                <Card key={index} className="text-center">
-                  <CardContent className="p-6">
-                    <CheckCircle className="h-8 w-8 text-primary mx-auto mb-3" />
+                <Card key={index} className="text-center border-primary/20">
+                  <CardContent className="p-5">
+                    <CheckCircle className="h-7 w-7 text-primary mx-auto mb-2" />
                     <h4 className="font-semibold text-foreground mb-1">{value.title}</h4>
                     <p className="text-sm text-muted-foreground">{value.desc}</p>
                   </CardContent>
@@ -100,10 +99,10 @@ const AboutPage = () => {
       </section>
 
       {/* SECTION 3: TARGET USERS */}
-      <section className="py-16 lg:py-24 bg-muted/30">
+      <section className="py-12 lg:py-16 bg-muted/30">
         <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">
               Who We Serve
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -111,11 +110,11 @@ const AboutPage = () => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6 text-center">
-                <div className="p-4 rounded-full bg-primary/10 inline-flex mb-4">
-                  <Users className="h-8 w-8 text-primary" />
+          <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
+            <Card className="hover:shadow-lg transition-shadow border-primary/20">
+              <CardContent className="p-5 text-center">
+                <div className="p-3 rounded-full bg-primary/10 inline-flex mb-3">
+                  <Users className="h-7 w-7 text-primary" />
                 </div>
                 <h3 className="text-xl font-semibold text-foreground mb-2">Individual Landlords</h3>
                 <p className="text-muted-foreground text-sm">
@@ -125,10 +124,10 @@ const AboutPage = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6 text-center">
-                <div className="p-4 rounded-full bg-primary/10 inline-flex mb-4">
-                  <Briefcase className="h-8 w-8 text-primary" />
+            <Card className="hover:shadow-lg transition-shadow border-primary/20">
+              <CardContent className="p-5 text-center">
+                <div className="p-3 rounded-full bg-primary/10 inline-flex mb-3">
+                  <Briefcase className="h-7 w-7 text-primary" />
                 </div>
                 <h3 className="text-xl font-semibold text-foreground mb-2">Property Management Firms</h3>
                 <p className="text-muted-foreground text-sm">
@@ -138,10 +137,10 @@ const AboutPage = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6 text-center">
-                <div className="p-4 rounded-full bg-primary/10 inline-flex mb-4">
-                  <Building2 className="h-8 w-8 text-primary" />
+            <Card className="hover:shadow-lg transition-shadow border-primary/20">
+              <CardContent className="p-5 text-center">
+                <div className="p-3 rounded-full bg-primary/10 inline-flex mb-3">
+                  <Building2 className="h-7 w-7 text-primary" />
                 </div>
                 <h3 className="text-xl font-semibold text-foreground mb-2">Real Estate Developers</h3>
                 <p className="text-muted-foreground text-sm">
@@ -155,11 +154,11 @@ const AboutPage = () => {
       </section>
 
       {/* SECTION 4: FUTURE ROADMAP */}
-      <section className="py-16 lg:py-24">
+      <section className="py-12 lg:py-16">
         <div className="container">
           <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">
                 Future Roadmap
               </h2>
               <p className="text-muted-foreground">
@@ -167,7 +166,7 @@ const AboutPage = () => {
               </p>
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-6">
+            <div className="grid sm:grid-cols-2 gap-4">
               {[
                 {
                   icon: Smartphone,
@@ -200,11 +199,11 @@ const AboutPage = () => {
                   description: "Localized versions for different African markets with local currency and compliance support."
                 }
               ].map((item, index) => (
-                <Card key={index} className="hover:shadow-lg transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-start gap-4">
+                <Card key={index} className="hover:shadow-lg transition-shadow border-primary/20">
+                  <CardContent className="p-5">
+                    <div className="flex items-start gap-3">
                       <div className="p-2 rounded-lg bg-primary/10 shrink-0">
-                        <item.icon className="h-6 w-6 text-primary" />
+                        <item.icon className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <h3 className="font-semibold text-foreground mb-1">{item.title}</h3>
@@ -216,9 +215,9 @@ const AboutPage = () => {
               ))}
             </div>
 
-            <div className="text-center mt-12">
+            <div className="text-center mt-8">
               <p className="text-muted-foreground">
-                Have a feature request? <a href="mailto:feedback@kaasmart.com" className="text-primary hover:underline">Let us know</a>
+                Have a feature request? <a href="mailto:feedback@kaasmart.com" className="text-primary hover:underline font-medium">Let us know</a>
               </p>
             </div>
           </div>

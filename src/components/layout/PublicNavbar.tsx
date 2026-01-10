@@ -6,12 +6,12 @@ import kaasmartLogo from "@/assets/kaasmart-logo.png";
 
 const navLinks = [
   { name: "Home", path: "/" },
+  { name: "About", path: "/about" },
   { name: "Product", path: "/product" },
   { name: "How It Works", path: "/how-it-works" },
   { name: "Pricing", path: "/pricing" },
   { name: "Security", path: "/security" },
   { name: "Support", path: "/support" },
-  { name: "About", path: "/about" },
 ];
 
 const PublicNavbar = () => {

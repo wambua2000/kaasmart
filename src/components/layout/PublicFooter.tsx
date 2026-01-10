@@ -62,7 +62,7 @@ const PublicFooter = () => {
 
         {/* Copyright */}
         <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
-          © 2025 KaaSmart Technologies. All Rights Reserved.
+          © 2026 KaaSmart Technologies. All Rights Reserved.
         </div>
       </div>
     </footer>

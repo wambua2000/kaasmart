@@ -17,13 +17,13 @@ const SecurityPage = () => {
   return (
     <PublicLayout>
       {/* SECTION 1: SECURITY PRINCIPLES */}
-      <section className="py-16 lg:py-24 bg-gradient-to-b from-primary/5 to-background">
+      <section className="py-12 lg:py-16 bg-gradient-to-b from-primary/5 to-background">
         <div className="container">
           <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-flex p-4 rounded-full bg-primary/10 mb-6">
-              <Shield className="h-12 w-12 text-primary" />
+            <div className="inline-flex p-3 rounded-full bg-primary/10 mb-4">
+              <Shield className="h-10 w-10 text-primary" />
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
+            <h1 className="text-4xl md:text-5xl font-bold text-primary mb-4">
               Security First
             </h1>
             <p className="text-lg text-muted-foreground">
@@ -35,10 +35,10 @@ const SecurityPage = () => {
       </section>
 
       {/* SECTION 2: TECHNICAL SECURITY */}
-      <section className="py-16 lg:py-24">
+      <section className="py-12 lg:py-16">
         <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">
               Technical Security Measures
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -46,7 +46,7 @@ const SecurityPage = () => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
               {
                 icon: UserCheck,
@@ -79,9 +79,9 @@ const SecurityPage = () => {
                 description: "Hosted on enterprise-grade cloud infrastructure with 99.9% uptime guarantee and DDoS protection."
               }
             ].map((feature, index) => (
-              <Card key={index} className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="p-3 rounded-lg bg-primary/10 inline-flex mb-4">
+              <Card key={index} className="hover:shadow-lg transition-shadow border-primary/20">
+                <CardContent className="p-5">
+                  <div className="p-2 rounded-lg bg-primary/10 inline-flex mb-3">
                     <feature.icon className="h-6 w-6 text-primary" />
                   </div>
                   <h3 className="text-lg font-semibold text-foreground mb-2">{feature.title}</h3>
@@ -94,11 +94,11 @@ const SecurityPage = () => {
       </section>
 
       {/* SECTION 3: COMPLIANCE */}
-      <section className="py-16 lg:py-24 bg-muted/30">
+      <section className="py-12 lg:py-16 bg-muted/30">
         <div className="container">
           <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">
                 Compliance & Standards
               </h2>
               <p className="text-muted-foreground">
@@ -106,11 +106,11 @@ const SecurityPage = () => {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid md:grid-cols-2 gap-5">
               <Card className="border-primary/20">
-                <CardContent className="p-6">
+                <CardContent className="p-5">
                   <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-lg bg-primary/10">
+                    <div className="p-2 rounded-lg bg-primary/10">
                       <FileCheck className="h-6 w-6 text-primary" />
                     </div>
                     <div>
@@ -128,9 +128,9 @@ const SecurityPage = () => {
               </Card>
 
               <Card className="border-primary/20">
-                <CardContent className="p-6">
+                <CardContent className="p-5">
                   <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-lg bg-primary/10">
+                    <div className="p-2 rounded-lg bg-primary/10">
                       <Shield className="h-6 w-6 text-primary" />
                     </div>
                     <div>
@@ -152,24 +152,24 @@ const SecurityPage = () => {
       </section>
 
       {/* SECTION 4: DATA OWNERSHIP */}
-      <section className="py-16 lg:py-24">
+      <section className="py-12 lg:py-16">
         <div className="container">
           <div className="max-w-4xl mx-auto">
             <Card className="border-primary/20 bg-primary/5">
-              <CardContent className="p-8 md:p-12">
-                <div className="flex flex-col md:flex-row items-center gap-8">
-                  <div className="p-6 rounded-full bg-primary/10">
-                    <Database className="h-16 w-16 text-primary" />
+              <CardContent className="p-6 md:p-8">
+                <div className="flex flex-col md:flex-row items-center gap-6">
+                  <div className="p-5 rounded-full bg-primary/10">
+                    <Database className="h-14 w-14 text-primary" />
                   </div>
                   <div className="flex-1 text-center md:text-left">
-                    <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
+                    <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">
                       Your Data, Your Control
                     </h2>
-                    <p className="text-muted-foreground mb-6">
+                    <p className="text-muted-foreground mb-4">
                       You retain full ownership and control of your data at all times. 
                       We are custodians, not owners, of your information.
                     </p>
-                    <ul className="space-y-3">
+                    <ul className="space-y-2">
                       {[
                         "Export your data at any time in standard formats",
                         "Request deletion of your data when you leave",
