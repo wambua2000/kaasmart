@@ -1,10 +1,1 @@
-project_id = "ubqnwfkzshalroypoucb"
-
-[functions.send-sms-notification]
-verify_jwt = false
-
-[functions.chat]
-verify_jwt = true
-
-[functions.create-invited-user]
-verify_jwt = true
+project_id = "zpdvfjvmiektizxuvupt"
