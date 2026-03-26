@@ -396,12 +396,12 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
             notes: room.tenant_notes || undefined,
           } : undefined
         }));
-        setRooms(mappedRooms);
+        setRooms(mappedRooms as Room[]);
         
         // Update selected room to show new tenant
-        const updatedSelectedRoom = mappedRooms.find(r => r.id === selectedRoom.id);
+        const updatedSelectedRoom = mappedRooms.find((r: any) => r.id === selectedRoom.id);
         if (updatedSelectedRoom) {
-          setSelectedRoom(updatedSelectedRoom);
+          setSelectedRoom(updatedSelectedRoom as Room);
         }
       }
 
