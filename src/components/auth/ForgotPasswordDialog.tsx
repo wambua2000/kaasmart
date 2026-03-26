@@ -36,12 +36,12 @@ const ForgotPasswordDialog = ({ open, onOpenChange }: ForgotPasswordDialogProps)
 
     try {
       const { error } = await supabase
-        .from('password_reset_requests')
+        .from('password_reset_requests' as any)
         .insert({
           email,
           user_role: role,
           status: 'pending'
-        });
+        } as any);
 
       if (error) throw error;
 
