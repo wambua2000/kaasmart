@@ -119,8 +119,8 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
             
             // For tenants, fetch their room/property info
             if (role === 'tenant') {
-              const { data: roomData } = await supabase
-                .from('rooms')
+              const { data: roomData } = await (supabase
+                .from('rooms' as any)
                 .select(`
                   *,
                   properties (
@@ -130,7 +130,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
                   )
                 `)
                 .eq('tenant_id', authData.user.id)
-                .single();
+                .single() as any);
 
               toast({
                 title: "Welcome to KaaSmart!",
