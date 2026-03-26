@@ -377,7 +377,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
         .order('room_number');
 
       if (roomsData) {
-        const mappedRooms: Room[] = roomsData.map(room => ({
+        const mappedRooms = (roomsData as any[]).map((room: any) => ({
           id: room.id,
           number: room.room_number,
           status: room.is_occupied ? "occupied" : "vacant",
