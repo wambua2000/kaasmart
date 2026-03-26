@@ -79,7 +79,7 @@ const DeveloperDashboard = () => {
         })
       );
 
-      setPropertyOwners(ownersWithCounts);
+      setPropertyOwners(ownersWithCounts as any);
     } catch (error) {
       console.error('Error fetching property owners:', error);
       toast({
