@@ -310,7 +310,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
       }
 
       // Create invitation in database using the Supabase function
-      const { data, error: invitationError } = await supabase.rpc('generate_invitation_credentials', {
+      const { data, error: invitationError } = await (supabase.rpc as any)('generate_invitation_credentials', {
         invitation_email: tenantData.email,
         invitation_role: 'tenant',
         invite_property_id: property.id,
