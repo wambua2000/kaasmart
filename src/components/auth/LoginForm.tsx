@@ -165,7 +165,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
     // Check invitations table for new users
     console.log('🔍 Checking invitations table...');
     try {
-      const { data, error } = await supabase.rpc('verify_invitation_login' as any, {
+      const { data, error } = await (supabase.rpc as any)('verify_invitation_login', {
         login_email: email,
         login_password: password
       });
