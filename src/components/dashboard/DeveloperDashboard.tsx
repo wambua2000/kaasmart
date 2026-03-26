@@ -67,10 +67,10 @@ const DeveloperDashboard = () => {
       // For each owner, count their properties
       const ownersWithCounts = await Promise.all(
         (profiles || []).map(async (profile) => {
-          const { count } = await supabase
-            .from('properties')
+          const { count } = await (supabase
+            .from('properties' as any)
             .select('*', { count: 'exact', head: true })
-            .eq('owner_id', profile.id);
+            .eq('owner_id', profile.id) as any);
 
           return {
             ...profile,
