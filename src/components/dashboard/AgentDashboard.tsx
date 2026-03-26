@@ -76,14 +76,14 @@ const AgentDashboard = () => {
       setProperties(propertiesData || []);
 
       // Fetch recent payments
-      const { data: paymentsData, error: paymentsError } = await supabase
-        .from('payments')
+      const { data: paymentsData, error: paymentsError } = await (supabase
+        .from('payments' as any)
         .select(`
           *,
           rooms!inner(room_number, tenant_id)
         `)
         .order('payment_date', { ascending: false })
-        .limit(10);
+        .limit(10) as any);
 
       if (paymentsError) throw paymentsError;
       
