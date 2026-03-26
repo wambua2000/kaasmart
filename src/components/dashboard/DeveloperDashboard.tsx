@@ -56,11 +56,11 @@ const DeveloperDashboard = () => {
       setIsLoading(true);
       
       // Fetch all profiles with role 'owner'
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
+      const { data: profiles, error: profilesError } = await (supabase
+        .from('profiles' as any)
         .select('*')
         .eq('role', 'owner')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }) as any);
 
       if (profilesError) throw profilesError;
 
