@@ -125,11 +125,11 @@ const AgentDashboard = () => {
   const fetchRoomsForProperty = async (propertyId: string) => {
     if (!propertyId) return;
     
-    const { data, error } = await supabase
-      .from('rooms')
+    const { data, error } = await (supabase
+      .from('rooms' as any)
       .select('*')
       .eq('property_id', propertyId)
-      .eq('is_occupied', true);
+      .eq('is_occupied', true) as any);
     
     if (!error && data) {
       // Fetch tenant names separately
