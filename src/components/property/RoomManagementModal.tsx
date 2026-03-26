@@ -103,7 +103,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
           } : undefined
         }));
 
-        setRooms(mappedRooms);
+        setRooms(mappedRooms as Room[]);
       } catch (error) {
         console.error('Error fetching rooms:', error);
         toast({
