@@ -88,10 +88,10 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
         
         // Fetch user profile to verify role
         const { data: profile, error: profileError } = await supabase
-          .from('profiles')
+          .from('profiles' as any)
           .select('role, email, full_name, phone')
           .eq('id', authData.user.id)
-          .single();
+          .single() as any;
 
         console.log('📋 Profile result:', { 
           found: !!profile, 
