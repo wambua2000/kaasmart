@@ -69,8 +69,8 @@ const AgentDashboard = () => {
       setCurrentUserId(user.id);
 
       // Fetch properties with stats using the new function
-      const { data: propertiesData, error: propertiesError } = await supabase
-        .rpc('get_agent_properties_with_stats', { agent_user_id: user.id });
+      const { data: propertiesData, error: propertiesError } = await (supabase
+        .rpc as any)('get_agent_properties_with_stats', { agent_user_id: user.id });
 
       if (propertiesError) throw propertiesError;
       setProperties(propertiesData || []);
