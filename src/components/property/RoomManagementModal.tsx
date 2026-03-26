@@ -83,7 +83,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
 
         if (error) throw error;
 
-        const mappedRooms: Room[] = (roomsData || []).map(room => ({
+        const mappedRooms = (roomsData || []).map((room: any) => ({
           id: room.id,
           number: room.room_number,
           status: room.is_occupied ? "occupied" : "vacant",
