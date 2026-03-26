@@ -174,7 +174,7 @@ const AgentDashboard = () => {
         status: 'confirmed' as const
       };
 
-      const { error } = await supabase.from('payments').insert(paymentData);
+      const { error } = await (supabase.from('payments' as any).insert(paymentData as any) as any);
 
       if (error) throw error;
 
