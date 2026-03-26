@@ -435,15 +435,15 @@ const MessageCenter = ({
             recipientName = agentProfile?.full_name || "Financial Agent";
           } else {
             // Send to property owner (existing logic)
-            const { data: property, error: propError } = await supabase
-              .from('properties')
+            const { data: property, error: propError } = await (supabase
+              .from('properties' as any)
               .select('owner_id, profiles!properties_owner_id_fkey(full_name)')
               .eq('id', targetPropertyId)
-              .single();
+              .single() as any);
             
             if (propError) throw propError;
-            receiverId = property?.owner_id;
-            recipientName = property?.profiles?.full_name || "property owner";
+            receiverId = (property as any)?.owner_id;
+            recipientName = (property as any)?.profiles?.full_name || "property owner";
           }
         }
       } else if (currentUserRole === 'owner') {
