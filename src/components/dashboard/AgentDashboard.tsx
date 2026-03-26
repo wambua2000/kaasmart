@@ -90,11 +90,11 @@ const AgentDashboard = () => {
       // Fetch tenant names separately
       const paymentsWithNames = await Promise.all(
         (paymentsData || []).map(async (payment: any) => {
-          const { data: profile } = await supabase
-            .from('profiles')
+          const { data: profile } = await (supabase
+            .from('profiles' as any)
             .select('full_name')
             .eq('id', payment.tenant_id)
-            .maybeSingle();
+            .maybeSingle() as any);
           
           return {
             id: payment.id,
