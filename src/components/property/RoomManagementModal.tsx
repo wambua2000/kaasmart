@@ -391,7 +391,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
             dateOfEntry: room.tenant_date_of_entry || new Date().toISOString().split('T')[0],
             rentAmount: Number(room.rent_amount),
             rentStatus: (room.rent_status as "paid" | "not-paid") || "not-paid",
-            accessories: room.tenant_accessories || [],
+            accessories: typeof room.tenant_accessories === 'string' ? JSON.parse(room.tenant_accessories || '[]') : (room.tenant_accessories || []),
             emergencyContact: globalEmergencyContact,
             notes: room.tenant_notes || undefined,
           } : undefined

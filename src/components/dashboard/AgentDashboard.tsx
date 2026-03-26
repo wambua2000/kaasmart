@@ -212,7 +212,7 @@ const AgentDashboard = () => {
         reminder_date: new Date().toISOString()
       };
 
-      const { error } = await supabase.from('payment_reminders').insert(reminderData);
+      const { error } = await (supabase.from('payment_reminders' as any).insert(reminderData as any) as any);
 
       if (error) throw error;
 

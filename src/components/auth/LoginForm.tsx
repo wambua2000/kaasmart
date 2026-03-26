@@ -205,8 +205,8 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
 
         // Mark invitation as used
         if (authResult.data.user && !authResult.error) {
-          await supabase.rpc('use_invitation' as any, {
-            invitation_id: (invitationData as any).invitation_id
+          await (supabase.rpc as any)('use_invitation', {
+            invitation_id: invitationData.invitation_id
           });
 
           console.log('✅ Invitation login successful!');

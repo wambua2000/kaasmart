@@ -102,7 +102,7 @@ const InvitePropertyOwnerModal = ({
       console.log("Generating credentials for:", ownerEmail);
 
       // Call Supabase RPC to generate invitation
-      const { data, error } = await supabase.rpc('generate_invitation_credentials', {
+      const { data, error } = await (supabase.rpc as any)('generate_invitation_credentials', {
         invitation_email: ownerEmail,
         invitation_role: 'owner',
       });

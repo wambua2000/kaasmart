@@ -96,7 +96,7 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
 
       // Generate rooms for the new property
       console.log("Generating rooms for property:", insertedProperty.id);
-      const { error: roomsError } = await supabase.rpc('generate_rooms_for_property', {
+      const { error: roomsError } = await (supabase.rpc as any)('generate_rooms_for_property', {
         property_id_param: insertedProperty.id,
         property_name_param: insertedProperty.name,
         total_rooms_param: insertedProperty.total_rooms,

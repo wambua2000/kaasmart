@@ -646,8 +646,8 @@ const PropertyOwnerDashboard = () => {
       }
 
       // Generate invitation credentials
-      const { data: invitationData, error: invitationError } = await supabase
-        .rpc('generate_invitation_credentials', {
+      const { data: invitationData, error: invitationError } = await (supabase
+        .rpc as any)('generate_invitation_credentials', {
           invitation_email: agentData.email,
           invitation_role: 'agent',
           invite_property_id: agentData.scope === 'single' ? agentData.propertyId : null,

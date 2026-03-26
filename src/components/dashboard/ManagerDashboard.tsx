@@ -76,8 +76,8 @@ const ManagerDashboard = () => {
       }
 
       // Use the optimized RPC function to get properties with stats in a single query
-      const { data: propertiesData, error } = await supabase
-        .rpc('get_manager_properties_with_stats', {
+      const { data: propertiesData, error } = await (supabase
+        .rpc as any)('get_manager_properties_with_stats', {
           manager_user_id: user.id
         });
 

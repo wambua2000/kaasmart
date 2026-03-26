@@ -107,11 +107,11 @@ const DeveloperDashboard = () => {
 
   const fetchPendingResetCount = async () => {
     try {
-      const { count, error } = await supabase
-        .from('password_reset_requests')
+      const { count, error } = await (supabase
+        .from('password_reset_requests' as any)
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending')
-        .eq('user_role', 'owner');
+        .eq('user_role', 'owner') as any);
 
       if (error) throw error;
       setPendingResetCount(count || 0);
