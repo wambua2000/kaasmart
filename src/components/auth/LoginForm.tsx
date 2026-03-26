@@ -88,10 +88,10 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
         
         // Fetch user profile to verify role
         const { data: profile, error: profileError } = await supabase
-          .from('profiles')
+          .from('profiles' as any)
           .select('role, email, full_name, phone')
           .eq('id', authData.user.id)
-          .single();
+          .single() as any;
 
         console.log('📋 Profile result:', { 
           found: !!profile, 
@@ -119,8 +119,8 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
             
             // For tenants, fetch their room/property info
             if (role === 'tenant') {
-              const { data: roomData } = await supabase
-                .from('rooms')
+              const { data: roomData } = await (supabase
+                .from('rooms' as any)
                 .select(`
                   *,
                   properties (
@@ -130,7 +130,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
                   )
                 `)
                 .eq('tenant_id', authData.user.id)
-                .single();
+                .single() as any);
 
               toast({
                 title: "Welcome to KaaSmart!",
@@ -165,7 +165,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
     // Check invitations table for new users
     console.log('🔍 Checking invitations table...');
     try {
-      const { data, error } = await supabase.rpc('verify_invitation_login', {
+      const { data, error } = await (supabase.rpc as any)('verify_invitation_login', {
         login_email: email,
         login_password: password
       });
@@ -205,7 +205,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
 
         // Mark invitation as used
         if (authResult.data.user && !authResult.error) {
-          await supabase.rpc('use_invitation', {
+          await (supabase.rpc as any)('use_invitation', {
             invitation_id: invitationData.invitation_id
           });
 

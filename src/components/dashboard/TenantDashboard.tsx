@@ -130,7 +130,7 @@ const TenantDashboard = () => {
         rentAmount: Number(roomData.rent_amount),
         dateOfEntry: roomData.tenant_date_of_entry || new Date().toISOString().split('T')[0],
         emergencyContact: "+254 701 234 567",
-        accessories: roomData.tenant_accessories || ["Bed", "Table", "Chair"],
+        accessories: typeof roomData.tenant_accessories === 'string' ? JSON.parse(roomData.tenant_accessories || '[]') : (roomData.tenant_accessories || ["Bed", "Table", "Chair"]),
         roomId: roomData.id,
         propertyId: roomData.properties.id,
       });

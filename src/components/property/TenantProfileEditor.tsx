@@ -96,7 +96,7 @@ const TenantProfileEditor = ({
           tenant_email: formData.tenant_email,
           tenant_phone: formData.tenant_phone,
           tenant_notes: formData.tenant_notes,
-          tenant_accessories: formData.tenant_accessories,
+          tenant_accessories: formData.tenant_accessories as any,
         })
         .eq('id', roomId);
 

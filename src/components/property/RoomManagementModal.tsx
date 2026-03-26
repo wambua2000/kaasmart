@@ -83,7 +83,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
 
         if (error) throw error;
 
-        const mappedRooms: Room[] = (roomsData || []).map(room => ({
+        const mappedRooms = (roomsData || []).map((room: any) => ({
           id: room.id,
           number: room.room_number,
           status: room.is_occupied ? "occupied" : "vacant",
@@ -97,13 +97,13 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
             dateOfEntry: room.tenant_date_of_entry || new Date().toISOString().split('T')[0],
             rentAmount: Number(room.rent_amount),
             rentStatus: (room.rent_status as "paid" | "not-paid") || "not-paid",
-            accessories: room.tenant_accessories || [],
+            accessories: typeof room.tenant_accessories === 'string' ? JSON.parse(room.tenant_accessories || '[]') : (room.tenant_accessories || []),
             emergencyContact: globalEmergencyContact,
             notes: room.tenant_notes || undefined,
           } : undefined
         }));
 
-        setRooms(mappedRooms);
+        setRooms(mappedRooms as Room[]);
       } catch (error) {
         console.error('Error fetching rooms:', error);
         toast({
@@ -310,7 +310,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
       }
 
       // Create invitation in database using the Supabase function
-      const { data, error: invitationError } = await supabase.rpc('generate_invitation_credentials', {
+      const { data, error: invitationError } = await (supabase.rpc as any)('generate_invitation_credentials', {
         invitation_email: tenantData.email,
         invitation_role: 'tenant',
         invite_property_id: property.id,
@@ -377,7 +377,7 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
         .order('room_number');
 
       if (roomsData) {
-        const mappedRooms: Room[] = roomsData.map(room => ({
+        const mappedRooms = (roomsData as any[]).map((room: any) => ({
           id: room.id,
           number: room.room_number,
           status: room.is_occupied ? "occupied" : "vacant",
@@ -391,17 +391,17 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
             dateOfEntry: room.tenant_date_of_entry || new Date().toISOString().split('T')[0],
             rentAmount: Number(room.rent_amount),
             rentStatus: (room.rent_status as "paid" | "not-paid") || "not-paid",
-            accessories: room.tenant_accessories || [],
+            accessories: typeof room.tenant_accessories === 'string' ? JSON.parse(room.tenant_accessories || '[]') : (room.tenant_accessories || []),
             emergencyContact: globalEmergencyContact,
             notes: room.tenant_notes || undefined,
           } : undefined
         }));
-        setRooms(mappedRooms);
+        setRooms(mappedRooms as Room[]);
         
         // Update selected room to show new tenant
-        const updatedSelectedRoom = mappedRooms.find(r => r.id === selectedRoom.id);
+        const updatedSelectedRoom = mappedRooms.find((r: any) => r.id === selectedRoom.id);
         if (updatedSelectedRoom) {
-          setSelectedRoom(updatedSelectedRoom);
+          setSelectedRoom(updatedSelectedRoom as Room);
         }
       }
 

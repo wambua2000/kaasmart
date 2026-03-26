@@ -69,32 +69,32 @@ const AgentDashboard = () => {
       setCurrentUserId(user.id);
 
       // Fetch properties with stats using the new function
-      const { data: propertiesData, error: propertiesError } = await supabase
-        .rpc('get_agent_properties_with_stats', { agent_user_id: user.id });
+      const { data: propertiesData, error: propertiesError } = await (supabase
+        .rpc as any)('get_agent_properties_with_stats', { agent_user_id: user.id });
 
       if (propertiesError) throw propertiesError;
       setProperties(propertiesData || []);
 
       // Fetch recent payments
-      const { data: paymentsData, error: paymentsError } = await supabase
-        .from('payments')
+      const { data: paymentsData, error: paymentsError } = await (supabase
+        .from('payments' as any)
         .select(`
           *,
           rooms!inner(room_number, tenant_id)
         `)
         .order('payment_date', { ascending: false })
-        .limit(10);
+        .limit(10) as any);
 
       if (paymentsError) throw paymentsError;
       
       // Fetch tenant names separately
       const paymentsWithNames = await Promise.all(
         (paymentsData || []).map(async (payment: any) => {
-          const { data: profile } = await supabase
-            .from('profiles')
+          const { data: profile } = await (supabase
+            .from('profiles' as any)
             .select('full_name')
             .eq('id', payment.tenant_id)
-            .maybeSingle();
+            .maybeSingle() as any);
           
           return {
             id: payment.id,
@@ -125,22 +125,22 @@ const AgentDashboard = () => {
   const fetchRoomsForProperty = async (propertyId: string) => {
     if (!propertyId) return;
     
-    const { data, error } = await supabase
-      .from('rooms')
+    const { data, error } = await (supabase
+      .from('rooms' as any)
       .select('*')
       .eq('property_id', propertyId)
-      .eq('is_occupied', true);
+      .eq('is_occupied', true) as any);
     
     if (!error && data) {
       // Fetch tenant names separately
       const roomsWithNames = await Promise.all(
         data.map(async (room: any) => {
           if (room.tenant_id) {
-            const { data: profile } = await supabase
-              .from('profiles')
+            const { data: profile } = await (supabase
+              .from('profiles' as any)
               .select('full_name')
               .eq('id', room.tenant_id)
-              .maybeSingle();
+              .maybeSingle() as any);
             
             return {
               ...room,
@@ -174,7 +174,7 @@ const AgentDashboard = () => {
         status: 'confirmed' as const
       };
 
-      const { error } = await supabase.from('payments').insert(paymentData);
+      const { error } = await (supabase.from('payments' as any).insert(paymentData as any) as any);
 
       if (error) throw error;
 
@@ -212,7 +212,7 @@ const AgentDashboard = () => {
         reminder_date: new Date().toISOString()
       };
 
-      const { error } = await supabase.from('payment_reminders').insert(reminderData);
+      const { error } = await (supabase.from('payment_reminders' as any).insert(reminderData as any) as any);
 
       if (error) throw error;
 

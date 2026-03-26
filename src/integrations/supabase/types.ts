@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_properties: {
+        Row: {
+          agent_id: string
+          assigned_at: string | null
+          assigned_by: string | null
+          can_manage_all: boolean | null
+          id: string
+          property_id: string | null
+        }
+        Insert: {
+          agent_id: string
+          assigned_at?: string | null
+          assigned_by?: string | null
+          can_manage_all?: boolean | null
+          id?: string
+          property_id?: string | null
+        }
+        Update: {
+          agent_id?: string
+          assigned_at?: string | null
+          assigned_by?: string | null
+          can_manage_all?: boolean | null
+          id?: string
+          property_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_properties_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       free_account_signups: {
         Row: {
           created_at: string | null
@@ -44,6 +79,506 @@ export type Database = {
         }
         Relationships: []
       }
+      invitations: {
+        Row: {
+          created_at: string | null
+          email: string
+          expires_at: string | null
+          id: string
+          invited_by: string | null
+          is_used: boolean | null
+          password_hash: string | null
+          property_id: string | null
+          role: string
+          room_id: string | null
+          temporary_password: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          expires_at?: string | null
+          id?: string
+          invited_by?: string | null
+          is_used?: boolean | null
+          password_hash?: string | null
+          property_id?: string | null
+          role: string
+          room_id?: string | null
+          temporary_password?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          expires_at?: string | null
+          id?: string
+          invited_by?: string | null
+          is_used?: boolean | null
+          password_hash?: string | null
+          property_id?: string | null
+          role?: string
+          room_id?: string | null
+          temporary_password?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lease_documents: {
+        Row: {
+          created_at: string | null
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          id: string
+          notes: string | null
+          property_id: string | null
+          room_id: string | null
+          status: string | null
+          tenant_id: string | null
+          updated_at: string | null
+          upload_date: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          notes?: string | null
+          property_id?: string | null
+          room_id?: string | null
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+          upload_date?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          notes?: string | null
+          property_id?: string | null
+          room_id?: string | null
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+          upload_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lease_documents_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lease_documents_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manager_properties: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          can_manage_all: boolean | null
+          id: string
+          manager_id: string
+          property_id: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          can_manage_all?: boolean | null
+          id?: string
+          manager_id: string
+          property_id?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          can_manage_all?: boolean | null
+          id?: string
+          manager_id?: string
+          property_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manager_properties_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message_type: string | null
+          property_id: string | null
+          read_at: string | null
+          receiver_id: string | null
+          sender_id: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message_type?: string | null
+          property_id?: string | null
+          read_at?: string | null
+          receiver_id?: string | null
+          sender_id?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message_type?: string | null
+          property_id?: string | null
+          read_at?: string | null
+          receiver_id?: string | null
+          sender_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      password_reset_requests: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          email: string
+          id: string
+          new_password: string | null
+          notes: string | null
+          status: string | null
+          user_role: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          email: string
+          id?: string
+          new_password?: string | null
+          notes?: string | null
+          status?: string | null
+          user_role?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          new_password?: string | null
+          notes?: string | null
+          status?: string | null
+          user_role?: string | null
+        }
+        Relationships: []
+      }
+      payment_reminders: {
+        Row: {
+          amount_due: number | null
+          created_at: string | null
+          due_date: string | null
+          id: string
+          message: string | null
+          property_id: string | null
+          reminder_date: string | null
+          room_id: string | null
+          sent_by: string | null
+          status: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount_due?: number | null
+          created_at?: string | null
+          due_date?: string | null
+          id?: string
+          message?: string | null
+          property_id?: string | null
+          reminder_date?: string | null
+          room_id?: string | null
+          sent_by?: string | null
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount_due?: number | null
+          created_at?: string | null
+          due_date?: string | null
+          id?: string
+          message?: string | null
+          property_id?: string | null
+          reminder_date?: string | null
+          room_id?: string | null
+          sent_by?: string | null
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_reminders_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_reminders_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          id: string
+          notes: string | null
+          payment_date: string | null
+          payment_method: string | null
+          property_id: string | null
+          receipt_url: string | null
+          recorded_by: string | null
+          reference_number: string | null
+          room_id: string | null
+          status: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          property_id?: string | null
+          receipt_url?: string | null
+          recorded_by?: string | null
+          reference_number?: string | null
+          room_id?: string | null
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          property_id?: string | null
+          receipt_url?: string | null
+          recorded_by?: string | null
+          reference_number?: string | null
+          room_id?: string | null
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          role: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          role?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          role?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      properties: {
+        Row: {
+          created_at: string | null
+          id: string
+          image_url: string | null
+          location: string | null
+          manager_id: string | null
+          name: string
+          owner_id: string | null
+          rent_per_room: number | null
+          total_rooms: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          manager_id?: string | null
+          name: string
+          owner_id?: string | null
+          rent_per_room?: number | null
+          total_rooms?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          manager_id?: string | null
+          name?: string
+          owner_id?: string | null
+          rent_per_room?: number | null
+          total_rooms?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      rooms: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_occupied: boolean | null
+          property_id: string
+          rent_amount: number | null
+          rent_status: string | null
+          room_number: string | null
+          tenant_accessories: string | null
+          tenant_date_of_entry: string | null
+          tenant_email: string | null
+          tenant_id: string | null
+          tenant_name: string | null
+          tenant_notes: string | null
+          tenant_phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_occupied?: boolean | null
+          property_id: string
+          rent_amount?: number | null
+          rent_status?: string | null
+          room_number?: string | null
+          tenant_accessories?: string | null
+          tenant_date_of_entry?: string | null
+          tenant_email?: string | null
+          tenant_id?: string | null
+          tenant_name?: string | null
+          tenant_notes?: string | null
+          tenant_phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_occupied?: boolean | null
+          property_id?: string
+          rent_amount?: number | null
+          rent_status?: string | null
+          room_number?: string | null
+          tenant_accessories?: string | null
+          tenant_date_of_entry?: string | null
+          tenant_email?: string | null
+          tenant_id?: string | null
+          tenant_name?: string | null
+          tenant_notes?: string | null
+          tenant_phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rooms_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -52,7 +587,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "admin"
+        | "moderator"
+        | "user"
+        | "owner"
+        | "manager"
+        | "tenant"
+        | "developer"
+        | "agent"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -179,6 +722,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "admin",
+        "moderator",
+        "user",
+        "owner",
+        "manager",
+        "tenant",
+        "developer",
+        "agent",
+      ],
+    },
   },
 } as const
