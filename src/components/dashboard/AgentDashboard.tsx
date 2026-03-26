@@ -136,11 +136,11 @@ const AgentDashboard = () => {
       const roomsWithNames = await Promise.all(
         data.map(async (room: any) => {
           if (room.tenant_id) {
-            const { data: profile } = await supabase
-              .from('profiles')
+            const { data: profile } = await (supabase
+              .from('profiles' as any)
               .select('full_name')
               .eq('id', room.tenant_id)
-              .maybeSingle();
+              .maybeSingle() as any);
             
             return {
               ...room,
