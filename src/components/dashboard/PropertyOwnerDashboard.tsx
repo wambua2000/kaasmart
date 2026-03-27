@@ -162,7 +162,8 @@ const PropertyOwnerDashboard = () => {
       const { count, error } = await supabase
         .from('password_reset_requests')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
+        .eq('status', 'pending')
+        .in('user_role', ['tenant', 'manager', 'agent']);
 
       if (error) throw error;
       setPendingResetCount(count || 0);
