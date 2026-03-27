@@ -54,27 +54,57 @@ serve(async (req: Request) => {
         throw new Error(`Failed to update password: ${updateError.message}`);
       }
     } else {
-      // User doesn't exist yet - update their invitation with new temporary password
-      // First hash the password using the database function
-      const { data: hashedPassword, error: hashError } = await supabaseAdmin
-        .rpc('hash_password', { password: newPassword });
+      // User doesn't exist in auth yet - create auth account for them
+      // Look up their profile to get the correct ID
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('id, full_name, role')
+        .eq('email', email)
+        .maybeSingle();
 
-      if (hashError || !hashedPassword) {
-        throw new Error(`Failed to hash password: ${hashError?.message || 'Unknown error'}`);
+      if (profile) {
+        // Create auth user with the same ID as the profile
+        const { error: createError } = await supabaseAdmin.auth.admin.createUser({
+          id: profile.id,
+          email: email,
+          password: newPassword,
+          email_confirm: true,
+          user_metadata: { full_name: profile.full_name }
+        });
+
+        if (createError) {
+          // If user already exists with that ID, try updating instead
+          if (createError.message.includes('already been registered') || createError.message.includes('already exists')) {
+            const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+              profile.id,
+              { password: newPassword }
+            );
+            if (updateError) {
+              throw new Error(`Failed to update password: ${updateError.message}`);
+            }
+          } else {
+            throw new Error(`Failed to create auth user: ${createError.message}`);
+          }
+        }
+      } else {
+        // No profile found - create a new auth user
+        const { error: createError } = await supabaseAdmin.auth.admin.createUser({
+          email: email,
+          password: newPassword,
+          email_confirm: true,
+        });
+
+        if (createError) {
+          throw new Error(`Failed to create auth user: ${createError.message}`);
+        }
       }
 
-      const { error: inviteError } = await supabaseAdmin
+      // Mark invitation as used
+      await supabaseAdmin
         .from('invitations')
-        .update({
-          temporary_password: newPassword,
-          password_hash: hashedPassword
-        })
+        .update({ is_used: true })
         .eq('email', email)
         .eq('is_used', false);
-
-      if (inviteError) {
-        throw new Error(`Failed to update invitation: ${inviteError.message}`);
-      }
     }
 
     // Update password_reset_requests table
@@ -90,7 +120,6 @@ serve(async (req: Request) => {
 
     if (resetError) {
       console.error('Error updating reset request:', resetError);
-      // Don't throw - password was already reset
     }
 
     return new Response(

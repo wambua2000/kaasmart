@@ -162,7 +162,8 @@ const PropertyOwnerDashboard = () => {
       const { count, error } = await supabase
         .from('password_reset_requests')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
+        .eq('status', 'pending')
+        .in('user_role', ['tenant', 'manager', 'agent']);
 
       if (error) throw error;
       setPendingResetCount(count || 0);
@@ -492,15 +493,17 @@ const PropertyOwnerDashboard = () => {
         (payload) => {
           console.log('New password reset request:', payload);
           
-          // Show toast notification
-          toast({
-            title: "New Password Reset Request",
-            description: `${payload.new.email} (${payload.new.user_role}) has requested a password reset.`,
-            duration: 6000,
-          });
-          
-          // Refresh count
-          fetchPendingResetCount();
+          // Only show notification for tenant/manager/agent requests (not owner)
+          const role = payload.new.user_role;
+          if (role === 'tenant' || role === 'manager' || role === 'agent') {
+            toast({
+              title: "New Password Reset Request",
+              description: `${payload.new.email} (${role}) has requested a password reset.`,
+              duration: 6000,
+            });
+            
+            fetchPendingResetCount();
+          }
         }
       )
       .on(
@@ -1072,6 +1075,7 @@ const PropertyOwnerDashboard = () => {
           open={isPasswordResetOpen}
           onOpenChange={setIsPasswordResetOpen}
           onRequestsUpdated={fetchPendingResetCount}
+          userRole="owner"
         />
 
         <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>

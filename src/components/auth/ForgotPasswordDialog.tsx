@@ -45,9 +45,10 @@ const ForgotPasswordDialog = ({ open, onOpenChange }: ForgotPasswordDialogProps)
 
       if (error) throw error;
 
+      const targetAdmin = role === 'owner' ? 'the system administrator' : 'the property owner';
       toast({
         title: "Request Submitted",
-        description: "Your password reset request has been sent to the property owner. They will contact you shortly.",
+        description: `Your password reset request has been sent to ${targetAdmin}. They will contact you shortly.`,
       });
 
       setEmail("");
