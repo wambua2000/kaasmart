@@ -34,28 +34,23 @@ serve(async (req: Request) => {
       }
     );
 
-    // Find user by email
-    const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-    
-    if (listError) {
-      throw new Error(`Failed to list users: ${listError.message}`);
-    }
+    // Find user by email using getUserByEmail (handles pagination correctly)
+    let userId: string | null = null;
 
-    const user = users.find(u => u.email === email);
-    
-    if (user) {
+    const { data: existingUser, error: lookupError } = await supabaseAdmin.auth.admin.getUserByEmail(email);
+
+    if (existingUser?.user) {
       // User exists in auth - update their password
       const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-        user.id,
+        existingUser.user.id,
         { password: newPassword }
       );
-
       if (updateError) {
         throw new Error(`Failed to update password: ${updateError.message}`);
       }
+      userId = existingUser.user.id;
     } else {
-      // User doesn't exist in auth yet - create auth account for them
-      // Look up their profile to get the correct ID
+      // User doesn't exist in auth yet - check for a profile
       const { data: profile } = await supabaseAdmin
         .from('profiles')
         .select('id, full_name, role')
@@ -63,7 +58,6 @@ serve(async (req: Request) => {
         .maybeSingle();
 
       if (profile) {
-        // Create auth user with the same ID as the profile
         const { error: createError } = await supabaseAdmin.auth.admin.createUser({
           id: profile.id,
           email: email,
@@ -71,32 +65,20 @@ serve(async (req: Request) => {
           email_confirm: true,
           user_metadata: { full_name: profile.full_name }
         });
-
         if (createError) {
-          // If user already exists with that ID, try updating instead
-          if (createError.message.includes('already been registered') || createError.message.includes('already exists')) {
-            const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-              profile.id,
-              { password: newPassword }
-            );
-            if (updateError) {
-              throw new Error(`Failed to update password: ${updateError.message}`);
-            }
-          } else {
-            throw new Error(`Failed to create auth user: ${createError.message}`);
-          }
+          throw new Error(`Failed to create auth user: ${createError.message}`);
         }
+        userId = profile.id;
       } else {
-        // No profile found - create a new auth user
-        const { error: createError } = await supabaseAdmin.auth.admin.createUser({
+        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
           email: email,
           password: newPassword,
           email_confirm: true,
         });
-
         if (createError) {
           throw new Error(`Failed to create auth user: ${createError.message}`);
         }
+        userId = newUser.user?.id ?? null;
       }
 
       // Mark invitation as used
