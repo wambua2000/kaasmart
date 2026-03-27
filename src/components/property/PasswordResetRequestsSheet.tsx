@@ -60,7 +60,7 @@ const PasswordResetRequestsSheet = ({ open, onOpenChange, onRequestsUpdated, use
         if (error) throw error;
         setRequests((ownerRequests || []) as PasswordResetRequest[]);
       } else {
-        // Owner sees tenant/manager/agent requests from users they invited
+        // Owner sees all tenant/manager/agent reset requests
         const { data: allRequests, error: requestsError } = await supabase
           .from('password_reset_requests')
           .select('*')
@@ -68,23 +68,7 @@ const PasswordResetRequestsSheet = ({ open, onOpenChange, onRequestsUpdated, use
           .order('created_at', { ascending: false });
 
         if (requestsError) throw requestsError;
-
-        // Filter to only requests from users the owner invited
-        const filteredRequests = await Promise.all(
-          (allRequests || []).map(async (request) => {
-            const { data: invitation } = await supabase
-              .from('invitations')
-              .select('invited_by')
-              .eq('email', request.email)
-              .eq('invited_by', user.id)
-              .maybeSingle();
-            
-            return invitation ? request : null;
-          })
-        );
-
-        const userRequests = filteredRequests.filter(req => req !== null) as PasswordResetRequest[];
-        setRequests(userRequests);
+        setRequests((allRequests || []) as PasswordResetRequest[]);
       }
     } catch (error) {
       console.error('Error fetching password reset requests:', error);
