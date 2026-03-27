@@ -26,9 +26,10 @@ interface PasswordResetRequestsSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRequestsUpdated?: () => void;
+  userRole?: 'developer' | 'owner';
 }
 
-const PasswordResetRequestsSheet = ({ open, onOpenChange, onRequestsUpdated }: PasswordResetRequestsSheetProps) => {
+const PasswordResetRequestsSheet = ({ open, onOpenChange, onRequestsUpdated, userRole = 'owner' }: PasswordResetRequestsSheetProps) => {
   const [requests, setRequests] = useState<PasswordResetRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<PasswordResetRequest | null>(null);
   const [newPassword, setNewPassword] = useState("");
