@@ -1075,6 +1075,7 @@ const PropertyOwnerDashboard = () => {
           open={isPasswordResetOpen}
           onOpenChange={setIsPasswordResetOpen}
           onRequestsUpdated={fetchPendingResetCount}
+          userRole="owner"
         />
 
         <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>

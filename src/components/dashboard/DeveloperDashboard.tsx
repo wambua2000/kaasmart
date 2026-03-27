@@ -283,6 +283,7 @@ const DeveloperDashboard = () => {
         open={isPasswordResetSheetOpen}
         onOpenChange={setIsPasswordResetSheetOpen}
         onRequestsUpdated={fetchPendingResetCount}
+        userRole="developer"
       />
     </div>
   );

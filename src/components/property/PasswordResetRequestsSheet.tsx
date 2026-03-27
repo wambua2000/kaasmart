@@ -49,33 +49,43 @@ const PasswordResetRequestsSheet = ({ open, onOpenChange, onRequestsUpdated, use
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Fetch password reset requests
-      const { data: allRequests, error: requestsError } = await supabase
-        .from('password_reset_requests')
-        .select('*')
-        .order('created_at', { ascending: false });
+      if (userRole === 'developer') {
+        // Developer sees only owner reset requests — no invitation check needed
+        const { data: ownerRequests, error } = await supabase
+          .from('password_reset_requests')
+          .select('*')
+          .eq('user_role', 'owner')
+          .order('created_at', { ascending: false });
 
-      if (requestsError) throw requestsError;
+        if (error) throw error;
+        setRequests((ownerRequests || []) as PasswordResetRequest[]);
+      } else {
+        // Owner sees tenant/manager/agent requests from users they invited
+        const { data: allRequests, error: requestsError } = await supabase
+          .from('password_reset_requests')
+          .select('*')
+          .in('user_role', ['tenant', 'manager', 'agent'])
+          .order('created_at', { ascending: false });
 
-      // For each request, check if the current user invited them
-      const filteredRequests = await Promise.all(
-        (allRequests || []).map(async (request) => {
-          // Check invitations table to see if current user invited this person
-          const { data: invitation } = await supabase
-            .from('invitations')
-            .select('invited_by')
-            .eq('email', request.email)
-            .eq('invited_by', user.id)
-            .maybeSingle();
-          
-          return invitation ? request : null;
-        })
-      );
+        if (requestsError) throw requestsError;
 
-      // Remove null values (requests not invited by current user)
-      const userRequests = filteredRequests.filter(req => req !== null) as PasswordResetRequest[];
-      
-      setRequests(userRequests);
+        // Filter to only requests from users the owner invited
+        const filteredRequests = await Promise.all(
+          (allRequests || []).map(async (request) => {
+            const { data: invitation } = await supabase
+              .from('invitations')
+              .select('invited_by')
+              .eq('email', request.email)
+              .eq('invited_by', user.id)
+              .maybeSingle();
+            
+            return invitation ? request : null;
+          })
+        );
+
+        const userRequests = filteredRequests.filter(req => req !== null) as PasswordResetRequest[];
+        setRequests(userRequests);
+      }
     } catch (error) {
       console.error('Error fetching password reset requests:', error);
       toast({
