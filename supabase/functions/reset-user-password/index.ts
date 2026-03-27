@@ -34,21 +34,24 @@ serve(async (req: Request) => {
       }
     );
 
-    // Find user by email using getUserByEmail (handles pagination correctly)
+    // Find user by email using listUsers (getUserByEmail not available in this runtime)
     let userId: string | null = null;
 
-    const { data: existingUser, error: lookupError } = await supabaseAdmin.auth.admin.getUserByEmail(email);
+    const { data: listData } = await supabaseAdmin.auth.admin.listUsers();
+    const existingUser = listData?.users?.find(
+      (u) => u.email?.toLowerCase() === email.toLowerCase()
+    );
 
-    if (existingUser?.user) {
+    if (existingUser) {
       // User exists in auth - update their password
       const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-        existingUser.user.id,
+        existingUser.id,
         { password: newPassword }
       );
       if (updateError) {
         throw new Error(`Failed to update password: ${updateError.message}`);
       }
-      userId = existingUser.user.id;
+      userId = existingUser.id;
     } else {
       // User doesn't exist in auth yet - check for a profile
       const { data: profile } = await supabaseAdmin
