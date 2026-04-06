@@ -68,12 +68,70 @@ const AgentDashboard = () => {
 
       setCurrentUserId(user.id);
 
-      // Fetch properties with stats using the new function
-      const { data: propertiesData, error: propertiesError } = await (supabase
+      // Try RPC first, fallback to direct queries
+      let propertiesResult: PropertyStats[] = [];
+      const { data: rpcData, error: rpcError } = await (supabase
         .rpc as any)('get_agent_properties_with_stats', { agent_user_id: user.id });
 
-      if (propertiesError) throw propertiesError;
-      setProperties(propertiesData || []);
+      if (rpcError) {
+        console.warn('RPC failed, using direct queries:', rpcError);
+        // Fallback: fetch from agent_properties + properties + rooms
+        const { data: assignments } = await supabase
+          .from('agent_properties')
+          .select('property_id, can_manage_all')
+          .eq('agent_id', user.id);
+
+        if (assignments && assignments.length > 0) {
+          const managesAll = assignments.some((a: any) => a.can_manage_all);
+          let query = supabase.from('properties').select('*');
+          if (!managesAll) {
+            const propertyIds = assignments.map((a: any) => a.property_id).filter(Boolean);
+            query = query.in('id', propertyIds);
+          }
+          const { data: props } = await query;
+          
+          for (const prop of (props || [])) {
+            const { count: occupiedCount } = await supabase
+              .from('rooms')
+              .select('*', { count: 'exact', head: true })
+              .eq('property_id', prop.id)
+              .eq('is_occupied', true);
+            
+            const { data: payments } = await supabase
+              .from('payments')
+              .select('amount')
+              .eq('property_id', prop.id)
+              .eq('status', 'completed');
+            
+            const totalCollected = (payments || []).reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+            
+            const { data: unpaidRooms } = await supabase
+              .from('rooms')
+              .select('rent_amount')
+              .eq('property_id', prop.id)
+              .eq('is_occupied', true)
+              .eq('rent_status', 'not-paid');
+            
+            const pendingAmount = (unpaidRooms || []).reduce((sum: number, r: any) => sum + (r.rent_amount || 0), 0);
+
+            propertiesResult.push({
+              id: prop.id,
+              name: prop.name,
+              location: prop.location || '',
+              rent_per_room: prop.rent_per_room || 0,
+              total_rooms: prop.total_rooms || 0,
+              image_url: prop.image_url,
+              occupied_rooms: occupiedCount || 0,
+              total_collected: totalCollected,
+              pending_amount: pendingAmount,
+            });
+          }
+        }
+      } else {
+        propertiesResult = rpcData || [];
+      }
+      
+      setProperties(propertiesResult);
 
       // Fetch recent payments
       const { data: paymentsData, error: paymentsError } = await (supabase

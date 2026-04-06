@@ -94,7 +94,7 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
       
       console.log("Property inserted successfully:", insertedProperty);
 
-      // Generate rooms for the new property
+      // Generate rooms for the new property - try RPC first, fallback to direct inserts
       console.log("Generating rooms for property:", insertedProperty.id);
       const { error: roomsError } = await (supabase.rpc as any)('generate_rooms_for_property', {
         property_id_param: insertedProperty.id,
@@ -104,15 +104,34 @@ const AddPropertyModal = ({ isOpen, onClose, onAddProperty }: AddPropertyModalPr
       });
 
       if (roomsError) {
-        console.error("Error generating rooms:", roomsError);
-        // Don't throw - property is created, rooms can be added later
-        toast({
-          title: "Warning",
-          description: "Property created but rooms generation failed. Please contact support.",
-          variant: "destructive",
-        });
+        console.warn("RPC failed, using direct inserts:", roomsError);
+        // Fallback: insert rooms directly
+        const roomInserts = [];
+        for (let i = 1; i <= insertedProperty.total_rooms; i++) {
+          roomInserts.push({
+            property_id: insertedProperty.id,
+            room_number: `${insertedProperty.name} - Room ${i}`,
+            rent_amount: insertedProperty.rent_per_room,
+            is_occupied: false,
+            rent_status: 'not-paid',
+          });
+        }
+        const { error: directError } = await supabase
+          .from('rooms')
+          .insert(roomInserts);
+        
+        if (directError) {
+          console.error("Direct room insert also failed:", directError);
+          toast({
+            title: "Warning",
+            description: "Property created but rooms generation failed. Please contact support.",
+            variant: "destructive",
+          });
+        } else {
+          console.log("Rooms generated via direct insert");
+        }
       } else {
-        console.log("Rooms generated successfully");
+        console.log("Rooms generated successfully via RPC");
       }
 
       // Notify parent component
