@@ -613,6 +613,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_accessible_property_ids: {
+        Args: { _user_id: string }
+        Returns: string[]
+      }
       get_agent_properties_with_stats: {
         Args: { agent_user_id: string }
         Returns: {
@@ -646,6 +650,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_developer: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role:
