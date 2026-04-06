@@ -58,7 +58,7 @@ serve(async (req) => {
         Authorization: `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: "KaaSmart <onboarding@resend.dev>",
+        from: "KaaSmart <noreply@kaasmart.app>",
         to: ["info@kaasmart.app"],
         subject: `New Free Account Request: ${first_name} ${last_name}`,
         html: htmlContent,
