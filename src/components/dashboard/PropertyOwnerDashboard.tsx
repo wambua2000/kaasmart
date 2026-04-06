@@ -584,8 +584,8 @@ const PropertyOwnerDashboard = () => {
       const { data, error } = await (supabase.rpc as any)('generate_invitation_credentials', {
         invitation_email: managerData.email,
         invitation_role: 'manager',
-        invite_property_id: managerData.scope === 'single' ? managerData.propertyId : null,
-        invite_room_id: null,
+        invitation_property_id: managerData.scope === 'single' ? managerData.propertyId : null,
+        invitation_room_id: null,
       });
 
       if (error) {
@@ -653,9 +653,8 @@ const PropertyOwnerDashboard = () => {
         .rpc as any)('generate_invitation_credentials', {
           invitation_email: agentData.email,
           invitation_role: 'agent',
-          invite_property_id: agentData.scope === 'single' ? agentData.propertyId : null,
-          invite_room_id: null,
-          invited_by_user: user.id
+          invitation_property_id: agentData.scope === 'single' ? agentData.propertyId : null,
+          invitation_room_id: null,
         });
 
       if (invitationError) throw invitationError;

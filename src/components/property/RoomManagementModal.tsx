@@ -313,8 +313,8 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
       const { data, error: invitationError } = await (supabase.rpc as any)('generate_invitation_credentials', {
         invitation_email: tenantData.email,
         invitation_role: 'tenant',
-        invite_property_id: property.id,
-        invite_room_id: selectedRoom.id,
+        invitation_property_id: property.id,
+        invitation_room_id: selectedRoom.id,
       });
 
       if (invitationError) {
