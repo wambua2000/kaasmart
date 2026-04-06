@@ -136,7 +136,7 @@ const InvitePropertyOwnerModal = ({
 
       setGeneratedCredentials({
         email: ownerEmail,
-        password: data[0].temporary_password,
+        password: tempPassword,
       });
 
       toast({
