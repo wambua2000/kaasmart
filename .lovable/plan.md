@@ -1,51 +1,62 @@
 
 
-## Plan: Favicon, Animations, Footer Email & Free Account Email Notification
+## Plan: Fix All Missing Database Functions and System-Wide Workflow Issues
 
-### 1. Update Favicon
-- Copy `src/assets/kaasmart-logo.png` to `public/favicon.png`
-- Update `index.html` to reference `/favicon.png` instead of the external Google Storage URL
-- Delete `public/favicon.ico` if it exists
+### Root Cause
+The live database has **zero** public functions. All RPC functions referenced in the codebase (`get_agent_properties_with_stats`, `get_manager_properties_with_stats`, `generate_invitation_credentials`, `generate_rooms_for_property`, `has_role`, `can_manage_property`, `can_manage_property_as_agent`, `hash_password`, `update_updated_at_column`, `handle_invitation_signup`) are completely absent from the database despite being defined in migration files. This is why the Agent dashboard errors out and many other workflows are broken.
 
-### 2. Add Smooth Scroll Animations to All Public Pages
-- Add scroll animation keyframes to `tailwind.config.ts`: `fade-in-up`, `fade-in-left`, `fade-in-right`, `scale-in`
-- Create `src/hooks/useScrollAnimation.ts` — a hook using `IntersectionObserver` to trigger animations when sections enter the viewport
-- Create `src/components/layout/AnimatedSection.tsx` — a wrapper component that applies the animation
-- Wrap each `<section>` in all public pages with `AnimatedSection`: `HomePage`, `AboutPage`, `ProductPage`, `HowItWorksPage`, `SecurityPage`, `SupportPage`, `FreeAccountPage`
+### Strategy
+Two-pronged approach:
+1. **Create a single migration** that recreates all missing database functions
+2. **Refactor the Agent and Manager dashboards** to use direct table queries instead of RPC calls (more resilient, simpler)
 
-### 3. Update Footer Email
-- In `PublicFooter.tsx`, change `info@kaasmart.com` → `info@kaasmart.app` and `www.kaasmart.com` → `www.kaasmart.app`
+### Changes
 
-### 4. Send Free Account Signup Details to info@kaasmart.app via Resend
-Since the `Kaa_Samart_Resend` secret is already configured, create a new edge function `notify-free-signup` that uses the Resend API to send signup details to `info@kaasmart.app`.
+#### 1. Database Migration — Recreate All Missing Functions
+A single migration that creates:
+- `has_role(uuid, app_role)` — used by dozens of RLS policies
+- `update_updated_at_column()` — trigger function for updated_at columns
+- `hash_password(text)` — used by invitation system
+- `can_manage_property(uuid, uuid)` — manager property access check
+- `can_manage_property_as_agent(uuid, uuid)` — agent property access check
+- `generate_invitation_credentials(...)` — invitation system
+- `handle_invitation_signup()` — auth trigger for new signups
+- `generate_rooms_for_property(...)` — room generation when adding properties
+- `get_manager_properties_with_stats(uuid)` — manager dashboard data
+- `get_agent_properties_with_stats(uuid)` — agent dashboard data
 
-- **New file**: `supabase/functions/notify-free-signup/index.ts`
-  - Receives signup data (name, email, property, phone) via POST
-  - Calls Resend API directly using the `Kaa_Samart_Resend` secret as the API key
-  - Sends a formatted HTML email to `info@kaasmart.app` with the submitted details
-  - Sender: `onboarding@resend.dev` (Resend's test domain, works without custom domain verification)
+#### 2. Refactor AgentDashboard.tsx — Replace RPC with Direct Queries
+Replace `supabase.rpc('get_agent_properties_with_stats')` with direct queries:
+- Fetch agent's property assignments from `agent_properties`
+- Fetch property details from `properties` with room counts from `rooms`
+- Fetch payment totals from `payments`
+This makes the agent dashboard work even without the RPC function.
 
-- **Modify**: `src/pages/FreeAccountPage.tsx`
-  - After the successful database insert, invoke the `notify-free-signup` edge function
-  - Fire-and-forget (don't block the success flow if the email fails)
+#### 3. Refactor ManagerDashboard.tsx — Replace RPC with Direct Queries
+Replace `supabase.rpc('get_manager_properties_with_stats')` with direct queries:
+- Fetch manager's property assignments from `manager_properties`
+- Fetch property details from `properties` with room counts from `rooms`
 
-### Technical Details
+#### 4. Refactor AddPropertyModal.tsx — Replace RPC with Direct Insert
+Replace `supabase.rpc('generate_rooms_for_property')` with a loop that inserts rooms directly into the `rooms` table.
+
+#### 5. Refactor Invitation Flow — Replace RPC with Direct Operations
+In `RoomManagementModal.tsx`, `InvitePropertyOwnerModal.tsx`, and `PropertyOwnerDashboard.tsx`, replace `supabase.rpc('generate_invitation_credentials')` with direct inserts into the `invitations` table + password generation on the client side. The edge function `create-invited-user` already handles user creation separately.
+
+### File Changes Summary
 
 | File | Change |
 |------|--------|
-| `index.html` | Update `<link rel="icon">` to `/favicon.png` |
-| `public/favicon.png` | Copy from `src/assets/kaasmart-logo.png` |
-| `tailwind.config.ts` | Add animation keyframes |
-| `src/hooks/useScrollAnimation.ts` | New — IntersectionObserver hook |
-| `src/components/layout/AnimatedSection.tsx` | New — animation wrapper |
-| `src/index.css` | Add base animation CSS classes |
-| `src/pages/HomePage.tsx` | Wrap sections with AnimatedSection |
-| `src/pages/AboutPage.tsx` | Wrap sections with AnimatedSection |
-| `src/pages/ProductPage.tsx` | Wrap sections with AnimatedSection |
-| `src/pages/HowItWorksPage.tsx` | Wrap sections with AnimatedSection |
-| `src/pages/SecurityPage.tsx` | Wrap sections with AnimatedSection |
-| `src/pages/SupportPage.tsx` | Wrap sections with AnimatedSection |
-| `src/pages/FreeAccountPage.tsx` | Wrap sections + invoke notify edge function |
-| `src/components/layout/PublicFooter.tsx` | Update email/website links |
-| `supabase/functions/notify-free-signup/index.ts` | New — sends Resend email to info@kaasmart.app |
+| New migration SQL | Create all 10 missing database functions |
+| `src/components/dashboard/AgentDashboard.tsx` | Replace RPC with direct queries |
+| `src/components/dashboard/ManagerDashboard.tsx` | Replace RPC with direct queries |
+| `src/components/property/AddPropertyModal.tsx` | Replace RPC with direct room inserts |
+| `src/components/property/RoomManagementModal.tsx` | Replace RPC with direct invitation insert |
+| `src/components/property/InvitePropertyOwnerModal.tsx` | Replace RPC with direct invitation insert |
+| `src/components/dashboard/PropertyOwnerDashboard.tsx` | Replace RPC with direct invitation inserts for manager/agent invites |
+
+### Why Both Migration AND Refactor?
+- The **migration** restores `has_role` and other functions needed by RLS policies — without these, many table queries will fail silently
+- The **refactor** makes dashboards resilient by not depending on RPC functions, reducing future breakage risk
+- The RPC functions are still created in the migration as a safety net
 
