@@ -75,19 +75,48 @@ const ManagerDashboard = () => {
         return;
       }
 
-      // Use the optimized RPC function to get properties with stats in a single query
+      // Try RPC first, fallback to direct queries
       const { data: propertiesData, error } = await (supabase
         .rpc as any)('get_manager_properties_with_stats', {
           manager_user_id: user.id
         });
 
       if (error) {
-        console.error('Error fetching properties:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load properties",
-          variant: "destructive"
-        });
+        console.warn('RPC failed, using direct queries:', error);
+        // Fallback: fetch from manager_properties + properties + rooms
+        const { data: assignments } = await supabase
+          .from('manager_properties')
+          .select('property_id, can_manage_all')
+          .eq('manager_id', user.id);
+
+        if (assignments && assignments.length > 0) {
+          const managesAll = assignments.some((a: any) => a.can_manage_all);
+          let query = supabase.from('properties').select('*');
+          if (!managesAll) {
+            const propertyIds = assignments.map((a: any) => a.property_id).filter(Boolean);
+            query = query.in('id', propertyIds);
+          }
+          const { data: props } = await query;
+          
+          const formattedProperties = await Promise.all((props || []).map(async (prop: any) => {
+            const { count } = await supabase
+              .from('rooms')
+              .select('*', { count: 'exact', head: true })
+              .eq('property_id', prop.id)
+              .eq('is_occupied', true);
+            
+            return {
+              id: prop.id,
+              name: prop.name,
+              location: prop.location || '',
+              rent_per_room: prop.rent_per_room || 0,
+              total_rooms: prop.total_rooms || 0,
+              occupiedRooms: count || 0,
+              image_url: prop.image_url || undefined,
+            };
+          }));
+          setProperties(formattedProperties);
+        }
         return;
       }
 
