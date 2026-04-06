@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import PublicLayout from "@/components/layout/PublicLayout";
+import AnimatedSection from "@/components/layout/AnimatedSection";
 import { 
   Building2, Users, Wallet, Wrench, MessageSquare, BarChart3,
   CheckCircle, AlertTriangle, Shield, Clock, TrendingUp, UserCheck
@@ -41,8 +42,7 @@ const HomePage = () => {
 
   return (
     <PublicLayout>
-      {/* HERO */}
-      <section className="relative py-16 lg:py-24 overflow-hidden">
+      <AnimatedSection className="relative py-16 lg:py-24 overflow-hidden">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroApartment})` }}>
           <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/80 to-background/60" />
         </div>
@@ -76,10 +76,9 @@ const HomePage = () => {
             </Card>
           </div>
         </div>
-      </section>
+      </AnimatedSection>
 
-      {/* PROBLEMS */}
-      <section className="py-12 lg:py-16 bg-muted/30">
+      <AnimatedSection animation="fade-in-up" delay={100} className="py-12 lg:py-16 bg-muted/30">
         <div className="container">
           <div className="text-center max-w-3xl mx-auto mb-8">
             <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">{t("home.problems.title")}</h2>
@@ -98,10 +97,9 @@ const HomePage = () => {
           </div>
           <p className="text-center text-muted-foreground mt-6 text-lg"><strong>{t("home.problems.footer")}</strong></p>
         </div>
-      </section>
+      </AnimatedSection>
 
-      {/* SOLUTION */}
-      <section className="py-12 lg:py-16">
+      <AnimatedSection animation="fade-in-up" delay={100} className="py-12 lg:py-16">
         <div className="container">
           <div className="text-center max-w-3xl mx-auto mb-8">
             <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">{t("home.solution.title")}</h2>
@@ -119,10 +117,9 @@ const HomePage = () => {
             ))}
           </div>
         </div>
-      </section>
+      </AnimatedSection>
 
-      {/* WHO USES */}
-      <section className="py-12 lg:py-16 bg-muted/30">
+      <AnimatedSection animation="fade-in-up" delay={100} className="py-12 lg:py-16 bg-muted/30">
         <div className="container">
           <div className="text-center max-w-3xl mx-auto mb-8">
             <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">{t("home.users.title")}</h2>
@@ -148,10 +145,9 @@ const HomePage = () => {
             ))}
           </div>
         </div>
-      </section>
+      </AnimatedSection>
 
-      {/* BENEFITS */}
-      <section className="py-12 lg:py-16">
+      <AnimatedSection animation="scale-in" delay={100} className="py-12 lg:py-16">
         <div className="container">
           <div className="text-center max-w-3xl mx-auto mb-8">
             <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">{t("home.benefits.title")}</h2>
@@ -167,10 +163,9 @@ const HomePage = () => {
             ))}
           </div>
         </div>
-      </section>
+      </AnimatedSection>
 
-      {/* CTA */}
-      <section className="py-12 lg:py-16 bg-primary">
+      <AnimatedSection animation="fade-in-up" className="py-12 lg:py-16 bg-primary">
         <div className="container text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-3">{t("home.cta.title")}</h2>
           <p className="text-primary-foreground/80 mb-6 max-w-2xl mx-auto">{t("home.cta.desc")}</p>
@@ -181,7 +176,7 @@ const HomePage = () => {
             </Button>
           </div>
         </div>
-      </section>
+      </AnimatedSection>
     </PublicLayout>
   );
 };

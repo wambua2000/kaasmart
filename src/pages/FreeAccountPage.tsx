@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import PublicLayout from "@/components/layout/PublicLayout";
+import AnimatedSection from "@/components/layout/AnimatedSection";
 import { Check, Building2, Users, Wallet, LayoutDashboard, UserCheck, BookOpen, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,14 +48,24 @@ const FreeAccountPage = () => {
       return;
     }
 
+    // Fire-and-forget: send email notification
+    supabase.functions.invoke("notify-free-signup", {
+      body: {
+        first_name: form.first_name,
+        last_name: form.last_name,
+        email: form.email,
+        property_name: form.property_name,
+        phone_number: form.phone_number,
+      },
+    }).catch(() => {});
+
     setIsSuccess(true);
     toast({ title: "Success!", description: t("free.form.success") });
   };
 
   return (
     <PublicLayout>
-      {/* Hero */}
-      <section className="py-12 lg:py-16 bg-gradient-to-b from-primary/5 to-background">
+      <AnimatedSection className="py-12 lg:py-16 bg-gradient-to-b from-primary/5 to-background">
         <div className="container">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-4xl md:text-5xl font-bold text-primary mb-4">
@@ -65,10 +76,9 @@ const FreeAccountPage = () => {
             </p>
           </div>
         </div>
-      </section>
+      </AnimatedSection>
 
-      {/* Features */}
-      <section className="py-12 lg:py-16">
+      <AnimatedSection animation="fade-in-up" delay={100} className="py-12 lg:py-16">
         <div className="container">
           <h2 className="text-3xl md:text-4xl font-bold text-primary text-center mb-8">
             {t("free.features.title")}
@@ -86,10 +96,9 @@ const FreeAccountPage = () => {
             ))}
           </div>
         </div>
-      </section>
+      </AnimatedSection>
 
-      {/* Signup Form */}
-      <section className="py-12 lg:py-16 bg-muted/30">
+      <AnimatedSection animation="scale-in" delay={100} className="py-12 lg:py-16 bg-muted/30">
         <div className="container">
           <div className="max-w-lg mx-auto">
             <Card className="border-primary/20">
@@ -140,7 +149,7 @@ const FreeAccountPage = () => {
             </Card>
           </div>
         </div>
-      </section>
+      </AnimatedSection>
     </PublicLayout>
   );
 };
