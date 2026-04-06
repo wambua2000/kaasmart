@@ -584,7 +584,68 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_manage_property: {
+        Args: { _property_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_manage_property_as_agent: {
+        Args: { _property_id: string; _user_id: string }
+        Returns: boolean
+      }
+      generate_invitation_credentials: {
+        Args: {
+          invitation_email: string
+          invitation_property_id?: string
+          invitation_role: string
+          invitation_room_id?: string
+        }
+        Returns: {
+          email: string
+          temporary_password: string
+        }[]
+      }
+      generate_rooms_for_property: {
+        Args: {
+          property_id_param: string
+          property_name_param: string
+          rent_amount_param: number
+          total_rooms_param: number
+        }
+        Returns: undefined
+      }
+      get_agent_properties_with_stats: {
+        Args: { agent_user_id: string }
+        Returns: {
+          id: string
+          image_url: string
+          location: string
+          name: string
+          occupied_rooms: number
+          pending_amount: number
+          rent_per_room: number
+          total_collected: number
+          total_rooms: number
+        }[]
+      }
+      get_manager_properties_with_stats: {
+        Args: { manager_user_id: string }
+        Returns: {
+          id: string
+          image_url: string
+          location: string
+          name: string
+          occupied_rooms: number
+          rent_per_room: number
+          total_rooms: number
+        }[]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
