@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import PublicLayout from "@/components/layout/PublicLayout";
+import AnimatedSection from "@/components/layout/AnimatedSection";
 import { Building2, Users, Wallet, Wrench, MessageSquare, BarChart3, Settings, Eye, UserCheck } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
@@ -8,16 +9,16 @@ const ProductPage = () => {
 
   return (
     <PublicLayout>
-      <section className="py-12 lg:py-16 bg-gradient-to-b from-primary/5 to-background">
+      <AnimatedSection className="py-12 lg:py-16 bg-gradient-to-b from-primary/5 to-background">
         <div className="container">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-4xl md:text-5xl font-bold text-primary mb-4">{t("product.title")}</h1>
             <p className="text-lg text-muted-foreground">{t("product.desc")}</p>
           </div>
         </div>
-      </section>
+      </AnimatedSection>
 
-      <section className="py-12 lg:py-16">
+      <AnimatedSection animation="fade-in-up" delay={100} className="py-12 lg:py-16">
         <div className="container">
           <div className="text-center mb-8">
             <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">{t("product.modules.title")}</h2>
@@ -52,9 +53,9 @@ const ProductPage = () => {
             ))}
           </div>
         </div>
-      </section>
+      </AnimatedSection>
 
-      <section className="py-12 lg:py-16 bg-muted/30">
+      <AnimatedSection animation="fade-in-up" delay={100} className="py-12 lg:py-16 bg-muted/30">
         <div className="container">
           <div className="text-center mb-8">
             <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">{t("product.dashboards.title")}</h2>
@@ -87,7 +88,7 @@ const ProductPage = () => {
             ))}
           </div>
         </div>
-      </section>
+      </AnimatedSection>
     </PublicLayout>
   );
 };

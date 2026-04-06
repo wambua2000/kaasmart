@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import PublicLayout from "@/components/layout/PublicLayout";
+import AnimatedSection from "@/components/layout/AnimatedSection";
 import { Shield, Lock, Key, Eye, FileCheck, Server, UserCheck, RefreshCw, Database, CheckCircle } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
@@ -8,7 +9,7 @@ const SecurityPage = () => {
 
   return (
     <PublicLayout>
-      <section className="py-12 lg:py-16 bg-gradient-to-b from-primary/5 to-background">
+      <AnimatedSection className="py-12 lg:py-16 bg-gradient-to-b from-primary/5 to-background">
         <div className="container">
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-flex p-3 rounded-full bg-primary/10 mb-4"><Shield className="h-10 w-10 text-primary" /></div>
@@ -16,9 +17,9 @@ const SecurityPage = () => {
             <p className="text-lg text-muted-foreground">{t("security.desc")}</p>
           </div>
         </div>
-      </section>
+      </AnimatedSection>
 
-      <section className="py-12 lg:py-16">
+      <AnimatedSection animation="fade-in-up" delay={100} className="py-12 lg:py-16">
         <div className="container">
           <div className="text-center mb-8">
             <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">{t("security.technical.title")}</h2>
@@ -43,9 +44,9 @@ const SecurityPage = () => {
             ))}
           </div>
         </div>
-      </section>
+      </AnimatedSection>
 
-      <section className="py-12 lg:py-16 bg-muted/30">
+      <AnimatedSection animation="fade-in-up" delay={100} className="py-12 lg:py-16 bg-muted/30">
         <div className="container">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-8">
@@ -78,9 +79,9 @@ const SecurityPage = () => {
             </div>
           </div>
         </div>
-      </section>
+      </AnimatedSection>
 
-      <section className="py-12 lg:py-16">
+      <AnimatedSection animation="scale-in" delay={100} className="py-12 lg:py-16">
         <div className="container">
           <div className="max-w-4xl mx-auto">
             <Card className="border-primary/20 bg-primary/5">
@@ -103,7 +104,7 @@ const SecurityPage = () => {
             </Card>
           </div>
         </div>
-      </section>
+      </AnimatedSection>
     </PublicLayout>
   );
 };

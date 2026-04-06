@@ -1,7 +1,7 @@
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import PublicLayout from "@/components/layout/PublicLayout";
+import AnimatedSection from "@/components/layout/AnimatedSection";
 import { MessageCircle, Mail, BookOpen, GraduationCap, FileQuestion, CheckCircle, Clock, ArrowRight, Headphones } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
@@ -10,7 +10,7 @@ const SupportPage = () => {
 
   return (
     <PublicLayout>
-      <section className="py-12 lg:py-16 bg-gradient-to-b from-primary/5 to-background">
+      <AnimatedSection className="py-12 lg:py-16 bg-gradient-to-b from-primary/5 to-background">
         <div className="container">
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-flex p-3 rounded-full bg-primary/10 mb-4"><Headphones className="h-10 w-10 text-primary" /></div>
@@ -18,9 +18,9 @@ const SupportPage = () => {
             <p className="text-lg text-muted-foreground">{t("support.desc")}</p>
           </div>
         </div>
-      </section>
+      </AnimatedSection>
 
-      <section className="py-12 lg:py-16">
+      <AnimatedSection animation="fade-in-up" delay={100} className="py-12 lg:py-16">
         <div className="container">
           <div className="text-center mb-8">
             <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">{t("support.channels.title")}</h2>
@@ -40,7 +40,7 @@ const SupportPage = () => {
                 <div className="p-3 rounded-full bg-primary/10 inline-flex mb-3"><Mail className="h-7 w-7 text-primary" /></div>
                 <h3 className="text-xl font-semibold text-foreground mb-2">Email Support</h3>
                 <p className="text-muted-foreground text-sm mb-3">For complex issues or detailed inquiries, our support team is ready to help via email.</p>
-                <a href="mailto:support@kaasmart.com" className="text-primary hover:underline text-sm font-medium">support@kaasmart.com</a>
+                <a href="mailto:support@kaasmart.app" className="text-primary hover:underline text-sm font-medium">support@kaasmart.app</a>
               </CardContent>
             </Card>
             <Card className="text-center hover:shadow-lg transition-shadow border-primary/20">
@@ -53,9 +53,9 @@ const SupportPage = () => {
             </Card>
           </div>
         </div>
-      </section>
+      </AnimatedSection>
 
-      <section className="py-12 lg:py-16 bg-muted/30">
+      <AnimatedSection animation="fade-in-up" delay={100} className="py-12 lg:py-16 bg-muted/30">
         <div className="container">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-8">
@@ -92,9 +92,9 @@ const SupportPage = () => {
             </div>
           </div>
         </div>
-      </section>
+      </AnimatedSection>
 
-      <section className="py-12 lg:py-16">
+      <AnimatedSection animation="fade-in-up" delay={100} className="py-12 lg:py-16">
         <div className="container">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-8">
@@ -131,17 +131,17 @@ const SupportPage = () => {
             </Card>
           </div>
         </div>
-      </section>
+      </AnimatedSection>
 
-      <section className="py-12 lg:py-16 bg-primary">
+      <AnimatedSection animation="fade-in-up" className="py-12 lg:py-16 bg-primary">
         <div className="container text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-3">{t("support.cta.title")}</h2>
           <p className="text-primary-foreground/80 mb-6 max-w-2xl mx-auto">{t("support.cta.desc")}</p>
           <Button size="lg" variant="secondary" asChild>
-            <a href="mailto:demo@kaasmart.com">{t("support.cta.button")} <ArrowRight className="ml-2 h-4 w-4" /></a>
+            <a href="mailto:demo@kaasmart.app">{t("support.cta.button")} <ArrowRight className="ml-2 h-4 w-4" /></a>
           </Button>
         </div>
-      </section>
+      </AnimatedSection>
     </PublicLayout>
   );
 };
