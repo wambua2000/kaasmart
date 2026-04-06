@@ -38,8 +38,8 @@ const PublicFooter = () => {
           <div className="space-y-4">
             <h3 className="font-semibold text-foreground">{t("footer.contactUs")}</h3>
             <div className="space-y-2 text-sm text-muted-foreground">
-              <p><a href="mailto:info@kaasmart.com" className="hover:text-primary transition-colors">info@kaasmart.com</a></p>
-              <p><a href="https://www.kaasmart.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">www.kaasmart.com</a></p>
+              <p><a href="mailto:info@kaasmart.app" className="hover:text-primary transition-colors">info@kaasmart.app</a></p>
+              <p><a href="https://www.kaasmart.app" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">www.kaasmart.app</a></p>
             </div>
           </div>
         </div>
