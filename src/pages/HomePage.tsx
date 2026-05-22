@@ -43,13 +43,15 @@ const HomePage = () => {
   return (
     <PublicLayout>
       <AnimatedSection className="relative py-16 lg:py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroApartment})` }}>
-          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/80 to-background/60" />
-        </div>
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroApartment})` }} />
+        {/* Mobile: subtle full-width darken for readability */}
+        <div className="absolute inset-0 bg-background/50 md:hidden" />
+        {/* Desktop: gradient only behind text on the left, image stays clear on the right */}
+        <div className="absolute inset-0 hidden md:block bg-gradient-to-r from-background/90 via-background/60 to-transparent" />
         <div className="container relative z-10">
           <div className="max-w-3xl space-y-5">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-primary">{t("home.hero.title")}</h1>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl">{t("home.hero.desc")}</p>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-primary drop-shadow-sm">{t("home.hero.title")}</h1>
+            <p className="text-lg md:text-xl text-foreground/90 max-w-2xl">{t("home.hero.desc")}</p>
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <Button size="lg" asChild><Link to="/login">{t("home.hero.cta")}</Link></Button>
               <Button size="lg" variant="outline" asChild><Link to="/support">{t("home.hero.demo")}</Link></Button>
