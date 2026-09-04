@@ -6,18 +6,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const VALID_ROLES = ['developer', 'owner', 'manager', 'agent', 'tenant'];
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { email, password, role, property_id, room_id } = await req.json();
+    const body = await req.json();
+    const email: string = (body.email || '').trim().toLowerCase();
+    const password: string = body.password;
+    const role: string = body.role;
+    const property_id: string | null = body.property_id ?? null;
+    const room_id: string | null = body.room_id ?? null;
+    const full_name: string | null = body.full_name ?? null;
 
-    console.log('Creating invited user:', { email, role, property_id, room_id });
+    console.log('create-invited-user:', { email, role, property_id, room_id });
 
-    // Validate input
     if (!email || !password || !role) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: email, password, or role' }),
@@ -25,274 +31,162 @@ serve(async (req) => {
       );
     }
 
-    // Create admin client with service role key
+    if (!VALID_ROLES.includes(role)) {
+      return new Response(
+        JSON.stringify({ error: `Invalid role: ${role}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
+      { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Check if user already exists
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = existingUsers?.users.find(u => u.email === email);
+    // Identify the caller (the inviter), if a JWT was provided
+    let invitedBy: string | null = body.invited_by ?? null;
+    const authHeader = req.headers.get('Authorization');
+    if (!invitedBy && authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: caller } = await supabaseAdmin.auth.getUser(token);
+      invitedBy = caller?.user?.id ?? null;
+    }
+
+    // --- 1. Find or create the auth user (paginate; listUsers caps at 50 by default) ---
+    let existingUser: { id: string; email?: string } | null = null;
+    for (let page = 1; page <= 20; page++) {
+      const { data: pageData, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage: 1000,
+      });
+      if (listError) throw listError;
+      const match = pageData?.users?.find((u) => u.email?.toLowerCase() === email);
+      if (match) {
+        existingUser = match;
+        break;
+      }
+      if (!pageData?.users?.length || pageData.users.length < 1000) break;
+    }
+
+    let userId: string;
 
     if (existingUser) {
-      console.log('User already exists, updating password and assignment:', email);
-      
-      // Update their password
-      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-        existingUser.id,
-        { password }
-      );
-
-      if (updateError) {
-        console.error('Error updating user password:', updateError);
-        throw updateError;
-      }
-
-      // If tenant, assign to room
-      if (role === 'tenant' && room_id) {
-        const { error: roomError } = await supabaseAdmin
-          .from('rooms')
-          .update({
-            tenant_id: existingUser.id,
-            is_occupied: true
-          })
-          .eq('id', room_id);
-
-        if (roomError) {
-          console.error('Error assigning tenant to room:', roomError);
-          throw roomError;
-        }
-      }
-
-      // Mark invitation as used
-      const { error: inviteError } = await supabaseAdmin
-        .from('invitations')
-        .update({ is_used: true, temporary_password: null })
-        .eq('email', email)
-        .eq('is_used', false);
-
-      if (inviteError) {
-        console.log('Warning: Could not mark invitation as used:', inviteError);
-      }
-
-      console.log('User updated successfully');
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: 'User account updated successfully',
-          user_id: existingUser.id 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
+        password,
+        email_confirm: true,
+        user_metadata: { role, full_name: full_name || email.split('@')[0] },
+      });
+      if (updateError) throw new Error(`Failed to update user: ${updateError.message}`);
+      userId = existingUser.id;
+      console.log('Existing auth user updated:', userId);
+    } else {
+      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { role, full_name: full_name || email.split('@')[0] },
+      });
+      if (createError) throw new Error(`Failed to create user: ${createError.message}`);
+      if (!newUser?.user) throw new Error('User creation failed - no user returned');
+      userId = newUser.user.id;
+      console.log('New auth user created:', userId);
     }
 
-    // Create new user with admin API
-    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true, // Auto-confirm email
-      user_metadata: {
-        role,
-        full_name: email.split('@')[0], // Default name from email
-      }
-    });
-
-    if (createError) {
-      console.error('Error creating user:', createError);
-      throw createError;
-    }
-
-    if (!newUser.user) {
-      throw new Error('User creation failed - no user returned');
-    }
-
-    console.log('User created successfully:', newUser.user.id);
-
-    // The handle_invitation_signup trigger will automatically:
-    // 1. Create profile
-    // 2. Set role
-    // 3. Assign to room (for tenants)
-    // 4. Create manager-property relationship (for managers)
-    // 5. Mark invitation as used
-
-    // However, we need to manually trigger the profile creation and role assignment
-    // since the trigger only runs on signup, not admin creation
-
-    // Insert profile manually
+    // --- 2. Profile: always upsert so the role is authoritative ---
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .insert({
-        id: newUser.user.id,
-        email,
-        role,
-        full_name: email.split('@')[0]
-      });
+      .upsert(
+        {
+          id: userId,
+          email,
+          role,
+          full_name: full_name || email.split('@')[0],
+        },
+        { onConflict: 'id' }
+      );
+    if (profileError) console.error('Profile upsert error:', profileError);
 
-    if (profileError && !profileError.message.includes('duplicate key')) {
-      console.error('Error creating profile:', profileError);
-    }
+    // --- 3. Roles: exactly one role per invited user ---
+    const { error: roleDeleteError } = await supabaseAdmin
+      .from('user_roles')
+      .delete()
+      .eq('user_id', userId)
+      .neq('role', role);
+    if (roleDeleteError) console.error('Role cleanup error:', roleDeleteError);
 
-    // Insert role manually
     const { error: roleError } = await supabaseAdmin
       .from('user_roles')
-      .insert({
-        user_id: newUser.user.id,
-        role
-      });
+      .upsert({ user_id: userId, role }, { onConflict: 'user_id,role' });
+    if (roleError) console.error('Role upsert error:', roleError);
 
-    if (roleError && !roleError.message.includes('duplicate key')) {
-      console.error('Error creating user role:', roleError);
-    }
-
-    // If tenant, assign to room
+    // --- 4. Role-specific relationships ---
     if (role === 'tenant' && room_id) {
       const { error: roomError } = await supabaseAdmin
         .from('rooms')
-        .update({
-          tenant_id: newUser.user.id,
-          is_occupied: true
-        })
+        .update({ tenant_id: userId, tenant_email: email, is_occupied: true })
         .eq('id', room_id);
-
-      if (roomError) {
-        console.error('Error assigning tenant to room:', roomError);
-        throw roomError;
-      }
+      if (roomError) throw new Error(`Failed to assign tenant to room: ${roomError.message}`);
       console.log('Tenant assigned to room:', room_id);
     }
 
-    // If manager, create manager-property relationship
-    if (role === 'manager') {
-      // Get the user who created this invitation (the property owner)
-      const { data: invitation } = await supabaseAdmin
-        .from('invitations')
-        .select('invited_by')
-        .eq('email', email)
-        .eq('is_used', false)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+    if (role === 'manager' || role === 'agent') {
+      const table = role === 'manager' ? 'manager_properties' : 'agent_properties';
+      const idColumn = role === 'manager' ? 'manager_id' : 'agent_id';
 
-      if (property_id) {
-        // Single property assignment
-        const { error: managerError } = await supabaseAdmin
-          .from('manager_properties')
-          .insert({
-            manager_id: newUser.user.id,
-            property_id,
-            assigned_by: invitation?.invited_by
-          });
+      // Remove stale assignments so scope changes take effect
+      await supabaseAdmin.from(table).delete().eq(idColumn, userId);
 
-        if (managerError && !managerError.message.includes('duplicate key')) {
-          console.error('Error creating manager-property relationship:', managerError);
-          throw managerError;
-        }
-        console.log('Manager assigned to property:', property_id);
-      } else {
-        // All properties access
-        const { error: managerError } = await supabaseAdmin
-          .from('manager_properties')
-          .insert({
-            manager_id: newUser.user.id,
-            property_id: null,
-            can_manage_all: true,
-            assigned_by: invitation?.invited_by
-          });
-
-        if (managerError && !managerError.message.includes('duplicate key')) {
-          console.error('Error creating manager all-properties access:', managerError);
-          throw managerError;
-        }
-        console.log('Manager granted access to all properties');
-      }
+      const { error: linkError } = await supabaseAdmin.from(table).insert({
+        [idColumn]: userId,
+        property_id: property_id,
+        can_manage_all: !property_id,
+        assigned_by: invitedBy,
+      });
+      if (linkError) throw new Error(`Failed to assign ${role} to property: ${linkError.message}`);
+      console.log(`${role} assignment created`, { property_id, can_manage_all: !property_id });
     }
 
-    // If agent, create agent-property relationship
-    if (role === 'agent') {
-      const { data: invitation } = await supabaseAdmin
-        .from('invitations')
-        .select('invited_by')
-        .eq('email', email)
-        .eq('is_used', false)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (property_id) {
-        // Single property assignment
-        const { error: agentError } = await supabaseAdmin
-          .from('agent_properties')
-          .insert({
-            agent_id: newUser.user.id,
-            property_id,
-            assigned_by: invitation?.invited_by
-          });
-
-        if (agentError && !agentError.message.includes('duplicate key')) {
-          console.error('Error creating agent-property relationship:', agentError);
-          throw agentError;
-        }
-        console.log('Agent assigned to property:', property_id);
-      } else {
-        // All properties access
-        const { error: agentError } = await supabaseAdmin
-          .from('agent_properties')
-          .insert({
-            agent_id: newUser.user.id,
-            property_id: null,
-            can_manage_all: true,
-            assigned_by: invitation?.invited_by
-          });
-
-        if (agentError && !agentError.message.includes('duplicate key')) {
-          console.error('Error creating agent all-properties access:', agentError);
-          throw agentError;
-        }
-        console.log('Agent granted access to all properties');
-      }
-    }
-
-    // Mark invitation as used
-    const { error: inviteError } = await supabaseAdmin
+    // --- 5. Invitation bookkeeping: record it and mark it used ---
+    const { data: pendingInvites } = await supabaseAdmin
       .from('invitations')
-      .update({ is_used: true, temporary_password: null })
+      .select('id')
       .eq('email', email)
       .eq('is_used', false);
 
-    if (inviteError) {
-      console.log('Warning: Could not mark invitation as used:', inviteError);
+    if (pendingInvites && pendingInvites.length > 0) {
+      await supabaseAdmin
+        .from('invitations')
+        .update({ is_used: true, temporary_password: null, role, property_id, room_id })
+        .in('id', pendingInvites.map((i) => i.id));
+    } else {
+      await supabaseAdmin.from('invitations').insert({
+        email,
+        role,
+        property_id,
+        room_id,
+        invited_by: invitedBy,
+        is_used: true,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      });
     }
 
-    console.log('Invitation marked as used');
-
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'User account created successfully',
-        user_id: newUser.user.id 
+      JSON.stringify({
+        success: true,
+        message: existingUser ? 'User account updated successfully' : 'User account created successfully',
+        user_id: userId,
+        email,
+        role,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
   } catch (error) {
     console.error('Error in create-invited-user function:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
     return new Response(
-      JSON.stringify({ 
-        error: errorMessage,
-        details: error 
-      }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ error: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
