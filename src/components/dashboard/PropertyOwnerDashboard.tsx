@@ -580,28 +580,10 @@ const PropertyOwnerDashboard = () => {
     propertyName?: string;
   }) => {
     try {
-      // Create invitation in database using the Supabase function
-      const { data, error } = await (supabase.rpc as any)('generate_invitation_credentials', {
-        invitation_email: managerData.email,
-        invitation_role: 'manager',
-        invitation_property_id: managerData.scope === 'single' ? managerData.propertyId : null,
-        invitation_room_id: null,
-      });
-
-      if (error) {
-        console.error('Error creating manager invitation:', error);
-        toast({
-          title: "Error",
-          description: "Failed to create manager invitation. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Call edge function to create the actual auth user
-      const { error: authError } = await supabase.functions.invoke('create-invited-user', {
+      // Create the auth user, profile, role and property assignment in one step
+      const { data, error: authError } = await supabase.functions.invoke('create-invited-user', {
         body: {
-          email: managerData.email,
+          email: managerData.email.trim().toLowerCase(),
           password: managerData.password,
           role: 'manager',
           property_id: managerData.scope === 'single' ? managerData.propertyId : null,
@@ -609,15 +591,8 @@ const PropertyOwnerDashboard = () => {
         }
       });
 
-      if (authError) {
-        console.error('Error creating manager account:', authError);
-        toast({
-          title: "Warning",
-          description: "Invitation created but manager account creation may have failed.",
-          variant: "destructive",
-        });
-        return;
-      }
+      if (authError) throw authError;
+      if (data?.error) throw new Error(data.error);
 
       console.log('Manager account created successfully');
 
@@ -625,11 +600,11 @@ const PropertyOwnerDashboard = () => {
         title: "Manager Invited Successfully",
         description: `Account created for ${managerData.propertyName || 'all properties'}. Manager can login immediately.`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error inviting manager:', error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred.",
+        description: error.message || "An unexpected error occurred.",
         variant: "destructive",
       });
     }
