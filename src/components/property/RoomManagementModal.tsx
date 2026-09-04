@@ -309,23 +309,6 @@ const RoomManagementModal = ({ property, isOpen, onClose, userRole }: RoomManage
           .in('id', existingRooms.map(r => r.id));
       }
 
-      // Create invitation in database using the Supabase function
-      const { data, error: invitationError } = await (supabase.rpc as any)('generate_invitation_credentials', {
-        invitation_email: tenantData.email,
-        invitation_role: 'tenant',
-        invitation_property_id: property.id,
-        invitation_room_id: selectedRoom.id,
-      });
-
-      if (invitationError) {
-        console.error('Error creating tenant invitation:', invitationError);
-        toast({
-          title: "Error",
-          description: "Failed to create tenant invitation. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
 
       // Update the room with tenant information (but not tenant_id yet - that's set on login)
       const { error: updateError } = await supabase

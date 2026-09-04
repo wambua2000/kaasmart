@@ -623,21 +623,10 @@ const PropertyOwnerDashboard = () => {
         throw new Error('User not authenticated');
       }
 
-      // Generate invitation credentials
-      const { data: invitationData, error: invitationError } = await (supabase
-        .rpc as any)('generate_invitation_credentials', {
-          invitation_email: agentData.email,
-          invitation_role: 'agent',
-          invitation_property_id: agentData.scope === 'single' ? agentData.propertyId : null,
-          invitation_room_id: null,
-        });
-
-      if (invitationError) throw invitationError;
-
-      // Call edge function to create the user account
+      // Create the auth user, profile, role and property assignment in one step
       const { data, error } = await supabase.functions.invoke('create-invited-user', {
         body: {
-          email: agentData.email,
+          email: agentData.email.trim().toLowerCase(),
           password: agentData.password,
           role: 'agent',
           property_id: agentData.scope === 'single' ? agentData.propertyId : null
@@ -645,6 +634,7 @@ const PropertyOwnerDashboard = () => {
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       const scopeDescription = agentData.scope === 'all'
         ? 'all properties'
@@ -656,11 +646,11 @@ const PropertyOwnerDashboard = () => {
       });
 
       setIsInviteAgentOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error inviting agent:', error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred.",
+        description: error.message || "An unexpected error occurred.",
         variant: "destructive",
       });
     }
