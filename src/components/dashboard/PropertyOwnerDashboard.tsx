@@ -580,28 +580,10 @@ const PropertyOwnerDashboard = () => {
     propertyName?: string;
   }) => {
     try {
-      // Create invitation in database using the Supabase function
-      const { data, error } = await (supabase.rpc as any)('generate_invitation_credentials', {
-        invitation_email: managerData.email,
-        invitation_role: 'manager',
-        invitation_property_id: managerData.scope === 'single' ? managerData.propertyId : null,
-        invitation_room_id: null,
-      });
-
-      if (error) {
-        console.error('Error creating manager invitation:', error);
-        toast({
-          title: "Error",
-          description: "Failed to create manager invitation. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Call edge function to create the actual auth user
-      const { error: authError } = await supabase.functions.invoke('create-invited-user', {
+      // Create the auth user, profile, role and property assignment in one step
+      const { data, error: authError } = await supabase.functions.invoke('create-invited-user', {
         body: {
-          email: managerData.email,
+          email: managerData.email.trim().toLowerCase(),
           password: managerData.password,
           role: 'manager',
           property_id: managerData.scope === 'single' ? managerData.propertyId : null,
@@ -609,15 +591,8 @@ const PropertyOwnerDashboard = () => {
         }
       });
 
-      if (authError) {
-        console.error('Error creating manager account:', authError);
-        toast({
-          title: "Warning",
-          description: "Invitation created but manager account creation may have failed.",
-          variant: "destructive",
-        });
-        return;
-      }
+      if (authError) throw authError;
+      if (data?.error) throw new Error(data.error);
 
       console.log('Manager account created successfully');
 
@@ -625,11 +600,11 @@ const PropertyOwnerDashboard = () => {
         title: "Manager Invited Successfully",
         description: `Account created for ${managerData.propertyName || 'all properties'}. Manager can login immediately.`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error inviting manager:', error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred.",
+        description: error.message || "An unexpected error occurred.",
         variant: "destructive",
       });
     }
@@ -648,21 +623,10 @@ const PropertyOwnerDashboard = () => {
         throw new Error('User not authenticated');
       }
 
-      // Generate invitation credentials
-      const { data: invitationData, error: invitationError } = await (supabase
-        .rpc as any)('generate_invitation_credentials', {
-          invitation_email: agentData.email,
-          invitation_role: 'agent',
-          invitation_property_id: agentData.scope === 'single' ? agentData.propertyId : null,
-          invitation_room_id: null,
-        });
-
-      if (invitationError) throw invitationError;
-
-      // Call edge function to create the user account
+      // Create the auth user, profile, role and property assignment in one step
       const { data, error } = await supabase.functions.invoke('create-invited-user', {
         body: {
-          email: agentData.email,
+          email: agentData.email.trim().toLowerCase(),
           password: agentData.password,
           role: 'agent',
           property_id: agentData.scope === 'single' ? agentData.propertyId : null
@@ -670,6 +634,7 @@ const PropertyOwnerDashboard = () => {
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       const scopeDescription = agentData.scope === 'all'
         ? 'all properties'
@@ -681,11 +646,11 @@ const PropertyOwnerDashboard = () => {
       });
 
       setIsInviteAgentOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error inviting agent:', error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred.",
+        description: error.message || "An unexpected error occurred.",
         variant: "destructive",
       });
     }
