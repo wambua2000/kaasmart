@@ -99,43 +99,22 @@ const InvitePropertyOwnerModal = ({
     setIsGenerating(true);
 
     try {
-      console.log("Generating credentials for:", ownerEmail);
+      const tempPassword = generatePassword();
 
-      let tempPassword = '';
-      
-      // Try RPC first
-      const { data, error } = await (supabase.rpc as any)('generate_invitation_credentials', {
-        invitation_email: ownerEmail,
-        invitation_role: 'owner',
+      // Create the actual auth user, profile, and role via the edge function
+      const { data, error } = await supabase.functions.invoke('create-invited-user', {
+        body: {
+          email: ownerEmail.trim().toLowerCase(),
+          password: tempPassword,
+          role: 'owner',
+        },
       });
 
-      if (error) {
-        console.warn("RPC failed, using direct insert:", error);
-        // Fallback: generate password and insert directly
-        tempPassword = generatePassword();
-        const { data: { user } } = await supabase.auth.getUser();
-        const { error: insertError } = await supabase
-          .from('invitations')
-          .insert({
-            email: ownerEmail,
-            role: 'owner',
-            temporary_password: tempPassword,
-            password_hash: tempPassword,
-            invited_by: user?.id || null,
-            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          });
-        if (insertError) throw insertError;
-      } else {
-        if (!data || data.length === 0) {
-          throw new Error("No credentials returned from server");
-        }
-        tempPassword = data[0].temporary_password;
-      }
-
-      console.log("Credentials generated successfully");
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       setGeneratedCredentials({
-        email: ownerEmail,
+        email: ownerEmail.trim().toLowerCase(),
         password: tempPassword,
       });
 
