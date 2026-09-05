@@ -157,24 +157,37 @@ const ManagerDashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // First, get the manager's assigned property IDs
+      // Resolve the exact properties this manager is authorised for
       const { data: managerAssignments } = await supabase
         .from('manager_properties')
-        .select('property_id, can_manage_all')
+        .select('property_id, can_manage_all, owner_id')
         .eq('manager_id', user.id);
-
-      console.log('Manager - User ID:', user.id);
-      console.log('Manager - Assignments:', managerAssignments);
 
       if (!managerAssignments || managerAssignments.length === 0) {
         setMaintenanceMessages([]);
         return;
       }
 
-      // Check if manager can manage all properties
-      const canManageAll = managerAssignments.some(mp => mp.can_manage_all);
+      const propertyIds = new Set<string>(
+        managerAssignments.map((mp: any) => mp.property_id).filter(Boolean)
+      );
+      const ownerIds = managerAssignments
+        .filter((mp: any) => mp.can_manage_all && mp.owner_id)
+        .map((mp: any) => mp.owner_id);
+      if (ownerIds.length > 0) {
+        const { data: ownerProps } = await supabase
+          .from('properties')
+          .select('id')
+          .in('owner_id', ownerIds);
+        (ownerProps || []).forEach((p: any) => propertyIds.add(p.id));
+      }
 
-      let query = supabase
+      if (propertyIds.size === 0) {
+        setMaintenanceMessages([]);
+        return;
+      }
+
+      const query = supabase
         .from('messages')
         .select(`
           id,
@@ -184,23 +197,8 @@ const ManagerDashboard = () => {
           sender_id,
           profiles!messages_sender_id_fkey(full_name)
         `)
-        .ilike('content', '%MAINTENANCE REQUEST%');
-
-      // If manager can't manage all, filter by assigned properties
-      if (!canManageAll) {
-        const propertyIds = managerAssignments
-          .map(mp => mp.property_id)
-          .filter(id => id !== null);
-
-        console.log('Manager - Assigned Property IDs:', propertyIds);
-
-        if (propertyIds.length === 0) {
-          setMaintenanceMessages([]);
-          return;
-        }
-
-        query = query.in('property_id', propertyIds);
-      }
+        .ilike('content', '%MAINTENANCE REQUEST%')
+        .in('property_id', Array.from(propertyIds));
 
       const { data: messages, error } = await query
         .order('created_at', { ascending: false });
