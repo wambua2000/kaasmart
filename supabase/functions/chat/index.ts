@@ -90,22 +90,31 @@ USER CONTEXT:
         // Fetch manager's assigned properties
         const { data: managerProps, error: mpError } = await supabase
           .from('manager_properties')
-          .select('property_id, can_manage_all')
+          .select('property_id, can_manage_all, owner_id')
           .eq('manager_id', userId);
 
         if (!mpError && managerProps) {
-          const canManageAll = managerProps.some(mp => mp.can_manage_all);
-          
-          let propertyQuery = supabase
-            .from('properties')
-            .select('id, name, location, total_rooms');
-          
-          if (!canManageAll) {
-            const propertyIds = managerProps.map(mp => mp.property_id).filter(Boolean);
-            propertyQuery = propertyQuery.in('id', propertyIds);
-          }
+          const propertyIds = managerProps.map((mp: any) => mp.property_id).filter(Boolean);
+          const ownerIds = managerProps
+            .filter((mp: any) => mp.can_manage_all && mp.owner_id)
+            .map((mp: any) => mp.owner_id);
 
-          const { data: properties } = await propertyQuery;
+          let properties: any[] = [];
+          if (propertyIds.length > 0) {
+            const { data } = await supabase
+              .from('properties')
+              .select('id, name, location, total_rooms')
+              .in('id', propertyIds);
+            properties = properties.concat(data || []);
+          }
+          if (ownerIds.length > 0) {
+            const { data } = await supabase
+              .from('properties')
+              .select('id, name, location, total_rooms')
+              .in('owner_id', ownerIds);
+            properties = properties.concat(data || []);
+          }
+          properties = properties.filter((p, i, arr) => arr.findIndex((x) => x.id === p.id) === i);
 
           if (properties) {
             const { data: rooms } = await supabase
