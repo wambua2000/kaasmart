@@ -21,6 +21,7 @@ export type Database = {
           assigned_by: string | null
           can_manage_all: boolean | null
           id: string
+          owner_id: string | null
           property_id: string | null
         }
         Insert: {
@@ -29,6 +30,7 @@ export type Database = {
           assigned_by?: string | null
           can_manage_all?: boolean | null
           id?: string
+          owner_id?: string | null
           property_id?: string | null
         }
         Update: {
@@ -37,6 +39,7 @@ export type Database = {
           assigned_by?: string | null
           can_manage_all?: boolean | null
           id?: string
+          owner_id?: string | null
           property_id?: string | null
         }
         Relationships: [
@@ -196,6 +199,7 @@ export type Database = {
           can_manage_all: boolean | null
           id: string
           manager_id: string
+          owner_id: string | null
           property_id: string | null
         }
         Insert: {
@@ -204,6 +208,7 @@ export type Database = {
           can_manage_all?: boolean | null
           id?: string
           manager_id: string
+          owner_id?: string | null
           property_id?: string | null
         }
         Update: {
@@ -212,6 +217,7 @@ export type Database = {
           can_manage_all?: boolean | null
           id?: string
           manager_id?: string
+          owner_id?: string | null
           property_id?: string | null
         }
         Relationships: [
