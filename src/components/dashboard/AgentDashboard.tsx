@@ -78,17 +78,25 @@ const AgentDashboard = () => {
         // Fallback: fetch from agent_properties + properties + rooms
         const { data: assignments } = await supabase
           .from('agent_properties')
-          .select('property_id, can_manage_all')
+          .select('property_id, can_manage_all, owner_id')
           .eq('agent_id', user.id);
 
         if (assignments && assignments.length > 0) {
-          const managesAll = assignments.some((a: any) => a.can_manage_all);
-          let query = supabase.from('properties').select('*');
-          if (!managesAll) {
-            const propertyIds = assignments.map((a: any) => a.property_id).filter(Boolean);
-            query = query.in('id', propertyIds);
+          const propertyIds = assignments.map((a: any) => a.property_id).filter(Boolean);
+          const ownerIds = assignments
+            .filter((a: any) => a.can_manage_all && a.owner_id)
+            .map((a: any) => a.owner_id);
+
+          let props: any[] = [];
+          if (propertyIds.length > 0) {
+            const { data } = await supabase.from('properties').select('*').in('id', propertyIds);
+            props = props.concat(data || []);
           }
-          const { data: props } = await query;
+          if (ownerIds.length > 0) {
+            const { data } = await supabase.from('properties').select('*').in('owner_id', ownerIds);
+            props = props.concat(data || []);
+          }
+          props = props.filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i);
           
           for (const prop of (props || [])) {
             const { count: occupiedCount } = await supabase
