@@ -96,10 +96,20 @@ const MessageCenter = ({
     }
     
     // First fetch agent assignments
+    const { data: propertyRow } = await supabase
+      .from('properties')
+      .select('owner_id')
+      .eq('id', propertyId)
+      .maybeSingle();
+
     const { data: agentAssignments, error: agentError } = await supabase
       .from('agent_properties')
       .select('agent_id')
-      .or(`can_manage_all.eq.true,property_id.eq.${propertyId}`);
+      .or(
+        propertyRow?.owner_id
+          ? `property_id.eq.${propertyId},and(can_manage_all.eq.true,owner_id.eq.${propertyRow.owner_id})`
+          : `property_id.eq.${propertyId}`
+      );
     
     if (agentError || !agentAssignments || agentAssignments.length === 0) {
       setAvailableAgents([]);
