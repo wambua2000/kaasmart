@@ -96,10 +96,20 @@ const MessageCenter = ({
     }
     
     // First fetch agent assignments
+    const { data: propertyRow } = await supabase
+      .from('properties')
+      .select('owner_id')
+      .eq('id', propertyId)
+      .maybeSingle();
+
     const { data: agentAssignments, error: agentError } = await supabase
       .from('agent_properties')
       .select('agent_id')
-      .or(`can_manage_all.eq.true,property_id.eq.${propertyId}`);
+      .or(
+        propertyRow?.owner_id
+          ? `property_id.eq.${propertyId},and(can_manage_all.eq.true,owner_id.eq.${propertyRow.owner_id})`
+          : `property_id.eq.${propertyId}`
+      );
     
     if (agentError || !agentAssignments || agentAssignments.length === 0) {
       setAvailableAgents([]);
@@ -401,11 +411,21 @@ const MessageCenter = ({
           const targetPropertyId = propertyId || selectedPropertyId;
           
           if (recipientType === 'agent') {
-            // Find agent assigned to this property
+            // Find agent assigned to this property (scoped to the property's owner)
+            const { data: targetProperty } = await supabase
+              .from('properties')
+              .select('owner_id')
+              .eq('id', targetPropertyId)
+              .maybeSingle();
+
             const { data: agentAssignment, error: agentError } = await supabase
               .from('agent_properties')
               .select('agent_id')
-              .or(`can_manage_all.eq.true,property_id.eq.${targetPropertyId}`)
+              .or(
+                targetProperty?.owner_id
+                  ? `property_id.eq.${targetPropertyId},and(can_manage_all.eq.true,owner_id.eq.${targetProperty.owner_id})`
+                  : `property_id.eq.${targetPropertyId}`
+              )
               .limit(1)
               .maybeSingle();
             

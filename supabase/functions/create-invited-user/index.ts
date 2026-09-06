@@ -134,6 +134,25 @@ serve(async (req) => {
       const table = role === 'manager' ? 'manager_properties' : 'agent_properties';
       const idColumn = role === 'manager' ? 'manager_id' : 'agent_id';
 
+      // The owner whose portfolio this assignment is scoped to
+      let ownerId: string | null = null;
+      if (property_id) {
+        const { data: prop } = await supabaseAdmin
+          .from('properties')
+          .select('owner_id')
+          .eq('id', property_id)
+          .maybeSingle();
+        ownerId = prop?.owner_id ?? null;
+      }
+      if (!ownerId && invitedBy) {
+        const { data: inviterProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('role')
+          .eq('id', invitedBy)
+          .maybeSingle();
+        if (inviterProfile?.role === 'owner') ownerId = invitedBy;
+      }
+
       // Remove stale assignments so scope changes take effect
       await supabaseAdmin.from(table).delete().eq(idColumn, userId);
 
@@ -141,10 +160,11 @@ serve(async (req) => {
         [idColumn]: userId,
         property_id: property_id,
         can_manage_all: !property_id,
+        owner_id: ownerId,
         assigned_by: invitedBy,
       });
       if (linkError) throw new Error(`Failed to assign ${role} to property: ${linkError.message}`);
-      console.log(`${role} assignment created`, { property_id, can_manage_all: !property_id });
+      console.log(`${role} assignment created`, { property_id, can_manage_all: !property_id, ownerId });
     }
 
     // --- 5. Invitation bookkeeping: record it and mark it used ---
